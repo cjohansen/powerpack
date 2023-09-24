@@ -1,0 +1,20 @@
+{:paths ["src" "resources"]
+ :deps {org.clojure/clojure {:mvn/version "1.11.1"}
+        org.clojure/core.async {:mvn/version "1.6.681"}
+        org.clojure/data.json {:mvn/version "2.4.0"}
+        cjohansen/dumdom {:mvn/version "2023.04.26"}
+        cjohansen/imagine {:mvn/version "2020.08.25"}
+        clygments/clygments {:mvn/version "2.0.2"}
+        com.datomic/peer {:mvn/version "1.0.6726"}
+        com.nextjournal/beholder {:mvn/version "1.0.2"}
+        datomic-type-extensions/datomic-type-extensions {:mvn/version "2020-05-26"}
+        html5-walker/html5-walker {:mvn/version "2022.03.07"}
+        integrant/integrant {:mvn/version "0.9.0-alpha2"}
+        integrant/repl {:mvn/version "0.3.3"}
+        java-time-dte/java-time-dte {:mvn/version "2018-04-18"}
+        java-time-literals/java-time-literals {:mvn/version "2018-04-06"}
+        mapdown/mapdown {:mvn/version "0.2.1"}
+        optimus/optimus {:mvn/version "2023-02-08"}
+        prone/prone {:mvn/version "2021-04-23"}
+        ring/ring {:mvn/version "2.0.0-alpha1"}
+        stasis/stasis {:mvn/version "2023.06.03"}}}
