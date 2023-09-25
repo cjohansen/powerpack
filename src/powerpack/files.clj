@@ -28,7 +28,7 @@
   (-> file get-path emacs-file-artefact?))
 
 (defn find-file-names [dir regex]
-  (let [dir (io/as-file (io/resource dir))
+  (let [dir (io/file dir)
         path-len (inc (count (get-path dir)))
         path-from-dir #(subs (get-path %) path-len)]
     (sequence

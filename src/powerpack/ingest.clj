@@ -33,7 +33,7 @@
 ;; - Align data med skjema
 
 (defn load-data [db config file-name]
-  (when-let [r (io/resource (str (:powerpack/content-dir config) "/" file-name))]
+  (when-let [r (io/file (str (:powerpack/content-dir config) "/" file-name))]
     (try
       (parse-file db file-name (slurp r))
       (catch Exception e
@@ -88,13 +88,13 @@
     (ingest opt file-name))
   (call-ingest-callback opt))
 
-(defn start-watching! [{:keys [conn config on-ingested]}]
+(defn start-watching! [{:keys [conn config on-ingested] :as params}]
   (let [file (io/file (:powerpack/content-dir config))
         chop-length (inc (count (.getAbsolutePath file)))]
     (beholder/watch
      (fn [{:keys [type path]}]
        (let [file-path (subs (.getAbsolutePath (.toFile path)) chop-length)]
-         (when (ingest config (files/normalize-path file-path))
+         (when (ingest params (files/normalize-path file-path))
            (when (ifn? on-ingested)
              (on-ingested conn))
            (println "[watcher]"
@@ -103,7 +103,8 @@
                       :modify "Updated"
                       :delete "Removed"
                       :overflow "Overflowed(?)")
-                    file-path)))) (:powerpack/content-dir config))))
+                    file-path))))
+     (:powerpack/content-dir config))))
 
 (defn stop-watching! [watcher]
   (beholder/stop watcher))
