@@ -165,7 +165,7 @@
   (when-let [page (d/entity (:db req) [:page/uri (:uri req)])]
     (-> (render-page req page)
         get-response-map
-        (post-process-page req (concat [get-markup-url-optimizers] post-processors)))))
+        (post-process-page req (concat post-processors [get-markup-url-optimizers])))))
 
 (defn serve-pages [conn config opt]
   (fn [req]
