@@ -97,39 +97,41 @@
   (merge x (into {} (for [k (keys defaults)]
                       [k (or (k x) (k defaults))]))))
 
-(defn init! [config {:keys [create-ingest-tx
-                            on-ingested
-                            render-page
-                            page-post-process-fns]}]
-  (let [config (with-defaults config config-defaults)
-        system-config {:datomic/conn {:uri (:powerpack/db config)
-                                      :schema (:datomic/schema config)}
-                       :app/logger {:config config}
-                       :app/config {:config config}
-                       :app/handler {:conn (ig/ref :datomic/conn)
-                                     :config config
-                                     :render-page render-page
-                                     :page-post-process-fns page-post-process-fns
-                                     :ch-ch-ch-changes (ig/ref :dev/ch-ch-ch-changes)
-                                     :logger (ig/ref :app/logger)}
-                       :app/server {:port (or (:ring/port config) 5051)
-                                    :handler (ig/ref :app/handler)}
+(defn create-app [params]
+  (update params :config with-defaults config-defaults))
 
-                       :dev/ch-ch-ch-changes {}
+(defn get-system-map [{:keys [config
+                              create-ingest-tx
+                              on-ingested
+                              render-page
+                              page-post-process-fns]}]
+  {:datomic/conn {:uri (:powerpack/db config)
+                  :schema (:datomic/schema config)}
+   :app/logger {:config config}
+   :app/config {:config config}
+   :app/handler {:conn (ig/ref :datomic/conn)
+                 :config config
+                 :render-page render-page
+                 :page-post-process-fns page-post-process-fns
+                 :ch-ch-ch-changes (ig/ref :dev/ch-ch-ch-changes)
+                 :logger (ig/ref :app/logger)}
+   :app/server {:port (or (:ring/port config) 5051)
+                :handler (ig/ref :app/handler)}
 
-                       :dev/code-watcher {:config config
-                                          :ch-ch-ch-changes (ig/ref :dev/ch-ch-ch-changes)}
+   :dev/ch-ch-ch-changes {}
 
-                       :dev/ingestion-watcher {:config config
-                                               :conn (ig/ref :datomic/conn)
-                                               :create-ingest-tx create-ingest-tx
-                                               :on-ingested on-ingested
-                                               :ch-ch-ch-changes (ig/ref :dev/ch-ch-ch-changes)}}]
-    (integrant.repl/set-prep! (constantly system-config))
-    (apply repl/set-refresh-dirs (:powerpack/source-dirs config))
-    nil))
+   :dev/code-watcher {:config config
+                      :ch-ch-ch-changes (ig/ref :dev/ch-ch-ch-changes)}
 
-(defn start []
+   :dev/ingestion-watcher {:config config
+                           :conn (ig/ref :datomic/conn)
+                           :create-ingest-tx create-ingest-tx
+                           :on-ingested on-ingested
+                           :ch-ch-ch-changes (ig/ref :dev/ch-ch-ch-changes)}})
+
+(defn start [app]
+  (integrant.repl/set-prep! (partial get-system-map app))
+  (apply repl/set-refresh-dirs (-> app :config :powerpack/source-dirs))
   (integrant.repl/go))
 
 (defn stop []
@@ -137,4 +139,4 @@
 
 (defn reset []
   (stop)
-  (repl/refresh :after 'powerpack.app/start))
+  (repl/refresh :after 'integrant.repl/go))

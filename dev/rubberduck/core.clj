@@ -65,29 +65,21 @@
    page
    [:div
     [:h1 (:page/title page)]
-    [:p "Hi"]
+    [:p "Hi!"]
+    [:pre [:code {:class "language-clj"}
+           "(prn 'Hello :there)"]]
     [:img {:src "/vcard-small/images/ducks.jpg"}]]))
-
-(defonce fns
-  {:create-ingest-tx #'create-tx
-   :render-page #'render-page})
-
-(defn init! []
-  (app/init! config fns))
-
-(defn export [& [format]]
-  (export/export config fns {:format format}))
-
-(defn reset []
-  (init!)
-  (app/reset))
 
 (comment
 
-  (init!)
-  (app/start)
-  (reset)
-  (export)
+  (def app (-> {:config config
+                :create-ingest-tx #'create-tx
+                :render-page #'render-page}
+               app/create-app))
+
+  (app/start app)
+  (app/reset)
+  (export/export app)
 
   (def system integrant.repl.state/system)
 

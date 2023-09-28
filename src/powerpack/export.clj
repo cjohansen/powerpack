@@ -58,10 +58,11 @@
 (defn- load-export-dir [export-directory]
   (stasis/slurp-directory export-directory #"\.[^.]+$"))
 
-(defn export [config {:keys [create-ingest-tx
-                             on-ingested
-                             render-page
-                             page-post-process-fns] :as fns} & [{:keys [format]}]]
+(defn export [{:keys [config
+                      create-ingest-tx
+                      on-ingested
+                      render-page
+                      page-post-process-fns] :as fns} & [{:keys [format]}]]
   (let [export-directory (or (:stasis/build-dir config) "build")
         assets (optimize (web/get-assets config) {})
         old-files (load-export-dir export-directory)
