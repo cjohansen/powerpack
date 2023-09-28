@@ -43,3 +43,6 @@
 (defn get-code-block-highlighters [_req]
   {[:pre :code] maybe-highlight-node
    [:pre] add-hilite-class})
+
+(defn install [app]
+  (update app :page-post-process-fns conj #'get-code-block-highlighters))

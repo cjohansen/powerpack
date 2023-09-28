@@ -2,6 +2,7 @@
   (:require [powerpack.app :as app]
             [powerpack.export :as export]
             [powerpack.html :as html]
+            [powerpack.highlight :as highlight]
             [datomic-type-extensions.api :as d]))
 
 (def config
@@ -75,7 +76,8 @@
   (def app (-> {:config config
                 :create-ingest-tx #'create-tx
                 :render-page #'render-page}
-               app/create-app))
+               app/create-app
+               highlight/install))
 
   (app/start app)
   (app/reset)

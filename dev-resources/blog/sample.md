@@ -1,4 +1,4 @@
-:page/title A sample blog post.
+:page/title A sample blog post
 :blog-post/description
 
 A short introduction to the example blog post.
