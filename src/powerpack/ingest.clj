@@ -1,11 +1,13 @@
 (ns powerpack.ingest
-  (:require [clojure.edn :as edn]
+  (:require [clojure.core.async :refer [put!]]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [datomic-type-extensions.api :as d]
             [mapdown.core :as mapdown]
             [nextjournal.beholder :as beholder]
-            [powerpack.files :as files]))
+            [powerpack.files :as files]
+            [powerpack.logger :refer [log]]))
 
 (defn align-with-schema [data db]
   data)
@@ -32,13 +34,13 @@
 ;; - Valider lengde på open-graph-ting
 ;; - Align data med skjema
 
-(defn load-data [db config file-name]
+(defn load-data [db {:keys [config]} file-name]
   (when-let [r (io/file (str (:powerpack/content-dir config) "/" file-name))]
     (try
       (parse-file db file-name (slurp r))
       (catch Exception e
-        (println "Failed to ingest" file-name)
-        (prn e)))))
+        (log "Failed to ingest" file-name)
+        (log e)))))
 
 (def attrs-to-keep #{:db/ident
                      :db/txInstant})
@@ -58,7 +60,7 @@
              [:db/retract e attr v]))))
      (d/datoms db :eavt))))
 
-(defn ingest [{:keys [conn config create-ingest-tx]} file-name]
+(defn ingest [{:keys [conn config create-ingest-tx] :as opt} file-name]
   (when-let [tx (get-retract-tx (d/db conn) file-name)]
     (try
       @(d/transact conn tx)
@@ -66,17 +68,20 @@
         (throw (ex-info "Unable to retract" {:tx tx
                                              :file-name file-name} e)))))
   (let [db (d/db conn)]
-    (when-let [tx (create-ingest-tx db file-name (load-data db config file-name))]
+    (when-let [tx (create-ingest-tx db file-name (load-data db opt file-name))]
       (try
-        @(d/transact conn (conj tx [:db/add (d/tempid :db.part/tx) :tx-source/file-name file-name]))
-        (println "[powerpack.ingest] Ingested" file-name)
+        (let [res @(d/transact conn (conj tx [:db/add (d/tempid :db.part/tx) :tx-source/file-name file-name]))]
+          (log "[powerpack.ingest] Ingested" file-name)
+          res)
         (catch Exception e
           (throw (ex-info "Unable to assert" {:tx tx
                                               :file-name file-name} e)))))))
 
-(defn call-ingest-callback [{:keys [config conn on-ingested]}]
+(defn call-ingest-callback [{:keys [config conn on-ingested ch-ch-ch-changes]}]
   (when (ifn? on-ingested)
-    (on-ingested {:config config :conn conn})))
+    (on-ingested {:config config :conn conn}))
+  (when-let [ch (:ch ch-ch-ch-changes)]
+    (put! ch {:type :ingested-content})))
 
 (defn get-files-pattern [config]
   (let [suffixes (or (:powerpack/content-file-suffixes config)
@@ -95,15 +100,13 @@
      (fn [{:keys [type path]}]
        (let [file-path (subs (.getAbsolutePath (.toFile path)) chop-length)]
          (when (ingest params (files/normalize-path file-path))
-           (when (ifn? on-ingested)
-             (on-ingested conn))
-           (println "[watcher]"
-                    (case type
-                      :create "Ingested"
-                      :modify "Updated"
-                      :delete "Removed"
-                      :overflow "Overflowed(?)")
-                    file-path))))
+           (call-ingest-callback params)
+           (log (case type
+                  :create "Ingested"
+                  :modify "Updated"
+                  :delete "Removed"
+                  :overflow "Overflowed(?)")
+                file-path))))
      (:powerpack/content-dir config))))
 
 (defn stop-watching! [watcher]

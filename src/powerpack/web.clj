@@ -6,11 +6,7 @@
             [imagine.core :as imagine]
             [optimus.assets :as assets]
             [optimus.link :as link]
-            [optimus.optimizations :as optimizations]
-            [optimus.prime :as optimus]
-            [optimus.strategies :as strategies]
-            [prone.middleware :as prone]
-            [ring.middleware.content-type :refer [wrap-content-type]]))
+            [optimus.prime :as optimus]))
 
 (defn get-content-type-k [response]
   (or (->> (keys (:headers response))
@@ -21,15 +17,22 @@
 (defn get-content-type [response]
   (get-in response [:headers (get-content-type-k response)]))
 
-(defn wrap-content-type-utf-8 [handler]
-  (fn [request]
-    (when-let [response (handler request)]
-      (if (some-> (get-content-type response) (.contains ";"))
-        response
-        (if (string? (:body response))
-          (update-in response [:headers (get-content-type-k response)]
-                     #(str (or % "text/html") "; charset=utf-8"))
-          response)))))
+(defn make-utf-8 [res]
+  (when res
+    (let [k (get-content-type-k res)
+          content-type (get-in res [:headers k])]
+      (if (or (empty? content-type)
+              (.contains content-type ";")
+              (not (string? (:body res))))
+        res
+        (update-in res [:headers k] #(str % "; charset=utf-8"))))))
+
+(defn wrap-utf-8
+  "This function works around the fact that Ring simply chooses the default JVM
+  encoding for the response encoding. This is not desirable, we always want to
+  send UTF-8."
+  [handler]
+  (fn [req] (-> req handler make-utf-8)))
 
 (defn get-assets [config]
   (concat
@@ -163,16 +166,13 @@
 
 (defn handle-request [req {:keys [render-page post-processors]}]
   (when-let [page (d/entity (:db req) [:page/uri (:uri req)])]
-    (-> (render-page req page)
+     (-> (render-page req page)
         get-response-map
         (post-process-page req (concat post-processors [get-markup-url-optimizers])))))
 
-(defn serve-pages [conn config opt]
+(defn serve-pages [conn opt]
   (fn [req]
-    (or (-> req
-            (assoc :db (d/db conn))
-            (assoc :config config)
-            (handle-request opt))
+    (or (handle-request req opt)
         {:status 404
          :body (if-let [file (io/resource "404.html")]
                  (slurp file)
@@ -183,17 +183,15 @@
   (into {}
         (for [uri (d/q '[:find [?uri ...] :where [_ :page/uri ?uri]] db)]
           (try
-            [uri (:body (handle-request (assoc req :uri uri :db db) opt))]
+            [uri (:body (handle-request (assoc req :uri uri) opt))]
             (catch Exception e
               (throw (ex-info (str "Unable to render page " uri)
                               {:uri uri}
                               e)))))))
 
-(defn create-app [{:keys [conn config render-page page-post-process-fns]}]
-  (-> (serve-pages conn config {:render-page render-page
-                                :post-processors page-post-process-fns})
-      (imagine/wrap-images (:imagine/config config))
-      (optimus/wrap #(get-assets config) optimizations/none strategies/serve-live-assets-autorefresh)
-      wrap-content-type
-      wrap-content-type-utf-8
-      prone/wrap-exceptions))
+(defn wrap-system [handler {:keys [conn config]}]
+  (fn [req]
+    (-> req
+        (assoc :config config)
+        (assoc :db (d/db conn))
+        handler)))
