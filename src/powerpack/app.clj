@@ -115,7 +115,7 @@
                  :page-post-process-fns page-post-process-fns
                  :ch-ch-ch-changes (ig/ref :dev/ch-ch-ch-changes)
                  :logger (ig/ref :app/logger)}
-   :app/server {:port (or (:ring/port config) 5051)
+   :app/server {:port (or (:powerpack.server/port config) 5051)
                 :handler (ig/ref :app/handler)}
 
    :dev/ch-ch-ch-changes {}

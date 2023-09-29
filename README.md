@@ -82,8 +82,10 @@ The following is an example of setting up a page with Powerpack:
    :site/title "My blog"
 
    :stasis/build-dir "build"
-   :powerpack/content-dir "content"
    :powerpack/db "datomic:mem://myblog"
+   :powerpack/content-dir "content"
+   :powerpack/source-dirs ["src" "dev"]
+   :powerpack/resource-dirs ["resources"]
 
    :optimus/assets [{:public-dir "public"
                      :paths [#"/images/*.*"]}]
@@ -92,7 +94,7 @@ The following is an example of setting up a page with Powerpack:
                       :paths ["/css/blog.css"
                               "/css/pygments.css"]}}
 
-   :ring/port 5051
+   :powerpack.server/port 5051
 
    :imagine/config {:prefix "image-assets"
                     :resource-path "public"
@@ -105,16 +107,7 @@ The following is an example of setting up a page with Powerpack:
                       :retina-quality 0.4
                       :width 184}}}
 
-   :datomic/schema [{:db/ident :tag/id
-                     :db/valueType :db.type/keyword
-                     :db/unique :db.unique/identity
-                     :db/cardinality :db.cardinality/one}
-
-                    {:db/ident :tag/name
-                     :db/valueType :db.type/string
-                     :db/cardinality :db.cardinality/one}
-
-                    {:db/ident :blog-post/title
+   :datomic/schema [{:db/ident :blog-post/title
                      :db/valueType :db.type/string
                      :db/cardinality :db.cardinality/one}
 
@@ -151,22 +144,16 @@ The following is an example of setting up a page with Powerpack:
     [:h1 (:page/title page)]
     [:img {:src "/vcard-small/images/christian.jpg"}]]))
 
-(def fns
-  {:create-ingest-tx #'create-tx
-   :render-page #'render-page})
-
-(defn init! []
-  (app/init! config fns))
-
-(defn export [& [format]]
-  (export/export config fns {:format format}))
-
 (comment
 
-  (init!)
-  (app/start)
+  (def app (-> {:config config
+                :create-ingest-tx #'create-tx
+                :render-page #'render-page}
+               app/create-app))
+
+  (app/start app)
   (app/reset)
-  (export)
+  (export/export app)
 
 )
 ```
