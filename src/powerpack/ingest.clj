@@ -78,7 +78,8 @@
         (throw (ex-info "Unable to retract" {:tx tx
                                              :file-name file-name} e)))))
   (let [db (d/db conn)]
-    (when-let [tx (create-ingest-tx db file-name (load-data db opt file-name))]
+    (when-let [tx (cond->> (load-data db opt file-name)
+                    (ifn? create-ingest-tx) (create-ingest-tx db file-name))]
       (try
         (let [res @(d/transact conn (conj tx [:db/add (d/tempid :db.part/tx) :tx-source/file-name file-name]))]
           (log "[powerpack.ingest] Ingested" file-name)

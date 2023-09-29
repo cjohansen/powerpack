@@ -80,6 +80,7 @@
                highlight/install))
 
   (app/start app)
+  (app/stop)
   (app/reset)
   (export/export app)
 
