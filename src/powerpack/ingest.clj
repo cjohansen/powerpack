@@ -16,13 +16,23 @@
                        (keyword (last (str/split file-name #"\.")))))
 
 (defn suggest-url [url file-name]
-  (or url (str "/" (str/replace file-name #"\.[^\.]+$" "/"))))
+  (or url (-> (str "/" (str/replace file-name #"\.[^\.]+$" "/"))
+              (str/replace #"index\/$" "")
+              (str/replace #"\/\/+" "/"))))
+
+(defn parse-markdown [content]
+  (or (try
+        (let [parsed (mapdown/parse content)]
+          (cond-> parsed
+            (map? parsed) vector))
+        (catch Exception _))
+      [{:page/body content}]))
 
 (defmethod parse-file :md [db file-name content]
-  (-> content
-      mapdown/parse
-      (align-with-schema db)
-      (update :page/uri suggest-url file-name)))
+  (for [md (parse-markdown content)]
+    (-> md
+        (align-with-schema db)
+        (update :page/uri suggest-url file-name))))
 
 (defmethod parse-file :edn [db file-name content]
   (edn/read-string content))

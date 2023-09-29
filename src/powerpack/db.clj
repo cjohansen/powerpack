@@ -29,6 +29,10 @@
     :db/valueType :db.type/string
     :db/cardinality :db.cardinality/one}
 
+   {:db/ident :page/body
+    :db/valueType :db.type/string
+    :db/cardinality :db.cardinality/one}
+
    ;; open graph
    {:db/ident :open-graph/title
     :db/valueType :db.type/string

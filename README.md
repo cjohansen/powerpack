@@ -136,8 +136,8 @@ The following is an example of setting up a page with Powerpack:
                      :db/valueType :db.type/string
                      :db/cardinality :db.cardinality/one}]})
 
-(defn create-tx [db file-name data]
-  [data])
+(defn create-tx [db file-name datas]
+  datas)
 
 (defn render-page [req page]
   (html/render-hiccup req page

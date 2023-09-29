@@ -58,7 +58,7 @@
      :height (.getHeight image)}))
 
 (defn create-tx [db file-name data]
-  [data])
+  data)
 
 (defn render-page [req page]
   (html/render-hiccup
