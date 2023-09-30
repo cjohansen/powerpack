@@ -55,3 +55,12 @@
   (let [conn (d/connect uri)]
     @(d/transact conn (concat powerpack-schema schema))
     conn))
+
+(defn get-attr [db attr]
+  (d/entity db [:db/ident attr]))
+
+(comment
+
+  (def system integrant.repl.state/system)
+
+)

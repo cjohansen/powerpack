@@ -6,11 +6,46 @@
             [datomic-type-extensions.api :as d]
             [mapdown.core :as mapdown]
             [nextjournal.beholder :as beholder]
+            [powerpack.db :as db]
             [powerpack.files :as files]
-            [powerpack.logger :refer [log]]))
+            [powerpack.logger :refer [log]])
+  (:import (java.net URI)))
+
+(defn parse-vals-as [f]
+  (fn [s]
+    (let [res (read-string s)]
+      (if (coll? res)
+        (map f res)
+        (f res)))))
+
+(def conversions
+  {:db.type/bigdec read-string
+   :db.type/bigint read-string
+   :db.type/double (parse-vals-as double)
+   :db.type/float (parse-vals-as float)
+   :db.type/keyword read-string
+   :db.type/long (parse-vals-as long)
+   :db.type/boolean read-string
+   :db.type/instant read-string
+   :db.type/ref read-string
+   :db.type/symbol read-string
+   :db.type/tuple read-string
+   :db.type/uuid read-string
+   :db.type/uri (parse-vals-as #(URI/create %))})
+
+(defn get-conversion [db k]
+  (let [attr (db/get-attr db k)]
+    (or (conversions (:db/valueType attr))
+        (when (:dte/valueType attr)
+          read-string))))
 
 (defn align-with-schema [data db]
-  data)
+  (->> data
+       (map (fn [[k v]]
+              (let [f (get-conversion db k)]
+                [k (cond-> v
+                     f f)])))
+       (into {})))
 
 (defmulti parse-file (fn [db file-name content]
                        (keyword (last (str/split file-name #"\.")))))
