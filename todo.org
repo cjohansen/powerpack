@@ -1,5 +1,6 @@
-* Todo [1/4]
+* Todo [1/5]
 ** TODO Trigger live reloads from C-x C-e
 ** TODO Automatically set image dimensions for OpenGraph images
 ** TODO Watch resource dirs for asset changes
 ** DONE Add java-time-dte
+** TODO read-string some data according to the schema
