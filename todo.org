@@ -1,5 +1,5 @@
-* Todo [0/4]
+* Todo [1/4]
 ** TODO Trigger live reloads from C-x C-e
 ** TODO Automatically set image dimensions for OpenGraph images
 ** TODO Watch resource dirs for asset changes
-** TODO Add java-time-dte
+** DONE Add java-time-dte
