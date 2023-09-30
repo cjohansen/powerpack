@@ -35,7 +35,10 @@
         (update :page/uri suggest-url file-name))))
 
 (defmethod parse-file :edn [db file-name content]
-  (edn/read-string content))
+  (let [data (edn/read-string content)]
+    (if (and (coll? data) (not (map? data)))
+      data
+      [data])))
 
 (defmethod parse-file :default [db file-name content]
   content)
