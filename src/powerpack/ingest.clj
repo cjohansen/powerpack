@@ -157,6 +157,7 @@
      (fn [{:keys [type path]}]
        (when-let [file-path (->> [(subs (.getAbsolutePath (.toFile path)) chop-length)]
                                  (get-content-files config)
+                                 (filter (partial re-find (get-files-pattern config)))
                                  first)]
          (when (ingest opt (files/normalize-path file-path))
            (call-ingest-callback opt)
