@@ -35,8 +35,7 @@
                       :retina-quality 0.4
                       :width 184}}}
 
-   :datomic/schema-resource "schema.edn"
-   :datomic/schema (read-string (slurp (io/resource "schema.edn")))})
+   :datomic/schema-resource "schema.edn"})
 
 (defn load-image [config url]
   (some-> (imagine.core/image-spec url)

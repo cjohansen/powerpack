@@ -1,5 +1,6 @@
 (ns powerpack.app
   (:require [clojure.core.async :refer [chan close! mult]]
+            [clojure.java.io :as io]
             [clojure.tools.namespace.repl :as repl]
             [imagine.core :as imagine]
             [integrant.core :as ig]
@@ -66,9 +67,11 @@
   (with-timing-info "Stopped jetty"
     (stop-server)))
 
-(defmethod ig/init-key :datomic/conn [_ {:keys [uri schema]}]
+(defmethod ig/init-key :datomic/conn [_ {:keys [uri schema-resource schema]}]
   (with-timing-info "Created database"
-    (db/create-database uri schema)))
+    (->> (or schema
+             (read-string (slurp (io/resource schema-resource))))
+         (db/create-database uri))))
 
 (defmethod ig/init-key :dev/ingestion-watcher [_ opt]
   (with-timing-info "Ingested all data"
@@ -107,6 +110,7 @@
                               render-page
                               page-post-process-fns]}]
   {:datomic/conn {:uri (:powerpack/db config)
+                  :schema-resource (:datomic/schema-resource config)
                   :schema (:datomic/schema config)}
    :app/logger {:config config}
    :app/config {:config config}
