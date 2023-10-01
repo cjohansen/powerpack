@@ -15,6 +15,7 @@
    :powerpack/content-dir "dev-resources"
    :powerpack/db "datomic:mem://rubberduck"
    :powerpack/source-dirs ["src" "dev"]
+   :powerpack/log-level :debug
 
    :optimus/assets [{:public-dir "public"
                      :paths [#"/images/*.*"]}]

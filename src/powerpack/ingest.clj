@@ -8,7 +8,7 @@
             [nextjournal.beholder :as beholder]
             [powerpack.db :as db]
             [powerpack.files :as files]
-            [powerpack.logger :refer [log]])
+            [powerpack.logger :as log])
   (:import (java.net URI)))
 
 (defn parse-vals-as [f]
@@ -83,8 +83,8 @@
     (try
       (parse-file db file-name (slurp r))
       (catch Exception e
-        (log "Failed to ingest" file-name)
-        (log e)))))
+        (log/error "Failed to ingest" file-name)
+        (log/error e)))))
 
 (def attrs-to-keep #{:db/ident
                      :db/txInstant})
@@ -116,7 +116,7 @@
                     (ifn? create-ingest-tx) (create-ingest-tx db file-name))]
       (try
         (let [res @(d/transact conn (conj tx [:db/add (d/tempid :db.part/tx) :tx-source/file-name file-name]))]
-          (log "Ingested" file-name)
+          (log/info "Ingested" file-name)
           res)
         (catch Exception e
           (throw (ex-info "Unable to assert" {:tx tx

@@ -5,7 +5,7 @@
             [clojure.string :as str]
             [nextjournal.beholder :as beholder]
             [org.httpkit.server :as http-kit]
-            [powerpack.logger :refer [log]]
+            [powerpack.logger :as log]
             [powerpack.web :as web]))
 
 (defn stream-msg [payload]
