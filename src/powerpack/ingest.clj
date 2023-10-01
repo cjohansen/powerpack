@@ -120,7 +120,7 @@
                     (ifn? create-ingest-tx) (create-ingest-tx db file-name))]
       (try
         (let [res @(d/transact conn (conj tx [:db/add (d/tempid :db.part/tx) :tx-source/file-name file-name]))]
-          (log "[powerpack.ingest] Ingested" file-name)
+          (log "Ingested" file-name)
           res)
         (catch Exception e
           (throw (ex-info "Unable to assert" {:tx tx
@@ -137,19 +137,29 @@
                      ["md" "edn"])]
     (re-pattern (str "(" (str/join "|" suffixes) ")$"))))
 
-(defn ingest-all [{:keys [conn config] :as opt}]
-  (doseq [file-name (files/find-file-names (:powerpack/content-dir config) (get-files-pattern config))]
+(defn get-content-files [config paths]
+  (let [dir (:powerpack/content-dir config)
+        schema-file (.getPath (io/resource (:datomic/schema-resource config)))]
+    (->> paths
+         (remove #(= schema-file (.getPath (.toURL (io/file (str dir "/" %)))))))))
+
+(defn ingest-all [{:keys [config] :as opt}]
+  (doseq [file-name (->> (get-files-pattern config)
+                         (files/find-file-names (:powerpack/content-dir config))
+                         (get-content-files config))]
     (ingest opt file-name))
   (call-ingest-callback opt))
 
-(defn start-watching! [{:keys [conn config on-ingested] :as params}]
+(defn start-watching! [{:keys [config] :as opt}]
   (let [file (io/file (:powerpack/content-dir config))
         chop-length (inc (count (.getAbsolutePath file)))]
     (beholder/watch
      (fn [{:keys [type path]}]
-       (let [file-path (subs (.getAbsolutePath (.toFile path)) chop-length)]
-         (when (ingest params (files/normalize-path file-path))
-           (call-ingest-callback params)
+       (when-let [file-path (->> [(subs (.getAbsolutePath (.toFile path)) chop-length)]
+                                 (get-content-files config)
+                                 first)]
+         (when (ingest opt (files/normalize-path file-path))
+           (call-ingest-callback opt)
            (log (case type
                   :create "Ingested"
                   :modify "Updated"

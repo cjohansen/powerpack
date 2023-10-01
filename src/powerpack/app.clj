@@ -91,7 +91,8 @@
 (def config-defaults
   {:powerpack/source-dirs ["src"]
    :powerpack/live-reload-route "/powerpack/live-reload"
-   :powerpack/db "datomic:mem://powerpack"})
+   :powerpack/db "datomic:mem://powerpack"
+   :datomic/schema-resource "schema.edn"})
 
 (defn with-defaults [x defaults]
   (merge x (into {} (for [k (keys defaults)]

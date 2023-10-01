@@ -1,0 +1,11 @@
+[{:db/ident :blog-post/title
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one}
+
+ {:db/ident :blog-post/description
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one}
+
+ {:db/ident :blog-post/body
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one}]

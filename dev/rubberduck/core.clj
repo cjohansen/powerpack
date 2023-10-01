@@ -1,9 +1,10 @@
 (ns rubberduck.core
-  (:require [powerpack.app :as app]
+  (:require [clojure.java.io :as io]
+            [datomic-type-extensions.api :as d]
+            [powerpack.app :as app]
             [powerpack.export :as export]
-            [powerpack.html :as html]
             [powerpack.highlight :as highlight]
-            [datomic-type-extensions.api :as d]))
+            [powerpack.html :as html]))
 
 (def config
   {:site/base-url "https://rubberduck.example"
@@ -34,17 +35,8 @@
                       :retina-quality 0.4
                       :width 184}}}
 
-   :datomic/schema [{:db/ident :blog-post/title
-                     :db/valueType :db.type/string
-                     :db/cardinality :db.cardinality/one}
-
-                    {:db/ident :blog-post/description
-                     :db/valueType :db.type/string
-                     :db/cardinality :db.cardinality/one}
-
-                    {:db/ident :blog-post/body
-                     :db/valueType :db.type/string
-                     :db/cardinality :db.cardinality/one}]})
+   :datomic/schema-resource "schema.edn"
+   :datomic/schema (read-string (slurp (io/resource "schema.edn")))})
 
 (defn load-image [config url]
   (some-> (imagine.core/image-spec url)
@@ -72,6 +64,8 @@
     [:img {:src "/vcard-small/images/ducks.jpg"}]]))
 
 (comment
+
+  (set! *print-namespace-maps* false)
 
   (def app (-> {:config config
                 :create-ingest-tx #'create-tx
