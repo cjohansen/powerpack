@@ -1,11 +1,10 @@
 (ns powerpack.ingest
-  (:require [clojure.core.async :refer [put!]]
+  (:require [clojure.core.async :refer [<! chan go put! tap untap]]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [datomic-type-extensions.api :as d]
             [mapdown.core :as mapdown]
-            [nextjournal.beholder :as beholder]
             [powerpack.db :as db]
             [powerpack.files :as files]
             [powerpack.logger :as log])
@@ -104,7 +103,7 @@
              [:db/retract e attr v]))))
      (d/datoms db :eavt))))
 
-(defn ingest [{:keys [conn config create-ingest-tx] :as opt} file-name]
+(defn ingest [{:keys [conn create-ingest-tx] :as opt} file-name]
   (when-let [tx (get-retract-tx (d/db conn) file-name)]
     (try
       @(d/transact conn tx)
@@ -126,7 +125,7 @@
   (when (ifn? on-ingested)
     (on-ingested {:config config :conn conn}))
   (when-let [ch (:ch ch-ch-ch-changes)]
-    (put! ch {:type :ingested-content})))
+    (put! ch {:kind :powerpack/ingested-content})))
 
 (defn get-files-pattern [config]
   (let [suffixes (or (:powerpack/content-file-suffixes config)
@@ -135,7 +134,7 @@
 
 (defn get-content-files [config paths]
   (let [dir (:powerpack/content-dir config)
-        schema-file (.getPath (io/resource (:datomic/schema-resource config)))]
+        schema-file (.getPath (.toURL (io/file (:datomic/schema-file config))))]
     (->> paths
          (remove #(= schema-file (.getPath (.toURL (io/file (str dir "/" %)))))))))
 
@@ -146,24 +145,27 @@
     (ingest opt file-name))
   (call-ingest-callback opt))
 
-(defn start-watching! [{:keys [config] :as opt}]
-  (let [file (io/file (:powerpack/content-dir config))
-        chop-length (inc (count (.getAbsolutePath file)))]
-    (beholder/watch
-     (fn [{:keys [type path]}]
-       (when-let [file-path (->> [(subs (.getAbsolutePath (.toFile path)) chop-length)]
-                                 (get-content-files config)
-                                 (filter (partial re-find (get-files-pattern config)))
-                                 first)]
-         (when (ingest opt (files/normalize-path file-path))
-           (call-ingest-callback opt)
-           (log (case type
-                  :create "Ingested"
-                  :modify "Updated"
-                  :delete "Removed"
-                  :overflow "Overflowed(?)")
-                file-path))))
-     (:powerpack/content-dir config))))
+(defn start-watching! [{:keys [fs-events] :as opt}]
+  (let [watching? (atom true)
+        fs-ch (chan)]
+    (tap (:mult fs-events) fs-ch)
+    (go
+      (loop []
+        (when-let [{:keys [kind type path]} (<! fs-ch)]
+          (when (= :powerpack/edited-content kind)
+            (log/debug "Content edited")
+            (when (ingest opt path)
+              (call-ingest-callback opt)
+              (log/info (case type
+                          :create "Ingested"
+                          :modify "Updated"
+                          :delete "Removed"
+                          :overflow "Overflowed(?)")
+                        path)))
+          (when @watching? (recur)))))
+    (fn []
+      (untap (:mult fs-events) fs-ch)
+      (reset! watching? false))))
 
-(defn stop-watching! [watcher]
-  (beholder/stop watcher))
+(defn stop-watching! [stop]
+  (stop))

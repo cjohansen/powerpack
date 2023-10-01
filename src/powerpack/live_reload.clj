@@ -1,9 +1,8 @@
 (ns powerpack.live-reload
-  (:require [clojure.core.async :refer [<! chan close! go put! tap untap]]
+  (:require [clojure.core.async :refer [<! chan close! go put! tap timeout untap]]
             [clojure.data.json :as json]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [nextjournal.beholder :as beholder]
             [org.httpkit.server :as http-kit]
             [powerpack.logger :as log]
             [powerpack.web :as web]))
@@ -21,14 +20,13 @@
     (go
       (loop []
         (when-let [msg (<! msg-ch)]
-          (let [updated-hash (get-page-hash (handler {:uri uri}))]
-            (if (= body-hash updated-hash)
-              (do
-                (log "No difference" uri)
-                (recur)) ;; keep waiting
-              (do
-                (log "Reload" uri)
-                (put! client-ch (stream-msg msg)))))))
+          (if (= body-hash (get-page-hash (handler {:uri uri})))
+            (do
+              (log/debug "No changes")
+              (recur)) ;; keep waiting
+            (do
+              (log/info "Reload client")
+              (put! client-ch (stream-msg msg))))))
       (untap (:mult ch-ch-ch-changes) msg-ch)
       (close! msg-ch)
       (close! client-ch))
@@ -78,16 +76,26 @@
   (fn [req]
     (handle-request handler opt req)))
 
-(defn start-watching! [{:keys [config ch-ch-ch-changes]}]
-  (apply
-   beholder/watch
-   (fn [{:keys [type path]}]
-     (let [path-str (.getAbsolutePath (.toFile path))]
-       (log "File changed" type path-str)
-       (put! (:ch ch-ch-ch-changes)
-             {:type :code-changed
-              :path path-str})))
-   (:powerpack/source-dirs config)))
+(defn start-watching! [{:keys [fs-events app-events]}]
+  (let [watching? (atom true)
+        fs-ch (chan)]
+    (tap (:mult fs-events) fs-ch)
+    (go
+      (loop []
+        (when-let [event (<! fs-ch)]
+          (when (= :powerpack/edited-source (:kind event))
+            (log/debug "Source edited")
+            ;; We're currently relying on the fact that Emacs saves files after
+            ;; evaluating the entire buffer. This is imprecise and prone to
+            ;; races. A small timeout greatly improves the accuracy of this
+            ;; hook. Eventually this will be replaced with an nrepl middleware
+            ;; that instead reacts to code evaulation.
+            (<! (timeout 500))
+            (put! (:ch app-events) event))
+          (when @watching? (recur)))))
+    (fn []
+      (untap (:mult fs-events) fs-ch)
+      (reset! watching? false))))
 
-(defn stop-watching! [watcher]
-  (beholder/stop watcher))
+(defn stop-watching! [stop]
+  (stop))

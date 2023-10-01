@@ -36,7 +36,7 @@
                       :retina-quality 0.4
                       :width 184}}}
 
-   :datomic/schema-resource "schema.edn"})
+   :datomic/schema-file "dev-resources/schema.edn"})
 
 (defn load-image [config url]
   (some-> (imagine.core/image-spec url)
@@ -77,6 +77,8 @@
   (app/stop)
   (app/reset)
   (export/export app)
+
+  (integrant.repl/go)
 
   (def system integrant.repl.state/system)
 

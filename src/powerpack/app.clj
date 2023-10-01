@@ -13,6 +13,7 @@
             [powerpack.ingest :as ingest]
             [powerpack.live-reload :as live-reload]
             [powerpack.logger :as logger]
+            [powerpack.watcher :as watcher]
             [powerpack.web :as web]
             [prone.middleware :as prone]
             [ring.middleware.content-type :refer [wrap-content-type]]
@@ -40,18 +41,26 @@
 
 (defmethod ig/init-key :app/logger [_ {:keys [config]}]
   (with-timing-info "Started logger"
-    (logger/start-logger)))
+    (logger/start-logger (:powerpack/log-level config))))
 
 (defmethod ig/halt-key! :app/logger [_ logger]
   (with-timing-info "Stopped logger"
     (logger/stop-logger logger)))
 
-(defmethod ig/init-key :dev/ch-ch-ch-changes [_ {:keys [config]}]
+(defmethod ig/init-key :dev/fs-events [_ _opt]
   (let [ch (chan)]
     {:ch ch
      :mult (mult ch)}))
 
-(defmethod ig/halt-key! :dev/ch-ch-ch-changes [_ {:keys [ch]}]
+(defmethod ig/halt-key! :dev/fs-events [_ {:keys [ch]}]
+  (close! ch))
+
+(defmethod ig/init-key :dev/app-events [_ _opt]
+  (let [ch (chan)]
+    {:ch ch
+     :mult (mult ch)}))
+
+(defmethod ig/halt-key! :dev/app-events [_ {:keys [ch]}]
   (close! ch))
 
 (defmethod ig/init-key :app/handler [_ opts]
@@ -67,10 +76,9 @@
   (with-timing-info "Stopped jetty"
     (stop-server)))
 
-(defmethod ig/init-key :datomic/conn [_ {:keys [uri schema-resource schema]}]
+(defmethod ig/init-key :datomic/conn [_ {:keys [uri schema-file]}]
   (with-timing-info "Created database"
-    (->> (or schema
-             (read-string (slurp (io/resource schema-resource))))
+    (->> (read-string (slurp (io/file schema-file)))
          (db/create-database uri))))
 
 (defmethod ig/init-key :dev/ingestion-watcher [_ opt]
@@ -83,19 +91,27 @@
   (with-timing-info "Stopped content watcher"
     (ingest/stop-watching! watcher)))
 
-(defmethod ig/init-key :dev/code-watcher [_ opt]
-  (with-timing-info "Started code watcher"
+(defmethod ig/init-key :dev/source-watcher [_ opt]
+  (with-timing-info "Started source code watcher"
     (live-reload/start-watching! opt)))
 
-(defmethod ig/halt-key! :dev/code-watcher [_ watcher]
-  (with-timing-info "Stopped code watcher"
+(defmethod ig/halt-key! :dev/source-watcher [_ watcher]
+  (with-timing-info "Stopped source code watcher"
     (live-reload/stop-watching! watcher)))
+
+(defmethod ig/init-key :dev/file-watcher [_ opt]
+  (with-timing-info "Started file watcher"
+    (watcher/start-watching! opt)))
+
+(defmethod ig/halt-key! :dev/file-watcher [_ watcher]
+  (with-timing-info "Stopped file watcher"
+    (watcher/stop-watching! watcher)))
 
 (def config-defaults
   {:powerpack/source-dirs ["src"]
    :powerpack/live-reload-route "/powerpack/live-reload"
    :powerpack/db "datomic:mem://powerpack"
-   :datomic/schema-resource "schema.edn"})
+   :datomic/schema-file "resources/schema.edn"})
 
 (defn with-defaults [x defaults]
   (merge x (into {} (for [k (keys defaults)]
@@ -110,7 +126,7 @@
                               render-page
                               page-post-process-fns]}]
   {:datomic/conn {:uri (:powerpack/db config)
-                  :schema-resource (:datomic/schema-resource config)
+                  :schema-file (:datomic/schema-file config)
                   :schema (:datomic/schema config)}
    :app/logger {:config config}
    :app/config {:config config}
@@ -118,21 +134,27 @@
                  :config config
                  :render-page render-page
                  :page-post-process-fns page-post-process-fns
-                 :ch-ch-ch-changes (ig/ref :dev/ch-ch-ch-changes)
+                 :ch-ch-ch-changes (ig/ref :dev/app-events)
                  :logger (ig/ref :app/logger)}
    :app/server {:port (or (:powerpack.server/port config) 5051)
                 :handler (ig/ref :app/handler)}
 
-   :dev/ch-ch-ch-changes {}
+   :dev/fs-events {}
+   :dev/app-events {}
 
-   :dev/code-watcher {:config config
-                      :ch-ch-ch-changes (ig/ref :dev/ch-ch-ch-changes)}
+   :dev/file-watcher {:config config
+                      :fs-events (ig/ref :dev/fs-events)
+                      :app-events (ig/ref :dev/app-events)}
+
+   :dev/source-watcher {:fs-events (ig/ref :dev/fs-events)
+                        :app-events (ig/ref :dev/app-events)}
 
    :dev/ingestion-watcher {:config config
                            :conn (ig/ref :datomic/conn)
                            :create-ingest-tx create-ingest-tx
                            :on-ingested on-ingested
-                           :ch-ch-ch-changes (ig/ref :dev/ch-ch-ch-changes)}})
+                           :fs-events (ig/ref :dev/fs-events)
+                           :ch-ch-ch-changes (ig/ref :dev/app-events)}})
 
 (defn start [app]
   (integrant.repl/set-prep! (partial get-system-map app))

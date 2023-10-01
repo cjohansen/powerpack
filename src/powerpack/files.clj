@@ -39,6 +39,32 @@
       (filter #(re-find regex %)))
      (file-seq dir))))
 
+(defn as-file [x]
+  (cond
+    (instance? File x) x
+    (string? x) (io/file x)
+    :else (.toFile x)))
+
+(defn same-file? [f1 f2]
+  (= (.getAbsolutePath (as-file f1))
+     (.getAbsolutePath (as-file f2))))
+
+(defn parent? [dir f]
+  (str/starts-with?
+   (.getAbsolutePath (as-file f))
+   (.getAbsolutePath (as-file dir))))
+
+(defn get-relative-path [dir f]
+  (let [file-path (.getAbsolutePath (as-file f))
+        dir-path (.getAbsolutePath (as-file dir))]
+    (subs file-path (inc (count dir-path)))))
+
+(defn get-dir [f]
+  (or (.getParent (as-file f)) "."))
+
+(defn exists? [f]
+  (.exists (as-file f)))
+
 (comment
   (find-file-names "content" #"(md|edn)$")
 
