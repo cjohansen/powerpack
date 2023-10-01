@@ -96,11 +96,15 @@
                         db
                         file-name)]
     (keep
-     (fn [[e a v t]]
+     (fn [[e a _ t]]
        (when (= tx-id t)
          (let [attr (:ident (d/attribute db a))]
            (when (not (attrs-to-keep attr))
-             [:db/retract e attr v]))))
+             ;; Load the entity at the time of the tx to find the value instead
+             ;; of using the raw value from the index. This makes sure that
+             ;; values asserted to datomic-type-extensions attributes are
+             ;; retracted properly
+             [:db/retract e attr (attr (d/entity (d/as-of db t) e))]))))
      (d/datoms db :eavt))))
 
 (defn ingest [{:keys [conn create-ingest-tx] :as opt} file-name]
