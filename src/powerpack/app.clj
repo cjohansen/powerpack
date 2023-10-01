@@ -1,5 +1,5 @@
 (ns powerpack.app
-  (:require [clojure.core.async :refer [chan close! mult]]
+  (:require [clojure.core.async :refer [<! chan close! go mult tap untap]]
             [clojure.java.io :as io]
             [clojure.tools.namespace.repl :as repl]
             [imagine.core :as imagine]
@@ -12,7 +12,7 @@
             [powerpack.db :as db]
             [powerpack.ingest :as ingest]
             [powerpack.live-reload :as live-reload]
-            [powerpack.logger :as logger]
+            [powerpack.logger :as log]
             [powerpack.watcher :as watcher]
             [powerpack.web :as web]
             [prone.middleware :as prone]
@@ -41,11 +41,11 @@
 
 (defmethod ig/init-key :app/logger [_ {:keys [config]}]
   (with-timing-info "Started logger"
-    (logger/start-logger (:powerpack/log-level config))))
+    (log/start-logger (:powerpack/log-level config))))
 
 (defmethod ig/halt-key! :app/logger [_ logger]
   (with-timing-info "Stopped logger"
-    (logger/stop-logger logger)))
+    (log/stop-logger logger)))
 
 (defmethod ig/init-key :dev/fs-events [_ _opt]
   (let [ch (chan)]
@@ -107,6 +107,26 @@
   (with-timing-info "Stopped file watcher"
     (watcher/stop-watching! watcher)))
 
+(defmethod ig/init-key :dev/schema-watcher [_ {:keys [fs-events]}]
+  (with-timing-info "Started schema watcher"
+    (let [watching? (atom true)
+          fs-ch (chan)]
+      (tap (:mult fs-events) fs-ch)
+      (go
+        (loop []
+          (when (= :powerpack/edited-schema (:kind (<! fs-ch)))
+            (log/info "Rebooting after schema change")
+            (integrant.repl/halt)
+            (integrant.repl/go))
+          (when @watching? (recur))))
+      (fn []
+        (untap (:mult fs-events) fs-ch)
+        (reset! watching? false)))))
+
+(defmethod ig/halt-key! :dev/schema-watcher [_ stop-watcher]
+  (with-timing-info "Stopped schema watcher"
+    (stop-watcher)))
+
 (def config-defaults
   {:powerpack/source-dirs ["src"]
    :powerpack/live-reload-route "/powerpack/live-reload"
@@ -148,6 +168,8 @@
 
    :dev/source-watcher {:fs-events (ig/ref :dev/fs-events)
                         :app-events (ig/ref :dev/app-events)}
+
+   :dev/schema-watcher {:fs-events (ig/ref :dev/fs-events)}
 
    :dev/ingestion-watcher {:config config
                            :conn (ig/ref :datomic/conn)
