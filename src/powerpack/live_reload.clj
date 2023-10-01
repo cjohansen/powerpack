@@ -1,5 +1,7 @@
 (ns powerpack.live-reload
   (:require [clojure.core.async :refer [<! chan close! go put! tap untap]]
+            [clojure.data.json :as json]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [nextjournal.beholder :as beholder]
             [org.httpkit.server :as http-kit]
@@ -7,7 +9,10 @@
             [powerpack.web :as web]))
 
 (defn stream-msg [payload]
-  (str "data:" (pr-str payload) "\n\n"))
+  (str "data:" (json/write-str payload) "\n\n"))
+
+(defn get-page-hash [{:keys [body]}]
+  (str (hash body)))
 
 (defn create-watcher [{:keys [ch-ch-ch-changes]} handler uri body-hash]
   (let [client-ch (chan)
@@ -16,8 +21,7 @@
     (go
       (loop []
         (when-let [msg (<! msg-ch)]
-          (let [updated-page (handler {:uri uri})
-                updated-hash (str (hash (:body updated-page)))]
+          (let [updated-hash (get-page-hash (handler {:uri uri}))]
             (if (= body-hash updated-hash)
               (do
                 (log "No difference" uri)
@@ -31,9 +35,10 @@
     client-ch))
 
 (defn live-reload-handler [opt handler req]
-  (let [channel (create-watcher opt handler
-                                (get-in req [:params "url"])
-                                (get-in req [:params "hash"]))]
+  (let [{:strs [uri hash]} (:params req)
+        channel (if (not= hash (get-page-hash (handler {:uri uri})))
+                  (go (stream-msg {:type :client-outdated}))
+                  (create-watcher opt handler uri hash))]
     (http-kit/as-channel
      req
      {:on-open
@@ -46,16 +51,18 @@
 (defn get-route [config]
   (:powerpack/live-reload-route config))
 
-(defn script [config body]
-  (str "\n<script type=\"text/javascript\">new EventSource(\""
-       (get-route config)
-       "?hash=" (hash body)
-       "&url=\" + location.pathname).onmessage = function () { location.reload(true); };</script>"))
+(defn script [config res]
+  (str "\n<script type=\"text/javascript\">"
+       (-> (slurp (io/resource "powerpack/live-reload.js"))
+           (str/replace #"\{\{route\}\}" (get-route config))
+           (str/replace #"\{\{hash\}\}" (get-page-hash res)))
+       "</script>"))
 
-(defn inject-script [body config]
-  (if (re-find #"</body>" body)
-    (str/replace body "</body>" (str (script config body) "</body>"))
-    (str body (script config body))))
+(defn inject-script [res config]
+  (update res :body
+          #(if (re-find #"</body>" %)
+             (str/replace % "</body>" (str (script config res) "</body>"))
+             (str % (script config %)))))
 
 (defn handle-request [handler opt req]
   (if (= (get-route (:config opt)) (:uri req))
@@ -64,7 +71,7 @@
       (if (and (some->> (web/get-content-type response)
                         (re-find #"html"))
                (string? (:body response)))
-        (update response :body inject-script (:config opt))
+        (inject-script response (:config opt))
         response))))
 
 (defn wrap-live-reload [handler opt]
@@ -77,7 +84,9 @@
    (fn [{:keys [type path]}]
      (let [path-str (.getAbsolutePath (.toFile path))]
        (log "File changed" type path-str)
-       (put! (:ch ch-ch-ch-changes) {:type type :path path-str})))
+       (put! (:ch ch-ch-ch-changes)
+             {:type :code-changed
+              :path path-str})))
    (:powerpack/source-dirs config)))
 
 (defn stop-watching! [watcher]
