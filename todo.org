@@ -1,8 +1,13 @@
-* Todo [1/7]
+* Todo [3/12]
 ** TODO Trigger live reloads from C-x C-e
 ** TODO Automatically set image dimensions for OpenGraph images
 ** TODO Watch resource dirs for asset changes
 ** DONE Add java-time-dte
-** TODO read-string some data according to the schema
-** TODO Force create-app to be a function (repl reloadability)
-** TODO Read db schema from resource, add live reload for schema changes
+** DONE read-string some data according to the schema
+** TODO Replace create-app with an integrant impl
+** DONE Read db schema from resource
+** TODO Schema changes: Restart server
+** TODO Tests
+** TODO Docstrings
+** TODO Design error message box
+** TODO Validate open graph title and description lengths on ingest

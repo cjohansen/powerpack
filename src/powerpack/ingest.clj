@@ -78,9 +78,6 @@
 (defmethod parse-file :default [db file-name content]
   content)
 
-;; Se på ingesta data:
-;; - Valider lengde på open-graph-ting
-
 (defn load-data [db {:keys [config]} file-name]
   (when-let [r (io/file (str (:powerpack/content-dir config) "/" file-name))]
     (try
