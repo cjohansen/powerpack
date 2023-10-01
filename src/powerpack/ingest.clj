@@ -80,7 +80,6 @@
 
 ;; Se på ingesta data:
 ;; - Valider lengde på open-graph-ting
-;; - Align data med skjema
 
 (defn load-data [db {:keys [config]} file-name]
   (when-let [r (io/file (str (:powerpack/content-dir config) "/" file-name))]
