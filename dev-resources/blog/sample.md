@@ -1,4 +1,5 @@
 :page/title A sample blog post
+:blog-post/published #time/ld "2023-09-29"
 :blog-post/description
 
 A short introduction to the example blog post.
