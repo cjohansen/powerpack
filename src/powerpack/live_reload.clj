@@ -90,7 +90,15 @@
             ;; races. A small timeout greatly improves the accuracy of this
             ;; hook. Eventually this will be replaced with an nrepl middleware
             ;; that instead reacts to code evaulation.
-            (<! (timeout 500))
+            (<! (timeout 500)))
+          (when (= :powerpack/edited-asset (:kind event))
+            (log/debug "Asset edited")
+            ;; The autorefresh Optimus strategy needs some time to update its
+            ;; cache, so we'll postpone slightly to be sure new assets are
+            ;; loaded.
+            (<! (timeout 100)))
+          (when (#{:powerpack/edited-source
+                   :powerpack/edited-asset} (:kind event))
             (put! (:ch app-events) event))
           (when @watching? (recur)))))
     (fn []

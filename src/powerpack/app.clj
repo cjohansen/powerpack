@@ -19,11 +19,19 @@
             [ring.middleware.content-type :refer [wrap-content-type]]
             [ring.middleware.params :refer [wrap-params]]))
 
+(defn optimizations [assets _options]
+  (-> assets
+      optimizations/add-cache-busted-expires-headers))
+
 (defn create-handler [{:keys [conn config render-page page-post-process-fns] :as opts}]
   (-> (web/serve-pages conn {:render-page render-page
                              :post-processors page-post-process-fns})
       (imagine/wrap-images (:imagine/config config))
-      (optimus/wrap #(web/get-assets config) optimizations/none strategies/serve-live-assets-autorefresh)
+      (optimus/wrap
+       #(web/get-assets config)
+       optimizations
+       strategies/serve-live-assets-autorefresh
+       {:assets-dir (first (:powerpack/resource-dirs config))})
       wrap-content-type
       web/wrap-utf-8
       (web/wrap-system {:config config :conn conn})
