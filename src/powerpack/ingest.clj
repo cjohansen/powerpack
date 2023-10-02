@@ -132,8 +132,7 @@
     (put! ch {:kind :powerpack/ingested-content})))
 
 (defn get-files-pattern [config]
-  (let [suffixes (or (:powerpack/content-file-suffixes config)
-                     ["md" "edn"])]
+  (let [suffixes (:powerpack/content-file-suffixes config)]
     (re-pattern (str "(" (str/join "|" suffixes) ")$"))))
 
 (defn get-content-files [config paths]

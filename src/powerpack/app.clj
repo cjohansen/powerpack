@@ -129,8 +129,10 @@
 
 (def config-defaults
   {:powerpack/source-dirs ["src"]
+   :powerpack/resource-dirs ["resources"]
    :powerpack/live-reload-route "/powerpack/live-reload"
    :powerpack/db "datomic:mem://powerpack"
+   :powerpack/content-file-suffixes ["md" "edn"]
    :datomic/schema-file "resources/schema.edn"})
 
 (defn with-defaults [x defaults]
