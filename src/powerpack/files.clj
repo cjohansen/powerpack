@@ -2,6 +2,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str])
   (:import (java.io File)
+           (java.net URL)
            (java.util.regex Pattern)))
 
 (def fsep (File/separator))
@@ -43,6 +44,7 @@
   (cond
     (instance? File x) x
     (string? x) (io/file x)
+    (instance? URL x) (io/file x)
     :else (.toFile x)))
 
 (defn same-file? [f1 f2]
@@ -50,9 +52,11 @@
      (.getAbsolutePath (as-file f2))))
 
 (defn parent? [dir f]
-  (str/starts-with?
-   (.getAbsolutePath (as-file f))
-   (.getAbsolutePath (as-file dir))))
+  (let [dir-path (str (.getAbsolutePath (as-file dir)) "/")
+        file-path (.getAbsolutePath (as-file f))]
+    (and (str/starts-with? file-path dir-path)
+         (not= (str/replace dir-path #"/$" "")
+               (str/replace file-path #"/$" "")))))
 
 (defn get-relative-path [dir f]
   (let [file-path (.getAbsolutePath (as-file f))
@@ -64,6 +68,9 @@
 
 (defn exists? [f]
   (.exists (as-file f)))
+
+(defn get-absolute-path [f]
+  (.getAbsolutePath (as-file f)))
 
 (comment
   (find-file-names "content" #"(md|edn)$")
