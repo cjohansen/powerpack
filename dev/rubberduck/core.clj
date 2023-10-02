@@ -61,7 +61,7 @@
     [:h1 (:page/title page)]
     [:p "Hi!"]
     (when-let [published (:blog-post/published page)]
-      [:p "Published" (str published)])
+      [:p "Published " (str published)])
     [:pre [:code {:class "language-clj"}
            "(prn 'Hello :there)"]]
     [:img {:src "/vcard-small/images/ducks.jpg"}]]))
