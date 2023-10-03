@@ -23,10 +23,11 @@
           (if (= body-hash (get-page-hash (handler {:uri uri})))
             (do
               (log/debug "No changes")
-              (recur)) ;; keep waiting
+              (when (put! client-ch (stream-msg msg))
+                (recur))) ;; keep waiting if client is still around
             (do
               (log/info "Reload client")
-              (put! client-ch (stream-msg msg))))))
+              (put! client-ch (stream-msg (assoc msg :action "reload")))))))
       (untap (:mult ch-ch-ch-changes) msg-ch)
       (close! msg-ch)
       (close! client-ch))
@@ -35,11 +36,15 @@
 (defn live-reload-handler [opt handler req]
   (let [{:strs [uri hash]} (:params req)
         channel (if (not= hash (get-page-hash (handler {:uri uri})))
-                  (go (stream-msg {:type :client-outdated}))
+                  (go (stream-msg {:type :client-outdated
+                                   :action "reload"}))
                   (create-watcher opt handler uri hash))]
     (http-kit/as-channel
      req
-     {:on-open
+     {:on-close
+      (fn [& _args]
+        (close! channel))
+      :on-open
       (fn [ch]
         (go
           (http-kit/send! ch {:status 200

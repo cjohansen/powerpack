@@ -3,12 +3,15 @@ function connect() {
 
   source.onmessage = function (m) {
     if (m.data) {
-      console.log("Live reload payliad", JSON.parse(m.data));
+      var payload = JSON.parse(m.data);
+      console.log("Live reload payload", payload);
+
+      if (payload.action == "reload") {
+        location.reload(true);
+      }
     } else {
       console.log("Event source message contained no data");
     }
-
-    location.reload(true);
   };
 
   source.onerror = function (m) {
