@@ -5,6 +5,7 @@
             [imagine.core :as imagine]
             [integrant.core :as ig]
             [integrant.repl]
+            [integrant.repl.state]
             [optimus.optimizations :as optimizations]
             [optimus.prime :as optimus]
             [optimus.strategies :as strategies]
@@ -76,18 +77,20 @@
     (-> (create-handler opts)
         prone/wrap-exceptions)))
 
-(defmethod ig/init-key :app/server [_ {:keys [handler port]}]
-  (with-timing-info :info (str "Started server on port " port)
-    (server/run-server handler {:port port})))
+(defmethod ig/init-key :app/server [_ {:keys [handler config]}]
+  (let [port (or (:powerpack.server/port config) 5051)]
+    (with-timing-info :info (str "Started server on port " port)
+      (server/run-server handler {:port port}))))
 
 (defmethod ig/halt-key! :app/server [_ stop-server]
   (with-timing-info :info "Stopped server"
     (stop-server)))
 
-(defmethod ig/init-key :datomic/conn [_ {:keys [uri schema-file]}]
+(defmethod ig/init-key :datomic/conn [_ {:keys [config]}]
   (with-timing-info :info "Created database"
-    (->> (read-string (slurp (io/file schema-file)))
-         (db/create-database uri))))
+    (->> (or (:datomic/schema config)
+             (read-string (slurp (io/file (:datomic/schema-file config)))))
+         (db/create-database (:powerpack/db config)))))
 
 (defmethod ig/init-key :dev/ingestion-watcher [_ opt]
   (with-timing-info :info "Ingested all data"
@@ -147,32 +150,45 @@
   (merge x (into {} (for [k (keys defaults)]
                       [k (or (k x) (k defaults))]))))
 
-(defn create-app [params]
-  (update params :config with-defaults config-defaults))
+(defmethod ig/init-key :powerpack/config [_ {:keys [config]}]
+  (with-defaults config config-defaults))
 
-(defn get-system-map [{:keys [config
-                              create-ingest-tx
-                              on-ingested
-                              render-page
-                              page-post-process-fns]}]
-  {:datomic/conn {:uri (:powerpack/db config)
-                  :schema-file (:datomic/schema-file config)
-                  :schema (:datomic/schema config)}
-   :app/logger {:config config}
-   :app/config {:config config}
+(defmethod ig/init-key :powerpack/create-ingest-tx [_ {:keys [create-ingest-tx]}]
+  create-ingest-tx)
+
+(defmethod ig/init-key :powerpack/render-page [_ {:keys [render-page]}]
+  render-page)
+
+(defmethod ig/init-key :powerpack/page-post-process-fns [_ {:keys [page-post-process-fns]}]
+  page-post-process-fns)
+
+(defmethod ig/init-key :powerpack/on-ingested [_ {:keys [on-ingested]}]
+  on-ingested)
+
+(defn get-system-map []
+  {:powerpack/app {}
+   :powerpack/config (ig/ref :powerpack/app)
+   :powerpack/create-ingest-tx (ig/ref :powerpack/app)
+   :powerpack/render-page (ig/ref :powerpack/app)
+   :powerpack/page-post-process-fns (ig/ref :powerpack/app)
+   :powerpack/on-ingested (ig/ref :powerpack/app)
+
+   :datomic/conn {:config (ig/ref :powerpack/config)}
+   :app/logger {:config (ig/ref :powerpack/config)}
+   :app/config {:config (ig/ref :powerpack/config)}
    :app/handler {:conn (ig/ref :datomic/conn)
-                 :config config
-                 :render-page render-page
-                 :page-post-process-fns page-post-process-fns
+                 :config (ig/ref :powerpack/config)
+                 :render-page (ig/ref :powerpack/render-page)
+                 :page-post-process-fns (ig/ref :powerpack/page-post-process-fns)
                  :ch-ch-ch-changes (ig/ref :dev/app-events)
                  :logger (ig/ref :app/logger)}
-   :app/server {:port (or (:powerpack.server/port config) 5051)
+   :app/server {:config (ig/ref :powerpack/config)
                 :handler (ig/ref :app/handler)}
 
    :dev/fs-events {}
    :dev/app-events {}
 
-   :dev/file-watcher {:config config
+   :dev/file-watcher {:config (ig/ref :powerpack/config)
                       :fs-events (ig/ref :dev/fs-events)
                       :app-events (ig/ref :dev/app-events)}
 
@@ -181,17 +197,21 @@
 
    :dev/schema-watcher {:fs-events (ig/ref :dev/fs-events)}
 
-   :dev/ingestion-watcher {:config config
+   :dev/ingestion-watcher {:config (ig/ref :powerpack/config)
                            :conn (ig/ref :datomic/conn)
-                           :create-ingest-tx create-ingest-tx
-                           :on-ingested on-ingested
+                           :create-ingest-tx (ig/ref :powerpack/create-ingest-tx)
+                           :on-ingested (ig/ref :powerpack/on-ingested)
                            :fs-events (ig/ref :dev/fs-events)
                            :ch-ch-ch-changes (ig/ref :dev/app-events)}})
 
-(defn start [app]
-  (integrant.repl/set-prep! (partial get-system-map app))
-  (apply repl/set-refresh-dirs (-> app :config :powerpack/source-dirs))
-  (integrant.repl/go))
+(integrant.repl/set-prep! get-system-map)
+
+(defn start []
+  (integrant.repl/go)
+  (apply repl/set-refresh-dirs
+         (-> integrant.repl.state/system
+             :app/config
+             :powerpack/source-dirs)))
 
 (defn stop []
   (integrant.repl/halt))

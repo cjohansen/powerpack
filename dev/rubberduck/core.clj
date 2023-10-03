@@ -1,6 +1,6 @@
 (ns rubberduck.core
-  (:require [clojure.java.io :as io]
-            [datomic-type-extensions.api :as d]
+  (:require [datomic-type-extensions.api :as d]
+            [integrant.core :as ig]
             [powerpack.app :as app]
             [powerpack.export :as export]
             [powerpack.highlight :as highlight]
@@ -66,22 +66,24 @@
            "(prn 'Hello :there)"]]
     [:img {:src "/vcard-small/images/ducks.jpg"}]]))
 
+(defn create-app []
+  (-> {:config config
+       :create-ingest-tx #'create-tx
+       :render-page #'render-page}
+      highlight/install))
+
+(defmethod ig/init-key :powerpack/app [_ _]
+  (create-app))
+
 (comment
 
   (set! *print-namespace-maps* false)
 
-  (def app (-> {:config config
-                :create-ingest-tx #'create-tx
-                :render-page #'render-page}
-               app/create-app
-               highlight/install))
-
-  (app/start app)
+  (app/start)
   (app/stop)
   (app/reset)
-  (export/export app)
 
-  (integrant.repl/go)
+  (export/export (create-app))
 
   (def system integrant.repl.state/system)
 
