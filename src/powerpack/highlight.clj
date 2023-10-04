@@ -30,10 +30,11 @@
 (def skip-pygments?
   (= (System/getProperty "powerpack.pygments.skip") "true"))
 
-(defn maybe-highlight-node [node]
+(defn maybe-highlight-node
   "Parsing and highlighting with Pygments is quite resource intensive. This way
    pygments can be disabled by setting
    JVM_OPTS=\"-Dpowerpack.pygments.skip=true\""
+  [node]
   (when-not skip-pygments?
     (highlight node)))
 
