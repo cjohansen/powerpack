@@ -60,9 +60,7 @@
 
 (defn export [{:keys [config
                       create-ingest-tx
-                      on-ingested
-                      render-page
-                      page-post-process-fns] :as fns} & [{:keys [format]}]]
+                      on-ingested] :as opt} & [{:keys [format]}]]
   (let [export-directory (or (:stasis/build-dir config) "build")
         assets (optimize (web/get-assets config) {})
         old-files (load-export-dir export-directory)
@@ -75,7 +73,7 @@
                         :on-ingested on-ingested})
     (stasis/empty-directory! export-directory)
     (export/save-assets assets export-directory)
-    (stasis/export-pages (web/get-pages (d/db conn) request fns) export-directory request)
+    (stasis/export-pages (web/get-pages (d/db conn) request opt) export-directory request)
     (println "Exporting images from <img> <source> <meta property=\"og:image\"> and select style attributes")
     (when-let [imagine-config (some-> (:imagine/config config)
                                       (assoc :cacheable-urls? true))]
