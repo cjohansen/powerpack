@@ -5,8 +5,7 @@
             [html5-walker.core :as html5-walker]
             [imagine.core :as imagine]
             [optimus.assets :as assets]
-            [optimus.link :as link]
-            [optimus.prime :as optimus]))
+            [optimus.link :as link]))
 
 (defn get-content-type-k [response]
   (or (->> (keys (:headers response))
