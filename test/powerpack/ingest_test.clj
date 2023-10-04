@@ -1,7 +1,19 @@
 (ns powerpack.ingest-test
   (:require [clojure.test :refer [deftest is testing]]
             [datomic-type-extensions.api :as d]
+            [powerpack.db :as db]
             [powerpack.ingest :as sut]))
+
+(defmacro with-conn [schema binding & body]
+  `(do
+     (let [uri# (str "datomic:mem://" (random-uuid))]
+       (db/create-database uri# ~schema)
+       (let [conn# (d/connect uri#)
+             ~binding conn#]
+         (try
+           ~@body
+           (finally
+             (d/delete-database uri#)))))))
 
 (defmacro with-schema-db [schema binding & body]
   `(do
@@ -194,3 +206,29 @@
              db
              (sut/align-with-schema {:person/birthday "#time/ld \"2007-12-03\""} db))
            {:person/birthday #time/ld "2007-12-03"}))))
+
+(defn mapify [e]
+  (into {} e))
+
+(deftest ingest-data-test
+  (testing "Ingests data from file"
+    (is (= (-> (with-conn {} conn
+                 (->> [{:page/uri "/some-file/"
+                        :page/title "Hello"}]
+                      (sut/ingest-data {:conn conn} "some-file.md")))
+               :db-after
+               (d/entity [:page/uri "/some-file/"])
+               mapify)
+           {:page/uri "/some-file/", :page/title "Hello"})))
+
+  (testing "Does not retract data before attempting failing ingest"
+    (is (= (with-conn {} conn
+             (->> [{:page/uri "/some-file/"
+                    :page/title "Hello"}]
+                  (sut/ingest-data {:conn conn} "some-file.md"))
+             (try
+               (->> [{:bogus/wow "Boom"}]
+                    (sut/ingest-data {:conn conn} "some-file.md"))
+               (catch Exception _e nil))
+             (mapify (d/entity (d/db conn) [:page/uri "/some-file/"])))
+           {:page/uri "/some-file/", :page/title "Hello"}))))

@@ -68,7 +68,7 @@
         (align-with-schema db)
         (update :page/uri suggest-url file-name))))
 
-(defmethod parse-file :edn [db file-name content]
+(defmethod parse-file :edn [_db _file-name content]
   (let [data (edn/read-string content)]
     (if (and (coll? data) (not (map? data)))
       data
@@ -107,23 +107,30 @@
              [:db/retract e attr (attr (d/entity (d/as-of db t) e))]))))
      (d/datoms db :eavt))))
 
-(defn ingest [{:keys [conn create-ingest-tx] :as opt} file-name]
-  (when-let [tx (get-retract-tx (d/db conn) file-name)]
-    (try
-      @(d/transact conn tx)
-      (catch Exception e
-        (throw (ex-info "Unable to retract" {:tx tx
-                                             :file-name file-name} e)))))
-  (let [db (d/db conn)]
-    (when-let [tx (cond->> (load-data db opt file-name)
-                    (ifn? create-ingest-tx) (create-ingest-tx db file-name))]
+(defn ingest-data [{:keys [conn create-ingest-tx]} file-name data]
+  (let [db (d/db conn)
+        tx (some-> (cond->> data
+                     (ifn? create-ingest-tx) (create-ingest-tx db file-name))
+                   (conj [:db/add (d/tempid :db.part/tx) :tx-source/file-name file-name]))]
+    (when tx
       (try
-        (let [res @(d/transact conn (conj tx [:db/add (d/tempid :db.part/tx) :tx-source/file-name file-name]))]
-          (log/info "Ingested" file-name)
-          res)
+        (d/with db tx)
         (catch Exception e
           (throw (ex-info "Unable to assert" {:tx tx
-                                              :file-name file-name} e)))))))
+                                              :file-name file-name} e)))))
+    (when-let [retractions (get-retract-tx (d/db conn) file-name)]
+      (try
+        @(d/transact conn retractions)
+        (catch Exception e
+          (throw (ex-info "Unable to retract" {:tx retractions
+                                               :file-name file-name} e)))))
+    (when tx
+      @(d/transact conn tx)
+      (log/info "Ingested" file-name))))
+
+(defn ingest [{:keys [conn] :as opt} file-name]
+  (->> (load-data (d/db conn) opt file-name)
+       (ingest-data opt file-name)))
 
 (defn call-ingest-callback [{:keys [config conn on-ingested ch-ch-ch-changes]}]
   (when (ifn? on-ingested)
