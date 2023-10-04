@@ -231,4 +231,35 @@
                     (sut/ingest-data {:conn conn} "some-file.md"))
                (catch Exception _e nil))
              (mapify (d/entity (d/db conn) [:page/uri "/some-file/"])))
-           {:page/uri "/some-file/", :page/title "Hello"}))))
+           {:page/uri "/some-file/", :page/title "Hello"})))
+
+  (testing "Retracts datomic type extension attrs"
+    (is (= (with-conn [{:db/ident :blog-post/published
+                        :dte/valueType :java.time/local-date-time
+                        :db/cardinality :db.cardinality/one}] conn
+             (->> [{:page/uri "/blog/post/"
+                    :blog-post/published #time/ldt "2023-09-30T09:00"}]
+                  (sut/ingest-data {:conn conn} "post.md"))
+             (->> [{:page/uri "/blog/post/"
+                    :blog-post/published #time/ldt "2023-09-29T09:00"}]
+                  (sut/ingest-data {:conn conn} "post.md"))
+             (mapify (d/entity (d/db conn) [:page/uri "/blog/post/"])))
+           {:page/uri "/blog/post/"
+            :blog-post/published #time/ldt "2023-09-29T09:00"})))
+
+  (testing "Retracts ref attrs"
+    (is (= (with-conn [{:db/ident :blog-post/author
+                        :db/valueType :db.type/ref
+                        :db/cardinality :db.cardinality/one}
+                       {:db/ident :person/id
+                        :db/valueType :db.type/string
+                        :db/cardinality :db.cardinality/one
+                        :db/unique :db.unique/identity}] conn
+             (->> [{:page/uri "/blog/post/"
+                    :blog-post/author {:person/id "person1"}}]
+                  (sut/ingest-data {:conn conn} "post.md"))
+             (->> [{:page/uri "/blog/post/"
+                    :blog-post/author {:person/id "person1"}}]
+                  (sut/ingest-data {:conn conn} "post.md"))
+             (:page/uri (d/entity (d/db conn) [:page/uri "/blog/post/"])))
+           "/blog/post/"))))
