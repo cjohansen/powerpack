@@ -11,6 +11,7 @@
             [optimus.strategies :as strategies]
             [org.httpkit.server :as server]
             [powerpack.db :as db]
+            [powerpack.error-logger :as errors]
             [powerpack.ingest :as ingest]
             [powerpack.live-reload :as live-reload]
             [powerpack.logger :as log]
@@ -72,6 +73,14 @@
 (defmethod ig/halt-key! :dev/app-events [_ {:keys [ch]}]
   (close! ch))
 
+(defmethod ig/init-key :dev/error-events [_ _opt]
+  (let [ch (chan)]
+    {:ch ch
+     :mult (mult ch)}))
+
+(defmethod ig/halt-key! :dev/error-events [_ {:keys [ch]}]
+  (close! ch))
+
 (defmethod ig/init-key :app/handler [_ opts]
   (with-timing-info :info "Created web app"
     (-> (create-handler opts)
@@ -117,6 +126,14 @@
 (defmethod ig/halt-key! :dev/file-watcher [_ watcher]
   (with-timing-info :info "Stopped file system watcher"
     (watcher/stop-watching! watcher)))
+
+(defmethod ig/init-key :dev/error-logger [_ opt]
+  (with-timing-info :debug "Started error logger"
+    (errors/start-watching! opt)))
+
+(defmethod ig/halt-key! :dev/error-logger [_ watcher]
+  (with-timing-info :debug "Stopped error logger"
+    (errors/stop-watching! watcher)))
 
 (defmethod ig/init-key :dev/schema-watcher [_ {:keys [fs-events]}]
   (with-timing-info :debug "Started schema watcher"
@@ -187,6 +204,7 @@
 
    :dev/fs-events {}
    :dev/app-events {}
+   :dev/error-events {}
 
    :dev/file-watcher {:config (ig/ref :powerpack/config)
                       :fs-events (ig/ref :dev/fs-events)
@@ -197,12 +215,15 @@
 
    :dev/schema-watcher {:fs-events (ig/ref :dev/fs-events)}
 
-   :dev/ingestion-watcher {:config (ig/ref :powerpack/config)
+   :dev/ingestion-watcher {:ch-ch-ch-changes (ig/ref :dev/app-events)
+                           :config (ig/ref :powerpack/config)
                            :conn (ig/ref :datomic/conn)
                            :create-ingest-tx (ig/ref :powerpack/create-ingest-tx)
-                           :on-ingested (ig/ref :powerpack/on-ingested)
+                           :error-events (ig/ref :dev/error-events)
                            :fs-events (ig/ref :dev/fs-events)
-                           :ch-ch-ch-changes (ig/ref :dev/app-events)}})
+                           :on-ingested (ig/ref :powerpack/on-ingested)}
+
+   :dev/error-logger {:error-events (ig/ref :dev/error-events)}})
 
 (integrant.repl/set-prep! get-system-map)
 

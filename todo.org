@@ -1,4 +1,4 @@
-* Todo [7/14]
+* Todo [9/15]
 ** TODO Trigger live reloads from C-x C-e
 ** DONE Automatically set image dimensions for OpenGraph images
 ** DONE Watch resource dirs for asset changes
@@ -7,9 +7,10 @@
 ** DONE Replace create-app with an integrant impl
 ** DONE Read db schema from resource
 ** DONE Schema changes: Restart server
-** TODO Tests
-** TODO Docstrings
+** DONE Tests
+** DONE Docstrings
 ** TODO Design error message box
 ** TODO Validate open graph title and description lengths on ingest
 ** TODO Select schema-attributes only before ingest
 ** TODO Report bad attributes from the ingester
+** TODO Tag each error with a unique id to track if it's been resolved

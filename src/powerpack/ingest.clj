@@ -77,13 +77,16 @@
 (defmethod parse-file :default [db file-name content]
   content)
 
-(defn load-data [db {:keys [config]} file-name]
+(defn load-data [db {:keys [config error-events]} file-name]
   (when-let [r (io/file (str (:powerpack/content-dir config) "/" file-name))]
     (try
-      (parse-file db file-name (slurp r))
+      (vec (parse-file db file-name (slurp r)))
       (catch Exception e
-        (log/error "Failed to ingest" file-name)
-        (log/error e)))))
+        (put! (:ch error-events)
+              {:exception e
+               :file-name file-name
+               :kind ::parse-file})
+        nil))))
 
 (def attrs-to-keep #{:db/ident
                      :db/txInstant})
@@ -118,25 +121,44 @@
       (try
         (d/with db tx)
         (catch Exception e
-          (throw (ex-info "Unable to assert" {:tx tx
-                                              :file-name file-name} e)))))
+          (throw (ex-info "Unable to assert"
+                          {:kind ::transact
+                           :tx tx
+                           :file-name file-name
+                           :exception e} e)))))
     (when-let [retractions (get-retract-tx (d/db conn) file-name)]
       (try
         @(d/transact conn retractions)
         (catch Exception e
-          (throw (ex-info "Unable to retract" {:tx retractions
-                                               :file-name file-name} e)))))
+          (throw (ex-info "Unable to retract"
+                          {:kind ::retract
+                           :tx retractions
+                           :file-name file-name
+                           :exception e} e)))))
     (when tx
       @(d/transact conn tx)
       (log/info "Ingested" file-name))))
 
-(defn ingest [{:keys [conn] :as opt} file-name]
-  (->> (load-data (d/db conn) opt file-name)
-       (ingest-data opt file-name)))
+(defn ingest [{:keys [conn error-events] :as opt} file-name]
+  (when-let [data (load-data (d/db conn) opt file-name)]
+    (try
+      (ingest-data opt file-name data)
+      (catch Exception e
+        (put! (:ch error-events)
+              (merge {:kind ::ingest-data
+                      :file-name file-name
+                      :data data
+                      :exception e}
+                     (ex-data e)))))))
 
-(defn call-ingest-callback [{:keys [config conn on-ingested ch-ch-ch-changes]}]
-  (when (ifn? on-ingested)
-    (on-ingested {:config config :conn conn}))
+(defn call-ingest-callback [{:keys [config conn on-ingested ch-ch-ch-changes error-events]}]
+  (try
+    (when (ifn? on-ingested)
+      (on-ingested {:config config :conn conn}))
+    (catch Exception e
+      (put! (:ch error-events)
+            {:kind ::callback
+             :exception e})))
   (when-let [ch (:ch ch-ch-ch-changes)]
     (put! ch {:kind :powerpack/ingested-content})))
 
