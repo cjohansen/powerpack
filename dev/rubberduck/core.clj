@@ -39,17 +39,6 @@
 
    :datomic/schema-file "dev-resources/schema.edn"})
 
-(defn load-image [config url]
-  (some-> (imagine.core/image-spec url)
-          (imagine.core/inflate-spec config)
-          :resource
-          fivetonine.collage.util/load-image))
-
-(defn get-image-dimensions [config url]
-  (when-let [image (load-image config url)]
-    {:width (.getWidth image)
-     :height (.getHeight image)}))
-
 (defn create-tx [db file-name data]
   data)
 
