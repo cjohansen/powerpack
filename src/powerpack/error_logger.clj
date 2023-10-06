@@ -32,13 +32,13 @@
           (recur lines (next words) (str line " " word)))))
     (str/split (:pprint line) #"\n")))
 
-(defn format-sections [sections]
-  (->> (for [lines sections]
-         (->> lines
-              (mapcat get-readable-lines)
-              (map #(str "    " %))
-              (str/join "\n")))
-       (str/join "\n\n")))
+(defn format-error-message [sections]
+  (str (java.time.LocalDateTime/now) " 💥💥💥🫠\n"
+       (->> (for [lines sections]
+              (->> lines
+                   (mapcat get-readable-lines)
+                   (str/join "\n")))
+            (str/join "\n\n"))))
 
 (defn format-exception [{:keys [exception]}]
   (when exception
@@ -60,49 +60,51 @@
   (try
     (case (:kind event)
       :powerpack.ingest/parse-file
-      (str "Failed to parse file " (:file-name event) "\n"
-           (->> (format-exception event)
-                format-sections))
+      (->> (concat
+            [[(str "Failed to parse file " (:file-name event))]]
+            (format-exception event))
+           format-error-message)
 
       :powerpack.ingest/transact
-      (str "Failed to transact content from " (:file-name event) " to Datomic.\n"
-           (->> (concat
-                 (format-transaction-error event)
-                 (format-exception event)
-                 [["Transaction data:"
-                   (pp-str (:tx event))]
-                  ["Using old file contents until the problem is resolved."]])
-                format-sections))
-
+      (->> (concat
+            [[(str "Failed to transact content from " (:file-name event) " to Datomic.")]]
+            (format-transaction-error event)
+            (format-exception event)
+            [["Transaction data:"
+              (pp-str (:tx event))]
+             ["Using old file contents until the problem is resolved."]])
+           format-error-message)
 
       :powerpack.ingest/retract
-      (str "Failed while clearing previous content from " (:file-name event) "\n"
-           (->> (concat
-                 [["This is most certainly a bug in powerpack."]
-                  ["Please open an issue and paste the following transaction data:"
-                   (pp-str (:tx event))]]
-                 (format-exception event))
-                format-sections))
+      (->> (concat
+            [[(str "Failed while clearing previous content from " (:file-name event))]
+             ["This is most certainly a bug in powerpack."]
+             ["Please open an issue and paste the following transaction data:"
+              (pp-str (:tx event))]]
+            (format-exception event))
+           format-error-message)
 
       :powerpack.ingest/ingest-data
-      (str "Failed to update the database from " (:file-name event) "\n"
-           (->> (concat
-                 [["This is likely a Powerpack bug, please report it."]
-                  ["Data:" (pp-str (:data event))]]
-                 (format-exception event))))
+      (->> (concat
+            [[(str "Failed to update the database from " (:file-name event))]
+             ["This is likely a Powerpack bug, please report it."]
+             ["Data:" (pp-str (:data event))]]
+            (format-exception event))
+           format-error-message)
 
       :powerpack.ingest/callback
-      (str "Encountered an exception while calling your `on-ingested` hook, please investigate.\n"
-           (->> (conj (format-exception event)
-                      (with-err-str (.printStackTrace (:exception event))))
-                format-sections)))
+      (->> (concat
+            [["Encountered an exception while calling your `on-ingested` hook, please investigate."]]
+            (format-exception event)
+            [(with-err-str (.printStackTrace (:exception event)))])
+           format-error-message))
     (catch Exception e
-      (str "Powerpack produced an exception while formatting another error.\n"
-           (->> (concat
-                 [["THIS IS A BUG, please report it. Here's the unsuspecting event causing trouble:\n"
-                   (pp-str event)]]
-                 (format-exception {:exception e}))
-                format-sections)))))
+      (->> (concat
+            [["Powerpack produced an exception while formatting another error."
+              "THIS IS A BUG, please report it. Here's the unsuspecting event causing trouble:\n"
+              (pp-str event)]]
+            (format-exception {:exception e}))
+           format-error-message))))
 
 (defn start-watching! [{:keys [error-events]}]
   (let [watching? (atom true)
