@@ -13,23 +13,37 @@
 (defn pp-str [data]
   {:pprint (with-out-str (pprint/pprint data))})
 
+(defn get-indent [s]
+  (re-find #"^ +" s))
+
 (defn get-readable-lines [line]
   (if (string? line)
     (loop [lines []
-           words (-> line
-                     (str/replace #"\n" " ")
-                     (str/split #" +"))
-           line ""]
+           words (->> (str/split line #"\n")
+                      (interpose "\n")
+                      (mapcat (fn [line]
+                                (->> (concat [(get-indent line)]
+                                             (str/split line #" +"))
+                                     (remove empty?)))))
+           line ""
+           indent (get-indent (first words))]
       (let [word (first words)]
         (cond
           (empty? words)
-          (conj lines (str/trim line))
+          (conj lines (str/trimr line))
+
+          (= "\n" word)
+          (let [words (next words)
+                indent (get-indent (first words))]
+            (recur (conj lines (str/trimr line)) (if (= indent (first words))
+                                                   (next words)
+                                                   words) "" indent))
 
           (< 80 (+ (count line) (count word)))
-          (recur (conj lines (str/trim line)) words "")
+          (recur (conj lines (str/trimr line)) words "" indent)
 
           :else
-          (recur lines (next words) (str line " " word)))))
+          (recur lines (next words) (str (or (not-empty line) indent) word " ") indent))))
     (str/split (:pprint line) #"\n")))
 
 (defn format-error-message [sections]
@@ -52,6 +66,9 @@
     (cond
       (= (:db/error data) :db.error/not-an-entity)
       [[(str "Can't transact attribute " (:entity data) ", check spelling or make sure the schema is up to date.")]]
+
+      (:message event)
+      [[(:message event)]]
 
       :else
       [["This is most likely due to a schema violation."]])))

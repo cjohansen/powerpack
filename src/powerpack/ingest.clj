@@ -112,12 +112,52 @@
                [:db/retract e attr v])))))
      (d/datoms db :eavt))))
 
+(defmulti validate-attribute (fn [_m k _v] k))
+
+(defmethod validate-attribute :open-graph/title [_m _k v]
+  (if (and (string? v) (<= (count v) 70))
+    {:valid? true}
+    {:valid? false
+     :message "Open graph title should be no longer than 70 characters to avoid being truncated."}))
+
+(defmethod validate-attribute :open-graph/description [_m _k v]
+  (if (and (string? v) (<= (count v) 200))
+    {:valid? true}
+    {:valid? false
+     :message "Open graph description should be no longer than 200 characters to avoid being truncated."}))
+
+(defmethod validate-attribute :default [m k v]
+  {:valid? true})
+
+(defn validate-transaction! [tx]
+  (when (or (map? tx) (not (coll? tx)) (keyword? (first tx)))
+    (throw (ex-info "Transaction is not a collection of transaction entities"
+                    {:kind ::transact
+                     :message "Make sure transaction data is a collection of maps or transaction functions"
+                     :tx tx})))
+  (when-let [attrs (->> (tree-seq coll? identity tx)
+                        (filter map?)
+                        (mapcat (fn [m]
+                                  (map (fn [[k v]]
+                                         (assoc (validate-attribute m k v) :k k :v v))
+                                       m)))
+                        (filter (comp false? :valid?))
+                        seq)]
+    (throw (ex-info "Invalid attributes"
+                    {:kind ::transact
+                     :message (str "Some attributes have invalid values, please inspect:\n"
+                                   (->> (for [{:keys [message k v] }attrs]
+                                          (str "  " message "\n  " k "\n  " v))
+                                        (str/join "\n")))
+                     :tx tx}))))
+
 (defn ingest-data [{:keys [conn create-ingest-tx]} file-name data]
   (let [db (d/db conn)
         tx (some-> (cond->> data
                      (ifn? create-ingest-tx) (create-ingest-tx db file-name))
                    (conj [:db/add (d/tempid :db.part/tx) :tx-source/file-name file-name]))]
     (when tx
+      (validate-transaction! tx)
       (try
         (d/with db tx)
         (catch Exception e
