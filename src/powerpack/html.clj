@@ -43,13 +43,15 @@
           :content "article"}
          (when-let [description (:open-graph/description page)]
            {:property "og:description"
-            :content (-> (escape-str description)
-                         (truncate-str 200))})
+            :content (-> description
+                         (truncate-str 200)
+                         escape-str)})
          (when-let [title (or (:open-graph/title page)
                               (:page/title page))]
            {:property "og:title"
-            :content (-> (escape-str title)
-                         (truncate-str 70))})
+            :content (-> title
+                         (truncate-str 70)
+                         escape-str)})
          {:property "og:url"
           :content (str (:site/base-url config) (:page/uri page))}]
         (when-let [image (:open-graph/image page)]
