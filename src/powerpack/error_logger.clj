@@ -65,6 +65,9 @@
   (for [{:keys [message k v]} (:errors event)]
     [message (str k) {:pprint (pr-str v)}]))
 
+(defn get-stack-trace [exception]
+  (with-err-str (.printStackTrace exception)))
+
 (defn format-error [event]
   (try
     (case (:kind event)
@@ -81,7 +84,7 @@
       (->> (concat
             [[(:message event)]]
             (format-exception event)
-            [(with-err-str (.printStackTrace (:exception event)))])
+            [(get-stack-trace (:exception event))])
            format-error-message)
 
       (->> (concat
