@@ -210,7 +210,8 @@
              :message "Encountered an exception while calling your `on-ingested` hook, please investigate."
              :exception e})))
   (when-let [ch (:ch ch-ch-ch-changes)]
-    (put! ch {:kind :powerpack/ingested-content})))
+    (put! ch {:kind :powerpack/ingested-content
+              :action "reload"})))
 
 (defn get-files-pattern [config]
   (let [suffixes (:powerpack/content-file-suffixes config)]

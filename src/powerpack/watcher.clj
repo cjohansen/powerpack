@@ -74,19 +74,23 @@
   (let [file (.toFile path)]
     (cond
       (files/same-file? file (:datomic/schema-file config))
-      {:kind :powerpack/edited-schema}
+      {:kind :powerpack/edited-schema
+       :action "reload"}
 
       (content-file? config (.getAbsolutePath file))
       {:kind :powerpack/edited-content
        :type type
        :path (-> (files/get-relative-path (:powerpack/content-dir config) file)
-                 files/normalize-path)}
+                 files/normalize-path)
+       :action "reload"}
 
       (source-file? config file)
-      {:kind :powerpack/edited-source}
+      {:kind :powerpack/edited-source
+       :action "reload"}
 
       (asset-file? config file)
       {:kind :powerpack/edited-asset
+       :action "reload"
        :type type
        :path (get-asset-path config (files/get-absolute-path file))})))
 

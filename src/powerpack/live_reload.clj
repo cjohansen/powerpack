@@ -20,14 +20,19 @@
     (go
       (loop []
         (when-let [msg (<! msg-ch)]
-          (if (= body-hash (get-page-hash (handler {:uri uri})))
+          (if (= "reload" (:action msg))
+            (if (= body-hash (get-page-hash (handler {:uri uri})))
+              (do
+                (log/debug "No changes")
+                (when (put! client-ch (stream-msg (dissoc msg :action)))
+                  (recur))) ;; keep waiting if client is still around
+              (do
+                (log/info "Reload client")
+                (put! client-ch (stream-msg msg))))
             (do
-              (log/debug "No changes")
+              (log/debug "Notify client")
               (when (put! client-ch (stream-msg msg))
-                (recur))) ;; keep waiting if client is still around
-            (do
-              (log/info "Reload client")
-              (put! client-ch (stream-msg (assoc msg :action "reload")))))))
+                (recur))))))
       (untap (:mult ch-ch-ch-changes) msg-ch)
       (close! msg-ch)
       (close! client-ch))
@@ -47,9 +52,13 @@
       :on-open
       (fn [ch]
         (go
-          (http-kit/send! ch {:status 200
-                              :headers {"Content-Type" "text/event-stream"}
-                              :body (<! channel)})))})))
+          (loop []
+            (let [msg (<! channel)]
+              (http-kit/send! ch {:status 200
+                                  :headers {"Content-Type" "text/event-stream"}
+                                  :body msg} (nil? msg))
+              (when msg
+                (recur))))))})))
 
 (defn get-route [config]
   (:powerpack/live-reload-route config))

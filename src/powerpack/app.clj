@@ -12,6 +12,7 @@
             [org.httpkit.server :as server]
             [powerpack.db :as db]
             [powerpack.error-logger :as errors]
+            [powerpack.hud :as hud]
             [powerpack.ingest :as ingest]
             [powerpack.live-reload :as live-reload]
             [powerpack.logger :as log]
@@ -26,8 +27,8 @@
       optimizations/add-cache-busted-expires-headers))
 
 (defn create-handler [{:keys [conn config render-page page-post-process-fns] :as opts}]
-  (-> (web/serve-pages conn {:render-page render-page
-                             :post-processors page-post-process-fns})
+  (-> (web/serve-pages {:render-page render-page
+                        :post-processors page-post-process-fns})
       (imagine/wrap-images (:imagine/config config))
       (optimus/wrap
        #(web/get-assets config)
@@ -135,6 +136,14 @@
   (with-timing-info :debug "Stopped error logger"
     (errors/stop-watching! watcher)))
 
+(defmethod ig/init-key :dev/hud [_ opt]
+  (with-timing-info :debug "Started HUD"
+    (hud/start-watching! opt)))
+
+(defmethod ig/halt-key! :dev/hud [_ watcher]
+  (with-timing-info :debug "Stopped HUD"
+    (hud/stop-watching! watcher)))
+
 (defmethod ig/init-key :dev/schema-watcher [_ {:keys [fs-events]}]
   (with-timing-info :debug "Started schema watcher"
     (let [watching? (atom true)
@@ -207,8 +216,7 @@
    :dev/error-events {}
 
    :dev/file-watcher {:config (ig/ref :powerpack/config)
-                      :fs-events (ig/ref :dev/fs-events)
-                      :app-events (ig/ref :dev/app-events)}
+                      :fs-events (ig/ref :dev/fs-events)}
 
    :dev/source-watcher {:fs-events (ig/ref :dev/fs-events)
                         :app-events (ig/ref :dev/app-events)}
@@ -223,7 +231,9 @@
                            :fs-events (ig/ref :dev/fs-events)
                            :on-ingested (ig/ref :powerpack/on-ingested)}
 
-   :dev/error-logger {:error-events (ig/ref :dev/error-events)}})
+   :dev/error-logger {:error-events (ig/ref :dev/error-events)}
+   :dev/hud {:app-events (ig/ref :dev/app-events)
+             :error-events (ig/ref :dev/error-events)}})
 
 (integrant.repl/set-prep! get-system-map)
 
