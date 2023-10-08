@@ -65,17 +65,26 @@
 (defn connect-client [hud]
   (let [client-ch (chan)
         k (random-uuid)
-        emit-error #(when-let [error (first %)]
-                      (->> {:kind :powerpack/error
-                            :action "render-hud"
-                            :markup (render-hud-str error)}
-                           (put! client-ch)))]
+        emit-error (fn [errors]
+
+                     (->> (if-let [error (first errors)]
+                            {:kind :powerpack/error
+                             :action "render-hud"
+                             :markup (render-hud-str error)}
+                            {:kind :powerpack/error
+                             :action "hide-hud"})
+                          (put! client-ch)))]
     (emit-error @(:errors hud))
     (add-watch (:errors hud) k
       (fn [_ _ _ errors]
         (emit-error errors)))
     {:stop #(remove-watch (:errors hud) k)
      :ch client-ch}))
+
+(defn resolve-error-event [errors event]
+  (cond-> (remove (comp #{(:id event)} :id) errors)
+    (not (:resolved? event))
+    (conj event)))
 
 (defn start-watching! [{:keys [error-events]}]
   (let [watching? (atom true)
@@ -85,7 +94,7 @@
     (go
       (loop []
         (when-let [event (<! err-ch)]
-          (swap! errors conj event)
+          (swap! errors resolve-error-event event)
           (when @watching? (recur)))))
     {:stop (fn []
              (untap (:mult error-events) err-ch)

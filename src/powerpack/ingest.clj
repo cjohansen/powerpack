@@ -80,13 +80,18 @@
 (defn load-data [db {:keys [config error-events]} file-name]
   (when-let [file (io/file (str (:powerpack/content-dir config) "/" file-name))]
     (try
-      (vec (parse-file db file-name file))
+      (let [data (vec (parse-file db file-name file))]
+        (put! (:ch error-events)
+              {:id [::parse-file file-name]
+               :resolved? true})
+        data)
       (catch Exception e
         (put! (:ch error-events)
               {:exception e
                :file-name file-name
                :message (str "Failed to parse file " file-name)
-               :kind ::parse-file})
+               :kind ::parse-file
+               :id [::parse-file file-name]})
         nil))))
 
 (def attrs-to-keep #{:db/ident
@@ -153,7 +158,7 @@
                                 :v v})
                      :tx tx}))))
 
-(defn ingest-data [{:keys [conn create-ingest-tx]} file-name data]
+(defn ingest-data [{:keys [conn create-ingest-tx error-events]} file-name data]
   (let [db (d/db conn)
         tx (some-> (cond->> data
                      (ifn? create-ingest-tx) (create-ingest-tx db file-name))
@@ -165,6 +170,7 @@
         (catch Exception e
           (throw (ex-info "Unable to assert"
                           {:kind ::transact
+                           :id [::transact file-name]
                            :tx tx
                            :description (if (= (-> e ex-data :db/error) :db.error/not-an-entity)
                                           (str "Can't transact attribute " (-> e ex-data :entity) ", check spelling or make sure the schema is up to date.")
@@ -177,6 +183,7 @@
         (catch Exception e
           (throw (ex-info "Unable to retract"
                           {:kind ::retract
+                           :id [::transact file-name]
                            :tx retractions
                            :file-name file-name
                            :message (str "Failed while clearing previous content from " file-name)
@@ -184,15 +191,24 @@
                            :exception e} e)))))
     (when tx
       @(d/transact conn tx)
-      (log/info "Ingested" file-name))))
+      (log/info "Ingested" file-name))
+    (put! (:ch error-events)
+          {:id [::transact file-name]
+           :resolved? true})
+    nil))
 
 (defn ingest [{:keys [conn error-events] :as opt} file-name]
   (when-let [data (load-data (d/db conn) opt file-name)]
     (try
-      (ingest-data opt file-name data)
+      (let [ingested (ingest-data opt file-name data)]
+        (put! (:ch error-events)
+              {:id [::ingest-data file-name]
+               :resolved? true})
+        ingested)
       (catch Exception e
         (put! (:ch error-events)
               (merge {:kind ::ingest-data
+                      :id [::ingest-data file-name]
                       :file-name file-name
                       :message (str "Failed to transact content from " file-name " to Datomic.")
                       :description "This is likely a Powerpack bug, please report it."
@@ -207,6 +223,7 @@
     (catch Exception e
       (put! (:ch error-events)
             {:kind ::callback
+             :id [::callback]
              :message "Encountered an exception while calling your `on-ingested` hook, please investigate."
              :exception e})))
   (when-let [ch (:ch ch-ch-ch-changes)]

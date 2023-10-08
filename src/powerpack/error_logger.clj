@@ -112,7 +112,8 @@
     (go
       (loop []
         (when-let [event (<! err-ch)]
-          (log/error (format-error event))
+          (when-not (:resolved? event)
+            (log/error (format-error event)))
           (when @watching? (recur)))))
     (fn []
       (untap (:mult error-events) err-ch)
