@@ -24,6 +24,11 @@
 (defn pp [x]
   (with-out-str (pprint/pprint x)))
 
+(defn toggler [title body]
+  [:div.pp-toggle.pp-toggle-collapsed
+   [:h3.h3 [:a.pp-toggle-button title]]
+   [:div.pp-toggle-content body]])
+
 (defn render-error-hud [{:keys [message description errors exception tx data]}]
   [:div.powerpack
    [:div.hud.warn
@@ -42,21 +47,13 @@
        [:div
         [:h4.h4.error "Exception: " (.getMessage exception)]
         (when-let [data (ex-data exception)]
-          [:div.pp-toggle.pp-toggle-collapsed
-           [:h3.h3 [:a.pp-toggle-button "Exception data"]]
-           [:pre.pp-toggle-content [:code.language-clojure (pp data)]]])
+          (toggler "Exception data" [:pre [:code.language-clojure (pp data)]]))
         (when-let [stack (error-logger/get-stack-trace exception)]
-          [:div.pp-toggle.pp-toggle-collapsed
-           [:h3.h3 [:a.pp-toggle-button "Stack trace"]]
-           [:pre.pp-toggle-content [:code stack]]])])
+          (toggler "Stack trace" [:pre [:code stack]]))])
      (when tx
-       [:div.pp-toggle.pp-toggle-collapsed
-        [:h3.h3 [:a.pp-toggle-button "Transaction data"]]
-        [:pre.pp-toggle-content [:code.language-clojure (pp tx)]]])
+       (toggler "Transaction data" [:pre [:code.language-clojure (pp tx)]]))
      (when data
-       [:div.pp-toggle.pp-toggle-collapsed
-        [:h3.h3 [:a.pp-toggle-button "Data"]]
-        [:pre.pp-toggle-content [:code.language-clojure (pp data)]]])]]])
+       (toggler "Data" [:pre [:code.language-clojure (pp data)]]))]]])
 
 (defn render-hud-str [error]
   (-> (render-error-hud error)
