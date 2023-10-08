@@ -164,19 +164,18 @@
      :body (pr-str rendered)}))
 
 (defn handle-request [req {:keys [render-page post-processors]}]
-  (when-let [page (d/entity (:db req) [:page/uri (:uri req)])]
-     (-> (render-page req page)
-        get-response-map
-        (post-process-page req (concat post-processors [get-markup-url-optimizers])))))
-
-(defn serve-pages [conn opt]
-  (fn [req]
-    (or (handle-request req opt)
+  (-> (if-let [page (d/entity (:db req) [:page/uri (:uri req)])]
+        (get-response-map (render-page req page))
         {:status 404
          :body (if-let [file (io/resource "404.html")]
                  (slurp file)
                  "Page not found")
-         :headers {"Content-Type" "text/html"}})))
+         :headers {"Content-Type" "text/html"}})
+      (post-process-page req (concat post-processors [get-markup-url-optimizers]))))
+
+(defn serve-pages [opt]
+  (fn [req]
+    (handle-request req opt)))
 
 (defn get-pages [db req opt]
   (into {}
