@@ -1,4 +1,4 @@
-* Todo [10/13]
+* Todo [13/14]
 ** TODO Trigger live reloads from C-x C-e
 ** DONE Automatically set image dimensions for OpenGraph images
 ** DONE Watch resource dirs for asset changes
@@ -9,6 +9,7 @@
 ** DONE Schema changes: Restart server
 ** DONE Tests
 ** DONE Docstrings
-** TODO Design error message box
+** DONE Design error message box
 ** DONE Validate open graph title and description lengths on ingest
-** TODO Tag each error with a unique id to track if it's been resolved
+** DONE Tag each error with a unique id to track if it's been resolved
+** DONE 404 page has null for its content sha, causing a reload loop
