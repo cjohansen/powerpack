@@ -46,7 +46,7 @@
                      f f)])))
        (into {})))
 
-(defmulti parse-file (fn [db file-name content]
+(defmulti parse-file (fn [db file-name file]
                        (keyword (last (str/split file-name #"\.")))))
 
 (defn suggest-url [url file-name]
@@ -62,25 +62,25 @@
         (catch Exception _))
       [{:page/body content}]))
 
-(defmethod parse-file :md [db file-name content]
-  (for [md (parse-markdown content)]
+(defmethod parse-file :md [db file-name file]
+  (for [md (parse-markdown (slurp file))]
     (-> md
         (align-with-schema db)
         (update :page/uri suggest-url file-name))))
 
-(defmethod parse-file :edn [_db _file-name content]
-  (let [data (edn/read-string content)]
+(defmethod parse-file :edn [_db _file-name file]
+  (let [data (edn/read-string (slurp file))]
     (if (and (coll? data) (not (map? data)))
       data
       [data])))
 
-(defmethod parse-file :default [db file-name content]
-  content)
+(defmethod parse-file :default [db file-name file]
+  (slurp file))
 
 (defn load-data [db {:keys [config error-events]} file-name]
-  (when-let [r (io/file (str (:powerpack/content-dir config) "/" file-name))]
+  (when-let [file (io/file (str (:powerpack/content-dir config) "/" file-name))]
     (try
-      (vec (parse-file db file-name (slurp r)))
+      (vec (parse-file db file-name file))
       (catch Exception e
         (put! (:ch error-events)
               {:exception e
