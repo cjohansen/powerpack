@@ -43,7 +43,7 @@
        str/trim
        (.setAttribute node "class")))
 
-(defn get-code-block-highlighters [_req]
+(defn get-code-block-highlighters [& [_req]]
   {[:pre :code] maybe-highlight-node
    [:pre] add-hilite-class})
 
