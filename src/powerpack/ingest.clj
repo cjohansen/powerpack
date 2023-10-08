@@ -85,6 +85,7 @@
         (put! (:ch error-events)
               {:exception e
                :file-name file-name
+               :message (str "Failed to parse file " file-name)
                :kind ::parse-file})
         nil))))
 
@@ -118,13 +119,13 @@
   (if (and (string? v) (<= (count v) 70))
     {:valid? true}
     {:valid? false
-     :message "Open graph title should be no longer than 70 characters to avoid being truncated."}))
+     :message "Open graph title should not exceed 70 characters, or it may be truncated during presentation."}))
 
 (defmethod validate-attribute :open-graph/description [_m _k v]
   (if (and (string? v) (<= (count v) 200))
     {:valid? true}
     {:valid? false
-     :message "Open graph description should be no longer than 200 characters to avoid being truncated."}))
+     :message "Open graph description should not exceed 200 characters or it may be truncated during presentation."}))
 
 (defmethod validate-attribute :default [m k v]
   {:valid? true})
@@ -133,7 +134,7 @@
   (when (or (map? tx) (not (coll? tx)) (keyword? (first tx)))
     (throw (ex-info "Transaction is not a collection of transaction entities"
                     {:kind ::transact
-                     :message "Make sure transaction data is a collection of maps or transaction functions"
+                     :description "Make sure transaction data is a collection of maps or transaction functions"
                      :tx tx})))
   (when-let [attrs (->> (tree-seq coll? identity tx)
                         (filter map?)
@@ -145,10 +146,11 @@
                         seq)]
     (throw (ex-info "Invalid attributes"
                     {:kind ::transact
-                     :message (str "Some attributes have invalid values, please inspect:\n"
-                                   (->> (for [{:keys [message k v] }attrs]
-                                          (str "  " message "\n  " k "\n  " v))
-                                        (str/join "\n")))
+                     :description "Some attributes have invalid values, please inspect"
+                     :errors (for [{:keys [message k v]} attrs]
+                               {:message message
+                                :k k
+                                :v v})
                      :tx tx}))))
 
 (defn ingest-data [{:keys [conn create-ingest-tx]} file-name data]
@@ -164,6 +166,9 @@
           (throw (ex-info "Unable to assert"
                           {:kind ::transact
                            :tx tx
+                           :description (if (= (-> e ex-data :db/error) :db.error/not-an-entity)
+                                          (str "Can't transact attribute " (-> e ex-data :entity) ", check spelling or make sure the schema is up to date.")
+                                          "This is most likely due to a schema violation.")
                            :file-name file-name
                            :exception e} e)))))
     (when-let [retractions (get-retract-tx (d/db conn) file-name)]
@@ -174,6 +179,8 @@
                           {:kind ::retract
                            :tx retractions
                            :file-name file-name
+                           :message (str "Failed while clearing previous content from " file-name)
+                           :description "This is most certainly a bug in powerpack, please report it."
                            :exception e} e)))))
     (when tx
       @(d/transact conn tx)
@@ -187,6 +194,8 @@
         (put! (:ch error-events)
               (merge {:kind ::ingest-data
                       :file-name file-name
+                      :message (str "Failed to transact content from " file-name " to Datomic.")
+                      :description "This is likely a Powerpack bug, please report it."
                       :data data
                       :exception e}
                      (ex-data e)))))))
@@ -198,6 +207,7 @@
     (catch Exception e
       (put! (:ch error-events)
             {:kind ::callback
+             :message "Encountered an exception while calling your `on-ingested` hook, please investigate."
              :exception e})))
   (when-let [ch (:ch ch-ch-ch-changes)]
     (put! ch {:kind :powerpack/ingested-content})))

@@ -62,64 +62,43 @@
        [["Exception data:" (pp-str data)]]))))
 
 (defn format-transaction-error [event]
-  (let [data (-> event :exception ex-data)]
-    (cond
-      (= (:db/error data) :db.error/not-an-entity)
-      [[(str "Can't transact attribute " (:entity data) ", check spelling or make sure the schema is up to date.")]]
-
-      (:message event)
-      [[(:message event)]]
-
-      :else
-      [["This is most likely due to a schema violation."]])))
+  (for [{:keys [message k v]} (:errors event)]
+    [message (str k) {:pprint (pr-str v)}]))
 
 (defn format-error [event]
   (try
     (case (:kind event)
-      :powerpack.ingest/parse-file
-      (->> (concat
-            [[(str "Failed to parse file " (:file-name event))]]
-            (format-exception event))
-           format-error-message)
-
       :powerpack.ingest/transact
       (->> (concat
-            [[(str "Failed to transact content from " (:file-name event) " to Datomic.")]]
+            [[(:message event)]]
             (format-transaction-error event)
             (format-exception event)
             [["Transaction data:"
-              (pp-str (:tx event))]
-             ["Using old file contents until the problem is resolved."]])
-           format-error-message)
-
-      :powerpack.ingest/retract
-      (->> (concat
-            [[(str "Failed while clearing previous content from " (:file-name event))]
-             ["This is most certainly a bug in powerpack."]
-             ["Please open an issue and paste the following transaction data:"
-              (pp-str (:tx event))]]
-            (format-exception event))
-           format-error-message)
-
-      :powerpack.ingest/ingest-data
-      (->> (concat
-            [[(str "Failed to update the database from " (:file-name event))]
-             ["This is likely a Powerpack bug, please report it."]
-             ["Data:" (pp-str (:data event))]]
-            (format-exception event))
+              (pp-str (:tx event))]])
            format-error-message)
 
       :powerpack.ingest/callback
       (->> (concat
-            [["Encountered an exception while calling your `on-ingested` hook, please investigate."]]
+            [[(:message event)]]
             (format-exception event)
             [(with-err-str (.printStackTrace (:exception event)))])
+           format-error-message)
+
+      (->> (concat
+            (when (:message event)
+              [[(:message event)]])
+            (when (:description event)
+              [[(:description event)]])
+            (when (:tx event)
+              [["Transaction data:"
+                (pp-str (:tx event))]])
+            (format-exception event))
            format-error-message))
     (catch Exception e
       (->> (concat
-            [["Powerpack produced an exception while formatting another error."
-              "THIS IS A BUG, please report it. Here's the unsuspecting event causing trouble:\n"
-              (pp-str event)]]
+            [["Powerpack produced an exception while formatting another error."]
+             ["THIS IS A BUG, please report it. Here's the unsuspecting event causing trouble:"]
+             [(pp-str event)]]
             (format-exception {:exception e}))
            format-error-message))))
 
