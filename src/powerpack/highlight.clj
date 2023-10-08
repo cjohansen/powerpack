@@ -39,7 +39,9 @@
     (highlight node)))
 
 (defn add-hilite-class [node]
-  (.setAttribute node "class" "codehilite"))
+  (->> (str (.getAttribute node "class") " codehilite")
+       str/trim
+       (.setAttribute node "class")))
 
 (defn get-code-block-highlighters [_req]
   {[:pre :code] maybe-highlight-node
