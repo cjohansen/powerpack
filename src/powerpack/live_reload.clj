@@ -4,6 +4,7 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [org.httpkit.server :as http-kit]
+            [powerpack.hud :as hud]
             [powerpack.logger :as log]
             [powerpack.web :as web]))
 
@@ -13,10 +14,16 @@
 (defn get-page-hash [{:keys [body]}]
   (str (hash body)))
 
-(defn create-watcher [{:keys [ch-ch-ch-changes]} handler uri body-hash]
+(defn create-watcher [{:keys [ch-ch-ch-changes hud]} handler uri body-hash]
   (let [client-ch (chan)
-        msg-ch (chan)]
+        msg-ch (chan)
+        hud-watcher (hud/connect-client hud)]
     (tap (:mult ch-ch-ch-changes) msg-ch)
+    (go
+      (loop []
+        (when-let [msg (<! (:ch hud-watcher))]
+          (put! client-ch (stream-msg msg))
+          (recur))))
     (go
       (loop []
         (when-let [msg (<! msg-ch)]
@@ -35,6 +42,7 @@
                 (recur))))))
       (untap (:mult ch-ch-ch-changes) msg-ch)
       (close! msg-ch)
+      ((:stop hud-watcher))
       (close! client-ch))
     client-ch))
 

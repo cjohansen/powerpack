@@ -207,7 +207,8 @@
                  :render-page (ig/ref :powerpack/render-page)
                  :page-post-process-fns (ig/ref :powerpack/page-post-process-fns)
                  :ch-ch-ch-changes (ig/ref :dev/app-events)
-                 :logger (ig/ref :app/logger)}
+                 :logger (ig/ref :app/logger)
+                 :hud (ig/ref :dev/hud)}
    :app/server {:config (ig/ref :powerpack/config)
                 :handler (ig/ref :app/handler)}
 
@@ -232,8 +233,7 @@
                            :on-ingested (ig/ref :powerpack/on-ingested)}
 
    :dev/error-logger {:error-events (ig/ref :dev/error-events)}
-   :dev/hud {:app-events (ig/ref :dev/app-events)
-             :error-events (ig/ref :dev/error-events)}})
+   :dev/hud {:error-events (ig/ref :dev/error-events)}})
 
 (integrant.repl/set-prep! get-system-map)
 

@@ -1,11 +1,11 @@
 (ns powerpack.hud
   (:require [clojure.core.async :refer [<! chan go put! tap untap]]
+            [clojure.pprint :as pprint]
             [clojure.string :as str]
             [dumdom.string :as dumdom]
             [html5-walker.core :as html5-walker]
             [powerpack.error-logger :as error-logger]
-            [powerpack.highlight :as highlight]
-            [clojure.pprint :as pprint]))
+            [powerpack.highlight :as highlight]))
 
 (def stasis-logo
   [:svg {:xmlns "http://www.w3.org/2000/svg"
@@ -65,20 +65,35 @@
       (str/split #"</?body>")
       second))
 
-(defn start-watching! [{:keys [error-events app-events]}]
+(defn connect-client [hud]
+  (let [client-ch (chan)
+        k (random-uuid)
+        emit-error #(when-let [error (first %)]
+                      (->> {:kind :powerpack/error
+                            :action "render-hud"
+                            :markup (render-hud-str error)}
+                           (put! client-ch)))]
+    (emit-error @(:errors hud))
+    (add-watch (:errors hud) k
+      (fn [_ _ _ errors]
+        (emit-error errors)))
+    {:stop #(remove-watch (:errors hud) k)
+     :ch client-ch}))
+
+(defn start-watching! [{:keys [error-events]}]
   (let [watching? (atom true)
-        err-ch (chan)]
+        err-ch (chan)
+        errors (atom [])]
     (tap (:mult error-events) err-ch)
     (go
       (loop []
         (when-let [event (<! err-ch)]
-          (put! (:ch app-events) {:kind :powerpack/error
-                                  :action "render-hud"
-                                  :markup (render-hud-str event)})
+          (swap! errors conj event)
           (when @watching? (recur)))))
-    (fn []
-      (untap (:mult error-events) err-ch)
-      (reset! watching? false))))
+    {:stop (fn []
+             (untap (:mult error-events) err-ch)
+             (reset! watching? false))
+     :errors errors}))
 
-(defn stop-watching! [stop]
+(defn stop-watching! [{:keys [stop]}]
   (stop))
