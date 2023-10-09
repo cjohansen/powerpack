@@ -189,13 +189,13 @@
                            :message (str "Failed while clearing previous content from " file-name)
                            :description "This is most certainly a bug in powerpack, please report it."
                            :exception e} e)))))
-    (when tx
-      @(d/transact conn tx)
-      (log/info "Ingested" file-name))
-    (put! (:ch error-events)
-          {:id [::transact file-name]
-           :resolved? true})
-    nil))
+    (let [res (when tx
+                @(d/transact conn tx)
+                (log/info "Ingested" file-name))]
+      (put! (:ch error-events)
+            {:id [::transact file-name]
+             :resolved? true})
+      res)))
 
 (defn ingest [{:keys [conn error-events] :as opt} file-name]
   (when-let [data (load-data (d/db conn) opt file-name)]
