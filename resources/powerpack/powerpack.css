@@ -1,0 +1,206 @@
+.powerpack {
+  font-family: Avenir, Helvetica, sans-serif;
+  font-size: 16px;
+  box-sizing: border-box;
+  --imperial-red: #f71735;
+  --orange-peel: #ff9f1ccc;
+  --rich-black: #011627;
+  --baby-powder: #fdfffc;
+  --venge: #705d56;
+  --beige: #f2f3d9;
+  --eerie-black: #191919;
+  --zomp: #5e9985;
+  --indigo-dye: #004777;
+  --corn-flower-blue: #7189ff;
+  --gallery: #f0f0f0;
+
+  --code-bg: var(--baby-powder);
+  --hl-comment: var(--zomp);
+  --hl-preproc-comment : var(--indigo-dye);
+  --hl-keyword: var(--indigo-dye);
+  --hl-constant: var(--indigo-dye);
+  --hl-declaration: var(--indigo-dye);
+  --hl-namespace: var(--indigo-dye);
+  --hl-pseudo: var(--indigo-dye);
+  --hl-reserved: var(--indigo-dye);
+  --hl-type: var(--corn-flower-blue);
+  --hl-string: var(--imperial-red);
+  --hl-class : var(--corn-flower-blue);
+  --hl-word : var(--indigo-dye);
+  --hl-backtick-string : var(--imperial-red);
+  --hl-string-char: var(--imperial-red);
+  --hl-string-doc: var(--imperial-red);
+  --hl-string-double: var(--imperial-red);
+  --hl-string-escape: var(--imperial-red);
+  --hl-string-heredoc: var(--imperial-red);
+  --hl-string-interpol: var(--imperial-red);
+  --hl-string-other: var(--imperial-red);
+  --hl-string-regex: var(--imperial-red);
+  --hl-string-single: var(--imperial-red);
+  --hl-string-symbol: var(--imperial-red);
+  --hl-macro: var(--imperial-red);
+  --hl-core-fn: var(--indigo-dye);
+  --hl-variable: var(--indigo-dye);
+  --hl-number: var(--indigo-dye);
+  --hl-s-exp: var(--imperial-red);
+  --hl-special-form: var(--zomp);
+  --hl-reader-char: var(--imperial-red);
+  --hl-nil: var(--indigo-dye);
+  --hl-repeat: var(--imperial-red);
+  --hl-regexp: var(--imperial-red);
+  --hl-exception: var(--zomp);
+  --hl-boolean: var(--zomp);
+  --hl-character: var(--indigo-dye);
+  --hl-conditional: var(--zomp);
+}
+
+.powerpack a {
+  color: var(--indigo-dye);
+}
+
+.powerpack .hud {
+  padding: 1em 1em 1em 5em;
+  position: fixed;
+  bottom: 1em;
+  left: 1em;
+  right: 1em;
+  background: var(--gallery);
+  color: var(--rich-black);
+  border-radius: 3px;
+  max-height: 50vh;
+  overflow: scroll;
+}
+
+.powerpack .hud .logo {
+  width: 3em;
+  position: absolute;
+  left: 1em;
+}
+
+.powerpack .warn {
+  border-top: 5px solid var(--imperial-red);
+  box-shadow: 0 4px 10px 0 rgba(71,114,179,0.3);
+}
+
+.powerpack .error {
+  color: var(--imperial-red);
+}
+
+.powerpack .h2,
+.powerpack .h3,
+.powerpack .h4 {
+  margin: 1.5em 0 1em;
+  padding: 0;
+  line-height: 1;
+  font-size: 1.5em;
+  font-weight: normal;
+}
+
+.powerpack .h2:first-child {
+  margin: 0.5em 0 1em;
+}
+
+.powerpack .h3 {
+  font-size: 1.25em;
+  font-weight: bold;
+}
+
+.powerpack .h4 {
+  font-size: 1.1em;
+  font-weight: bold;
+}
+
+.powerpack ul {
+  margin: 0 0 1em;
+  padding: 0;
+}
+
+.powerpack li {
+  margin: 0;
+  padding: 0;
+  list-style-type: none;
+}
+
+.powerpack .compact p,
+.powerpack .compact pre {
+  margin: 0 0 0.5em;
+}
+
+.powerpack .pp-toggle-collapsed .pp-toggle-content {
+  display: none;
+}
+
+.powerpack .pp-toggle-button {
+  cursor: pointer;
+}
+
+/* Syntax highlighting */
+
+.powerpack .codehilite code {
+  background: var(--code-bg);
+  display: block;
+  padding: 1em;
+  overflow: scroll;
+}
+
+.powerpack code,
+.powerpack .code,
+.powerpack .codehilite {
+  font-family: "Source Code Pro", monospace;
+}
+
+.powerpack .codehilite {font-size: 0.9em;}
+
+.powerpack .codehilite .hll { background-color: #ffffcc }
+.powerpack .codehilite .c { color: var(--hl-comment) } /* Comment */
+.powerpack .codehilite .err {} /* Error */
+.powerpack .codehilite .k { color: var(--hl-keyword) } /* Keyword */
+.powerpack .codehilite .cm { color: var(--hl-comment) } /* Comment.Multiline */
+.powerpack .codehilite .cp { color: var(--hl-preproc-comment) } /* Comment.Preproc */
+.powerpack .codehilite .c1 { color: var(--hl-comment) } /* Comment.Single */
+.powerpack .codehilite .cs { color: var(--hl-comment) } /* Comment.Special */
+.powerpack .codehilite .ge { font-style: italic } /* Generic.Emph */
+.powerpack .codehilite .gh { font-weight: bold } /* Generic.Heading */
+.powerpack .codehilite .gp { font-weight: bold } /* Generic.Prompt */
+.powerpack .codehilite .gs { font-weight: bold } /* Generic.Strong */
+.powerpack .codehilite .gu { font-weight: bold } /* Generic.Subheading */
+.powerpack .codehilite .kc { color: var(--hl-constant) } /* Keyword.Constant */
+.powerpack .codehilite .kd { color: var(--hl-declaration); font-weight: bold; } /* Keyword.Declaration */
+.powerpack .codehilite .kn { color: var(--hl-namespace) } /* Keyword.Namespace */
+.powerpack .codehilite .kp { color: var(--hl-pseudo) } /* Keyword.Pseudo */
+.powerpack .codehilite .kr { color: var(--hl-reserved) } /* Keyword.Reserved */
+.powerpack .codehilite .kt { color: var(--hl-type) } /* Keyword.Type */
+.powerpack .codehilite .s { color: var(--hl-string) } /* Literal.String */
+.powerpack .codehilite .nc { color: var(--hl-class) } /* Name.Class */
+.powerpack .codehilite .ow { color: var(--hl-word) } /* Operator.Word */
+.powerpack .codehilite .sb { color: var(--hl-backtick-string) } /* Literal.String.Backtick */
+.powerpack .codehilite .sc { color: var(--hl-string-char) } /* Literal.String.Char */
+.powerpack .codehilite .sd { color: var(--hl-string-doc) } /* Literal.String.Doc */
+.powerpack .codehilite .s2 { color: var(--hl-string-double) } /* Literal.String.Double */
+.powerpack .codehilite .se { color: var(--hl-string-escape) } /* Literal.String.Escape */
+.powerpack .codehilite .sh { color: var(--hl-string-heredoc) } /* Literal.String.Heredoc */
+.powerpack .codehilite .si { color: var(--hl-string-interpol) } /* Literal.String.Interpol */
+.powerpack .codehilite .sx { color: var(--hl-string-other) } /* Literal.String.Other */
+.powerpack .codehilite .sr { color: var(--hl-string-regex) } /* Literal.String.Regex */
+.powerpack .codehilite .s1 { color: var(--hl-string-single) } /* Literal.String.Single */
+.powerpack .codehilite .ss { color: var(--hl-keyword) } /* Literal.String.Symbol */
+
+/* Clojure syntax */
+.powerpack .codehilite .definition,
+.powerpack .codehilite .macro {color: var(--hl-macro);}
+.powerpack .codehilite .core-fn {color: var(--hl-core-fn)}
+.powerpack .codehilite .variable {color: var(--hl-variable)}
+.powerpack .codehilite .number {color: var(--hl-number)}
+/* .powerpack .codehilite .s-exp {color: var(--hl-s-exp)} */
+.powerpack .codehilite .special-form {color: var(--hl-special-form)}
+.powerpack .codehilite .string {color: var(--hl-string)}
+.powerpack .codehilite .keyword {color: var(--hl-keyword);}
+.powerpack .codehilite .reader-char {color: var(--hl-reader-char)}
+.powerpack .codehilite .nil {color: var(--hl-nil)}
+.powerpack .codehilite .comment {color: var(--hl-comment);}
+.powerpack .codehilite .repeat {color: var(--hl-repeat)}
+.powerpack .codehilite .regex {color: var(--hl-regexp)}
+.powerpack .codehilite .exception {color: var(--hl-exception)}
+.powerpack .codehilite .boolean {color: var(--hl-boolean)}
+.powerpack .codehilite .character {color: var(--hl-character)}
+.powerpack .codehilite .conditional {color: var(--hl-conditional);}

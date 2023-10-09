@@ -84,6 +84,15 @@
              (str/replace % "</body>" (str (script config res) "</body>"))
              (str % (script config %)))))
 
+(defn inject-css [res]
+  (let [styles (str "<style type=\"text/css\">"
+                    (slurp (io/resource "powerpack/powerpack.css"))
+                    "</style>")]
+    (update res :body
+            #(if (re-find #"</head>" %)
+               (str/replace % "</head>" (str styles "</head>"))
+               (str % styles)))))
+
 (defn handle-request [handler opt req]
   (if (= (get-route (:config opt)) (:uri req))
     (live-reload-handler opt handler req)
@@ -91,7 +100,9 @@
       (if (and (some->> (web/get-content-type response)
                         (re-find #"html"))
                (string? (:body response)))
-        (inject-script response (:config opt))
+        (-> response
+            (inject-script (:config opt))
+            inject-css)
         response))))
 
 (defn wrap-live-reload [handler opt]
