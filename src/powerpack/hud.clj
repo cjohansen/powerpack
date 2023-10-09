@@ -74,10 +74,12 @@
                             {:kind :powerpack/error
                              :action "hide-hud"})
                           (put! client-ch)))]
-    (emit-error @(:errors hud))
+    (when (seq @(:errors hud))
+      (emit-error @(:errors hud)))
     (add-watch (:errors hud) k
-      (fn [_ _ _ errors]
-        (emit-error errors)))
+      (fn [_ _ old-errors errors]
+        (when-not (= old-errors errors)
+          (emit-error errors))))
     {:stop #(remove-watch (:errors hud) k)
      :ch client-ch}))
 
