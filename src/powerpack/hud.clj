@@ -72,7 +72,8 @@
                              :action "render-hud"
                              :markup (render-hud-str error)}
                             {:kind :powerpack/error
-                             :action "hide-hud"})
+                             :action "render-hud"
+                             :markup ""})
                           (put! client-ch)))]
     (when (seq @(:errors hud))
       (emit-error @(:errors hud)))

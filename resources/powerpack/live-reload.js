@@ -18,8 +18,6 @@
           location.reload(true);
         } else if (payload.action == "render-hud") {
           renderHud(payload);
-        } else if (payload.action == "hide-hud") {
-          renderHud({markup: ""});
         }
       } else {
         console.log("Event source message contained no data");
