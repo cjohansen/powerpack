@@ -24,10 +24,10 @@
 (defn pp [x]
   (with-out-str (pprint/pprint x)))
 
-(defn toggler [title body]
-  [:div.pp-toggle.pp-toggle-collapsed
-   [:h3.h3 [:a.pp-toggle-button title]]
-   [:div.pp-toggle-content body]])
+(defn accordion [title body]
+  [:details.accordion
+   [:summary.h4 title]
+   [:div body]])
 
 (defn render-error-hud [{:keys [message description errors exception tx data]}]
   [:div.powerpack
@@ -47,13 +47,13 @@
        [:div
         [:h4.h4.error "Exception: " (.getMessage exception)]
         (when-let [data (ex-data exception)]
-          (toggler "Exception data" [:pre [:code.language-clojure (pp data)]]))
+          (accordion "Exception data" [:pre [:code.language-clojure (pp data)]]))
         (when-let [stack (error-logger/get-stack-trace exception)]
-          (toggler "Stack trace" [:pre [:code stack]]))])
+          (accordion "Stack trace" [:pre [:code stack]]))])
      (when tx
-       (toggler "Transaction data" [:pre [:code.language-clojure (pp tx)]]))
+       (accordion "Transaction data" [:pre [:code.language-clojure (pp tx)]]))
      (when data
-       (toggler "Data" [:pre [:code.language-clojure (pp data)]]))]]])
+       (accordion "Data" [:pre [:code.language-clojure (pp data)]]))]]])
 
 (defn render-hud-str [error]
   (-> (render-error-hud error)

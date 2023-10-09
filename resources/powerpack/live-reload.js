@@ -29,24 +29,5 @@
     };
   }
 
-  function initToggler() {
-    document.body.addEventListener("click", function (e) {
-      if (e.target.classList && e.target.classList.contains("pp-toggle-button")) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        var container = e.target.closest(".pp-toggle");
-
-        if (container.classList.contains("pp-toggle-collapsed")) {
-          container.classList.remove("pp-toggle-collapsed");
-        } else {
-          container.classList.add("pp-toggle-collapsed");
-        }
-      }
-    });
-  }
-
-
   connect();
-  initToggler();
 }());
