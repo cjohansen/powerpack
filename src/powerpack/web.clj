@@ -163,8 +163,9 @@
      :headers {"Content-Type" "application/edn"}
      :body (pr-str rendered)}))
 
-(defn handle-request [req {:keys [render-page post-processors]}]
-  (-> (if-let [page (d/entity (:db req) [:page/uri (:uri req)])]
+(defn handle-request [req {:keys [get-page render-page post-processors]}]
+  (-> (if-let [page (or (when (ifn? get-page) (get-page req))
+                        (d/entity (:db req) [:page/uri (:uri req)]))]
         (get-response-map (render-page req page))
         {:status 404
          :body (if-let [file (io/resource "404.html")]

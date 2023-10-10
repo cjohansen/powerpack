@@ -26,9 +26,8 @@
   (-> assets
       optimizations/add-cache-busted-expires-headers))
 
-(defn create-handler [{:keys [conn config render-page page-post-process-fns] :as opts}]
-  (-> (web/serve-pages {:render-page render-page
-                        :post-processors page-post-process-fns})
+(defn create-handler [{:keys [conn config] :as opts}]
+  (-> (web/serve-pages opts)
       (imagine/wrap-images (:imagine/config config))
       (optimus/wrap
        #(web/get-assets config)
@@ -191,6 +190,9 @@
 (defmethod ig/init-key :powerpack/on-ingested [_ {:keys [on-ingested]}]
   on-ingested)
 
+(defmethod ig/init-key :powerpack/get-page [_ {:keys [get-page]}]
+  get-page)
+
 (defn get-system-map []
   {:powerpack/app {}
    :powerpack/config (ig/ref :powerpack/app)
@@ -198,6 +200,7 @@
    :powerpack/render-page (ig/ref :powerpack/app)
    :powerpack/page-post-process-fns (ig/ref :powerpack/app)
    :powerpack/on-ingested (ig/ref :powerpack/app)
+   :powerpack/get-page (ig/ref :powerpack/app)
 
    :datomic/conn {:config (ig/ref :powerpack/config)}
    :app/logger {:config (ig/ref :powerpack/config)}
@@ -206,6 +209,7 @@
                  :config (ig/ref :powerpack/config)
                  :render-page (ig/ref :powerpack/render-page)
                  :page-post-process-fns (ig/ref :powerpack/page-post-process-fns)
+                 :get-page (ig/ref :powerpack/get-page)
                  :ch-ch-ch-changes (ig/ref :dev/app-events)
                  :logger (ig/ref :app/logger)
                  :hud (ig/ref :dev/hud)}
