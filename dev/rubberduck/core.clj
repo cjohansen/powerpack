@@ -1,14 +1,13 @@
 (ns rubberduck.core
-  (:require [datomic-type-extensions.api :as d]
-            [integrant.core :as ig]
+  (:require [integrant.core :as ig]
             [powerpack.app :as app]
             [powerpack.export :as export]
             [powerpack.highlight :as highlight]
-            [powerpack.html :as html]))
+            [powerpack.html :as html]
+            [powerpack.logger :as log]))
 
 (def config
-  {:site/base-url "https://rubberduck.example"
-   :site/default-language "en"
+  {:site/default-language "en"
    :site/title "Rubberduck"
 
    :stasis/build-dir "build"
@@ -39,30 +38,44 @@
 
    :datomic/schema-file "dev-resources/schema.edn"})
 
-(defn create-tx [db file-name data]
+(defn create-tx [_db _file-name data]
   data)
 
-(defn render-page [req page]
-  (html/render-hiccup
-   req
-   page
-   [:div
-    [:h1 (:page/title page)]
-    [:p "Hi!"]
-    (when-let [published (:blog-post/published page)]
-      [:p "Published " (str published)])
-    [:pre [:code {:class "language-clj"}
-           "(prn 'Hello :there)"]]
-    [:img {:src "/vcard-small/images/ducks.jpg"}]]))
+(defn render-page [context page]
+  (if (= ::build-date (:page/kind page))
+    (html/render-hiccup
+     context
+     page
+     [:div
+      [:h1 "Build date: " (str (:date page))]
+      [:p "Your custom context, Sir: " (:custom context)]])
+    (html/render-hiccup
+     context
+     page
+     [:div
+      [:h1 (:page/title page)]
+      [:p "Hi!"]
+      (when-let [published (:blog-post/published page)]
+        [:p "Published " (str published)])
+      [:pre [:code {:class "language-clj"}
+             "(prn 'Hello :there)"]]
+      [:img {:src "/vcard-small/images/ducks.jpg"}]])))
 
-(defn create-app []
+(defn get-page [context]
+  (when (= (:req/uri context) "/build-date/")
+    {:page/kind ::build-date
+     :date (java.time.LocalDate/now)}))
+
+(def app
   (-> {:config config
        :create-ingest-tx #'create-tx
-       :render-page #'render-page}
+       :render-page #'render-page
+       :get-page #'get-page
+       :context {:custom "Context"}}
       highlight/install))
 
 (defmethod ig/init-key :powerpack/app [_ _]
-  (create-app))
+  app)
 
 (comment
 
@@ -72,12 +85,8 @@
   (app/stop)
   (app/reset)
 
-  (export/export (create-app))
-
-  (def system integrant.repl.state/system)
-
-  (->> [:page/uri "/blog/sample/"]
-       (d/entity (d/db (:datomic/conn integrant.repl.state/system)))
-       (into {}))
+  (-> app
+      (assoc-in [:config :site/base-url] "https://rubberduck.example")
+      export/export)
 
 )

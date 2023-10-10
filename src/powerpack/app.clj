@@ -193,6 +193,9 @@
 (defmethod ig/init-key :powerpack/get-page [_ {:keys [get-page]}]
   get-page)
 
+(defmethod ig/init-key :powerpack/context [_ {:keys [context]}]
+  context)
+
 (defn get-system-map []
   {:powerpack/app {}
    :powerpack/config (ig/ref :powerpack/app)
@@ -201,6 +204,7 @@
    :powerpack/page-post-process-fns (ig/ref :powerpack/app)
    :powerpack/on-ingested (ig/ref :powerpack/app)
    :powerpack/get-page (ig/ref :powerpack/app)
+   :powerpack/context (ig/ref :powerpack/app)
 
    :datomic/conn {:config (ig/ref :powerpack/config)}
    :app/logger {:config (ig/ref :powerpack/config)}
@@ -210,6 +214,7 @@
                  :render-page (ig/ref :powerpack/render-page)
                  :page-post-process-fns (ig/ref :powerpack/page-post-process-fns)
                  :get-page (ig/ref :powerpack/get-page)
+                 :context (ig/ref :powerpack/context)
                  :ch-ch-ch-changes (ig/ref :dev/app-events)
                  :logger (ig/ref :app/logger)
                  :hud (ig/ref :dev/hud)}

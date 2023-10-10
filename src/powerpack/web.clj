@@ -47,7 +47,7 @@
     (let [[url hash] (str/split src #"#")]
       (str
        (or (not-empty (link/file-path req url))
-           (imagine/realize-url (-> req :config :imagine/config) url)
+           (imagine/realize-url (-> req :powerpack/config :imagine/config) url)
            (throw (Exception. (str "Asset not loaded: " url))))
        (some->> hash (str "#"))))
     (catch Exception e
@@ -65,10 +65,10 @@
 
 (defn fix-links [req path]
   (when-let [path (try-optimize-path req path)]
-    (if (and (-> req :config :site/base-url)
+    (if (and (-> req :powerpack/config :site/base-url)
              (str/starts-with? path "/")
              (not (str/starts-with? path "//")))
-      (str (-> req :config :site/base-url) path)
+      (str (-> req :powerpack/config :site/base-url) path)
       path)))
 
 (defn update-attr [node attr f]
@@ -102,14 +102,14 @@
 
 (defn optimize-open-graph-image [req url]
   (let [f (optimize-path-fn req)]
-    (str (-> req :config :site/base-url) (f url))))
+    (str (-> req :powerpack/config :site/base-url) (f url))))
 
-(defn get-markup-url-optimizers [req]
-  (let [optimize-path (optimize-path-fn req)]
+(defn get-markup-url-optimizers [context]
+  (let [optimize-path (optimize-path-fn context)]
     {;; use optimized images
-     [:img] #(update-img-attrs % (optimize-path-fn req))
+     [:img] #(update-img-attrs % (optimize-path-fn context))
      [:head :meta] #(when (= (.getAttribute % "property") "og:image")
-                      (update-attr % "content" (partial optimize-open-graph-image req)))
+                      (update-attr % "content" (partial optimize-open-graph-image context)))
      [:.w-style-img] #(update-attr % "style" (partial replace-urls optimize-path))
      [:.section] #(update-attr % "style" (partial replace-urls optimize-path))
      [:video :source] #(update-attr % "src" optimize-path)
@@ -119,31 +119,31 @@
      [:svg :use] #(replace-attr % "href" "xlink:href" optimize-path)
 
      ;; use optimized links, if possible
-     [:a] #(update-attr % "href" (partial fix-links req))}))
+     [:a] #(update-attr % "href" (partial fix-links context))}))
 
-(defn combine-post-processors [req post-processors]
+(defn combine-post-processors [context post-processors]
   (->> (for [[selector fns] (->> post-processors
-                                 (mapcat (fn [f] (f req)))
+                                 (mapcat (fn [f] (f context)))
                                  (group-by first))]
          [selector (fn [& args]
                      (doseq [fn (map second fns)]
                        (apply fn args)))])
        (into {})))
 
-(defn tweak-page-markup [html req post-processors]
+(defn tweak-page-markup [html context post-processors]
   (try
-    (->> (combine-post-processors req post-processors)
+    (->> (combine-post-processors context post-processors)
          (html5-walker/replace-in-document html))
     (catch Exception e
       (throw (ex-info "Error while optimizing URLs in page markup"
-                      {:request (dissoc req :optimus-assets)}
+                      {:request (dissoc context :optimus-assets)}
                       e)))))
 
-(defn post-process-page [response request post-processors]
+(defn post-process-page [response context post-processors]
   (cond-> response
     (some-> (get-content-type response)
             (str/starts-with? "text/html"))
-    (update :body tweak-page-markup request post-processors)))
+    (update :body tweak-page-markup context post-processors)))
 
 (defn get-response-map [rendered]
   (cond
@@ -163,16 +163,21 @@
      :headers {"Content-Type" "application/edn"}
      :body (pr-str rendered)}))
 
-(defn handle-request [req {:keys [get-page render-page post-processors]}]
-  (-> (if-let [page (or (when (ifn? get-page) (get-page req))
-                        (d/entity (:db req) [:page/uri (:uri req)]))]
-        (get-response-map (render-page req page))
-        {:status 404
-         :body (if-let [file (io/resource "404.html")]
-                 (slurp file)
-                 "Page not found")
-         :headers {"Content-Type" "text/html"}})
-      (post-process-page req (concat post-processors [get-markup-url-optimizers]))))
+(defn handle-request [req {:keys [get-page render-page post-processors context]}]
+  (let [context (-> context
+                    (assoc :req/uri (:uri req))
+                    (assoc :powerpack/config (:config req))
+                    (assoc :app/db (:db req))
+                    (assoc :optimus-assets (:optimus-assets req)))]
+    (-> (if-let [page (or (when (ifn? get-page) (get-page context))
+                          (d/entity (:db req) [:page/uri (:uri req)]))]
+          (get-response-map (render-page context page))
+          {:status 404
+           :body (if-let [file (io/resource "404.html")]
+                   (slurp file)
+                   "Page not found")
+           :headers {"Content-Type" "text/html"}})
+        (post-process-page context (concat post-processors [get-markup-url-optimizers])))))
 
 (defn serve-pages [opt]
   (fn [req]

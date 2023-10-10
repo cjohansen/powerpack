@@ -52,8 +52,9 @@
             :content (-> title
                          (truncate-str 70)
                          escape-str)})
-         {:property "og:url"
-          :content (str (:site/base-url config) (:page/uri page))}]
+         (when-let [base-url (:site/base-url config)]
+           {:property "og:url"
+            :content (str base-url (:page/uri page))})]
         (when-let [image (:open-graph/image page)]
           (let [buffered-image (load-image (:imagine/config config) image)]
             [{:property "og:image"
@@ -66,7 +67,7 @@
        (map render-meta)))
 
 (defn get-bundle-links [req]
-  (->> req :config :optimus/bundles keys
+  (->> req :powerpack/config :optimus/bundles keys
        (link/bundle-paths req)
        (map (fn [url] [:link {:rel "stylesheet" :href url}]))))
 
@@ -82,15 +83,15 @@
         (concat
          [[:meta {:charset "utf-8"}]
           [:meta {:name "viewport" :content "width=device-width, initial-scale=1.0"}]]
-         (get-open-graph-metas page (:config req))
+         (get-open-graph-metas page (:powerpack/config req))
          (get-bundle-links req)
          (get-favicon-links req)
          (:page/head-elements page)
-         [[:title (head-title (:config req) (:page/title page))]])))
+         [[:title (head-title (:powerpack/config req) (:page/title page))]])))
 
 (defn build-doc [req page body]
   [:html (let [lang (or (:page/language page)
-                        (-> req :config :site/default-language))]
+                        (-> req :powerpack/config :site/default-language))]
            (cond-> {:prefix "og: http://ogp.me/ns#"}
              lang (assoc :lang lang)))
    (get-head req page)
