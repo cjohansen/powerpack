@@ -3,8 +3,7 @@
             [powerpack.app :as app]
             [powerpack.export :as export]
             [powerpack.highlight :as highlight]
-            [powerpack.html :as html]
-            [powerpack.logger :as log]))
+            [powerpack.html :as html]))
 
 (def config
   {:site/default-language "en"
@@ -38,7 +37,7 @@
 
    :datomic/schema-file "dev-resources/schema.edn"})
 
-(defn create-tx [_db _file-name data]
+(defn create-tx [_file-name data]
   data)
 
 (defn render-page [context page]

@@ -30,7 +30,7 @@
    :db.type/symbol read-string
    :db.type/tuple read-string
    :db.type/uuid read-string
-   :db.type/uri (parse-vals-as #(URI/create %))})
+   :db.type/uri (parse-vals-as (comp #(URI/create %) str))})
 
 (defn get-conversion [db k]
   (let [attr (db/get-attr db k)]
@@ -159,14 +159,13 @@
                      :tx tx}))))
 
 (defn ingest-data [{:keys [conn create-ingest-tx error-events]} file-name data]
-  (let [db (d/db conn)
-        tx (some-> (cond->> data
-                     (ifn? create-ingest-tx) (create-ingest-tx db file-name))
+  (let [tx (some-> (cond->> data
+                     (ifn? create-ingest-tx) (create-ingest-tx file-name))
                    (conj [:db/add (d/tempid :db.part/tx) :tx-source/file-name file-name]))]
     (when tx
       (validate-transaction! tx)
       (try
-        (d/with db tx)
+        (d/with (d/db conn) tx)
         (catch Exception e
           (throw (ex-info "Unable to assert"
                           {:kind ::transact
