@@ -79,7 +79,7 @@ The following is an example of setting up a page with Powerpack:
 
 (def config
   {:site/base-url "https://myblog.example"
-   :site/default-language "en"
+   :site/default-locale :en
    :site/title "My blog"
 
    :stasis/build-dir "build"

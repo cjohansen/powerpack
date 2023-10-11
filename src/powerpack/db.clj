@@ -35,8 +35,8 @@
     :db/valueType :db.type/string
     :db/cardinality :db.cardinality/one}
 
-   {:db/ident :page/language
-    :db/valueType :db.type/string
+   {:db/ident :page/locale
+    :db/valueType :db.type/keyword
     :db/cardinality :db.cardinality/one}
 
    ;; open graph

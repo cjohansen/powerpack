@@ -90,10 +90,10 @@
          [[:title (head-title (:powerpack/config req) (:page/title page))]])))
 
 (defn build-doc [req page body]
-  [:html (let [lang (or (:page/language page)
-                        (-> req :powerpack/config :site/default-language))]
+  [:html (let [lang (or (:page/locale page)
+                        (-> req :powerpack/config :site/default-locale))]
            (cond-> {:prefix "og: http://ogp.me/ns#"}
-             lang (assoc :lang lang)))
+             lang (assoc :lang (name lang))))
    (get-head req page)
    body])
 

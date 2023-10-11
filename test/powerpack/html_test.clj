@@ -22,15 +22,15 @@
             [:h1 "Hello world"]])))
 
   (testing "Includes lang attribute with default lang"
-    (is (= (-> (sut/build-doc {:powerpack/config {:site/default-language "nb"}} {} [:h1 "Hello world"])
+    (is (= (-> (sut/build-doc {:powerpack/config {:site/default-locale :nb}} {} [:h1 "Hello world"])
                second
                :lang)
            "nb")))
 
   (testing "Includes page language when available"
     (is (= (-> (sut/build-doc
-                {:powerpack/config {:site/default-language "nb"}}
-                {:page/language "en"}
+                {:powerpack/config {:site/default-locale :nb}}
+                {:page/locale :en}
                 [:h1 "Hello world"])
                second
                :lang)

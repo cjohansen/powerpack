@@ -6,7 +6,7 @@
             [powerpack.html :as html]))
 
 (def config
-  {:site/default-language "en"
+  {:site/default-locale :en
    :site/title "Rubberduck"
 
    :stasis/build-dir "build"
