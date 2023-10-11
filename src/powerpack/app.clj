@@ -196,6 +196,9 @@
 (defmethod ig/init-key :powerpack/context [_ {:keys [context]}]
   context)
 
+(defmethod ig/init-key :powerpack/on-started [_ {:keys [on-started]}]
+  on-started)
+
 (defn get-system-map []
   {:powerpack/app {}
    :powerpack/config (ig/ref :powerpack/app)
@@ -205,6 +208,7 @@
    :powerpack/on-ingested (ig/ref :powerpack/app)
    :powerpack/get-page (ig/ref :powerpack/app)
    :powerpack/context (ig/ref :powerpack/app)
+   :powerpack/on-started (ig/ref :powerpack/app)
 
    :datomic/conn {:config (ig/ref :powerpack/config)}
    :app/logger {:config (ig/ref :powerpack/config)}
@@ -248,14 +252,19 @@
 
 (defn start []
   (integrant.repl/go)
+  (when-let [on-started (:powerpack/on-started integrant.repl.state/system)]
+    (on-started integrant.repl.state/system))
   (apply repl/set-refresh-dirs
          (-> integrant.repl.state/system
              :app/config
-             :powerpack/source-dirs)))
+             :powerpack/source-dirs))
+  :powerpack/started)
 
 (defn stop []
-  (integrant.repl/halt))
+  (integrant.repl/halt)
+  :powerpack/stopped)
 
 (defn reset []
   (stop)
-  (repl/refresh :after 'integrant.repl/go))
+  (repl/refresh :after 'integrant.repl/go)
+  :powerpack/restarted)
