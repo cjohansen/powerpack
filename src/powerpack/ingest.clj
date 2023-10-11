@@ -32,16 +32,29 @@
    :db.type/uuid read-string
    :db.type/uri (parse-vals-as (comp #(URI/create %) str))})
 
-(defn get-conversion [db k]
-  (let [attr (db/get-attr db k)]
-    (or (conversions (:db/valueType attr))
-        (when (:dte/valueType attr)
-          read-string))))
+(defn get-conversion [attr]
+  (when-let [f (or (conversions (:db/valueType attr))
+                   (when (:dte/valueType attr)
+                     read-string))]
+    (fn [v]
+      (let [val (f v)]
+        (when (and (= :db.cardinality/many (:db/cardinality attr))
+                   (not (coll? val)))
+          (throw (ex-info (format "%s has single value %s, but should have many according to the schema. Did you forget to enclose the value%s in a bracket? E.g. %s"
+                                  (:db/ident attr)
+                                  val
+                                  (if (re-find #" " v) "s" "")
+                                  (str "[" v "]"))
+                          {:attribute (:db/ident attr)
+                           :raw-value v
+                           :coerced-value val})))
+        val))))
 
 (defn align-with-schema [data db]
   (->> data
        (map (fn [[k v]]
-              (let [f (get-conversion db k)]
+              (let [attr (db/get-attr db k)
+                    f (get-conversion attr)]
                 [k (cond-> v
                      f f)])))
        (into {})))

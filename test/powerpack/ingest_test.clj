@@ -209,7 +209,24 @@
                              :db/cardinality :db.cardinality/one}]
              db
              (sut/align-with-schema {:person/birthday "#time/ld \"2007-12-03\""} db))
-           {:person/birthday #time/ld "2007-12-03"}))))
+           {:person/birthday #time/ld "2007-12-03"})))
+
+  (testing "Fails on many attribute with a single value"
+    (is (= (try
+             (with-schema-db [{:db/ident :person/tags
+                               :db/valueType :db.type/keyword
+                               :db/cardinality :db.cardinality/many}]
+                 db
+               (sut/align-with-schema {:person/tags ":tag1 :tag2"} db))
+             (catch Exception e
+               {:message (.getMessage e)
+                :data (ex-data e)}))
+           {:message (str ":person/tags has single value :tag1, but should have many "
+                          "according to the schema. Did you forget to enclose the "
+                          "values in a bracket? E.g. [:tag1 :tag2]")
+            :data {:attribute :person/tags
+                   :raw-value ":tag1 :tag2"
+                   :coerced-value :tag1}}))))
 
 (defn mapify [e]
   (into {} e))

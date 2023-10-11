@@ -12,4 +12,8 @@
 
  {:db/ident :blog-post/published
   :dte/valueType :java.time/local-date
-  :db/cardinality :db.cardinality/one}]
+  :db/cardinality :db.cardinality/one}
+
+ {:db/ident :blog-post/tags
+  :db/valueType :db.type/keyword
+  :db/cardinality :db.cardinality/many}]
