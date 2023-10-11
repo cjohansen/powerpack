@@ -213,8 +213,8 @@
       (throw e))))
 
 (defn handle-request [req {:keys [fns] :as opt}]
-  (let [context (-> (when-let [{:keys [get-context]} fns]
-                      (get-context))
+  (let [context (-> (when (ifn? (:get-context fns))
+                      ((:get-context fns)))
                     (assoc :req/uri (:uri req))
                     (assoc :powerpack/config (:config req))
                     (assoc :app/db (:db req))
