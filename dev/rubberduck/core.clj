@@ -61,16 +61,10 @@
              "(prn 'Hello :there)"]]
       [:img {:src "/vcard-small/images/ducks.jpg"}]])))
 
-(defn get-page [context]
-  (when (= (:req/uri context) "/build-date/")
-    {:page/kind ::build-date
-     :date (java.time.LocalDate/now)}))
-
 (def app
   (-> {:config config
        :create-ingest-tx #'create-tx
        :render-page #'render-page
-       :get-page #'get-page
        :context {:custom "Context"}}
       highlight/install))
 
