@@ -1,5 +1,6 @@
 (ns rubberduck.core
-  (:require [integrant.core :as ig]
+  (:require [datomic-type-extensions.api :as d]
+            [integrant.core :as ig]
             [powerpack.app :as app]
             [powerpack.export :as export]
             [powerpack.highlight :as highlight]
@@ -65,7 +66,12 @@
   (-> {:config config
        :create-ingest-tx #'create-tx
        :render-page #'render-page
-       :context {:custom "Context"}}
+       :get-context (fn [] {:custom (str (java.time.LocalDate/now))})
+       :on-started (fn [powerpack-app]
+                     (->> [{:page/uri "/build-date/"
+                            :page/kind ::build-date}]
+                          (d/transact (:datomic/conn powerpack-app))
+                          deref))}
       highlight/install))
 
 (defmethod ig/init-key :powerpack/app [_ _]

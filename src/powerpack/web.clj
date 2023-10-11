@@ -187,8 +187,9 @@
              :id [::render-page (:req/uri context)]})
       (throw e))))
 
-(defn handle-request [req {:keys [context fns] :as opt}]
-  (let [context (-> context
+(defn handle-request [req {:keys [fns] :as opt}]
+  (let [context (-> (when-let [{:keys [get-context]} fns]
+                      (get-context))
                     (assoc :req/uri (:uri req))
                     (assoc :powerpack/config (:config req))
                     (assoc :app/db (:db req))

@@ -175,16 +175,12 @@
 (defmethod ig/init-key :powerpack/config [_ {:keys [config]}]
   (with-defaults config config-defaults))
 
-(defmethod ig/init-key :powerpack/context [_ {:keys [context]}]
-  context)
-
 (defmethod ig/init-key :powerpack/on-started [_ {:keys [on-started]}]
   on-started)
 
 (defn get-system-map []
   {:powerpack/app {}
    :powerpack/config (ig/ref :powerpack/app)
-   :powerpack/context (ig/ref :powerpack/app)
    :powerpack/on-started (ig/ref :powerpack/app)
    :datomic/conn {:config (ig/ref :powerpack/config)}
    :app/logger {:config (ig/ref :powerpack/config)}
@@ -192,7 +188,6 @@
                  :config (ig/ref :powerpack/config)
                  :error-events (ig/ref :dev/error-events)
                  :fns (ig/ref :powerpack/app)
-                 :context (ig/ref :powerpack/context)
                  :ch-ch-ch-changes (ig/ref :dev/app-events)
                  :logger (ig/ref :app/logger)
                  :hud (ig/ref :dev/hud)}
