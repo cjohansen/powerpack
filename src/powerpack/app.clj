@@ -266,5 +266,5 @@
 
 (defn reset []
   (stop)
-  (repl/refresh :after 'integrant.repl/go)
+  (repl/refresh :after 'powerpack.app/start)
   :powerpack/restarted)
