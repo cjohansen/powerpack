@@ -46,9 +46,6 @@
      (log/log ~level [~name "in" (- (System/currentTimeMillis) start#) "ms"])
      res#))
 
-(defmethod ig/init-key :app/config [_ {:keys [config]}]
-  config)
-
 (defmethod ig/init-key :app/logger [_ {:keys [config]}]
   (with-timing-info :debug "Started logger"
     (log/start-logger (:powerpack/log-level config))))
@@ -178,21 +175,6 @@
 (defmethod ig/init-key :powerpack/config [_ {:keys [config]}]
   (with-defaults config config-defaults))
 
-(defmethod ig/init-key :powerpack/create-ingest-tx [_ {:keys [create-ingest-tx]}]
-  create-ingest-tx)
-
-(defmethod ig/init-key :powerpack/render-page [_ {:keys [render-page]}]
-  render-page)
-
-(defmethod ig/init-key :powerpack/page-post-process-fns [_ {:keys [page-post-process-fns]}]
-  page-post-process-fns)
-
-(defmethod ig/init-key :powerpack/on-ingested [_ {:keys [on-ingested]}]
-  on-ingested)
-
-(defmethod ig/init-key :powerpack/get-page [_ {:keys [get-page]}]
-  get-page)
-
 (defmethod ig/init-key :powerpack/context [_ {:keys [context]}]
   context)
 
@@ -202,22 +184,13 @@
 (defn get-system-map []
   {:powerpack/app {}
    :powerpack/config (ig/ref :powerpack/app)
-   :powerpack/create-ingest-tx (ig/ref :powerpack/app)
-   :powerpack/render-page (ig/ref :powerpack/app)
-   :powerpack/page-post-process-fns (ig/ref :powerpack/app)
-   :powerpack/on-ingested (ig/ref :powerpack/app)
-   :powerpack/get-page (ig/ref :powerpack/app)
    :powerpack/context (ig/ref :powerpack/app)
    :powerpack/on-started (ig/ref :powerpack/app)
-
    :datomic/conn {:config (ig/ref :powerpack/config)}
    :app/logger {:config (ig/ref :powerpack/config)}
-   :app/config {:config (ig/ref :powerpack/config)}
    :app/handler {:conn (ig/ref :datomic/conn)
                  :config (ig/ref :powerpack/config)
-                 :render-page (ig/ref :powerpack/render-page)
-                 :page-post-process-fns (ig/ref :powerpack/page-post-process-fns)
-                 :get-page (ig/ref :powerpack/get-page)
+                 :fns (ig/ref :powerpack/app)
                  :context (ig/ref :powerpack/context)
                  :ch-ch-ch-changes (ig/ref :dev/app-events)
                  :logger (ig/ref :app/logger)
@@ -240,10 +213,9 @@
    :dev/ingestion-watcher {:ch-ch-ch-changes (ig/ref :dev/app-events)
                            :config (ig/ref :powerpack/config)
                            :conn (ig/ref :datomic/conn)
-                           :create-ingest-tx (ig/ref :powerpack/create-ingest-tx)
+                           :fns (ig/ref :powerpack/app)
                            :error-events (ig/ref :dev/error-events)
-                           :fs-events (ig/ref :dev/fs-events)
-                           :on-ingested (ig/ref :powerpack/on-ingested)}
+                           :fs-events (ig/ref :dev/fs-events)}
 
    :dev/error-logger {:error-events (ig/ref :dev/error-events)}
    :dev/hud {:error-events (ig/ref :dev/error-events)}})
@@ -256,7 +228,7 @@
     (on-started integrant.repl.state/system))
   (apply repl/set-refresh-dirs
          (-> integrant.repl.state/system
-             :app/config
+             :powerpack/config
              :powerpack/source-dirs))
   :powerpack/started)
 

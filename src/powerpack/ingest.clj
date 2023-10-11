@@ -171,8 +171,9 @@
                                 :v v})
                      :tx tx}))))
 
-(defn ingest-data [{:keys [conn create-ingest-tx error-events]} file-name data]
-  (let [tx (some-> (cond->> data
+(defn ingest-data [{:keys [conn fns error-events]} file-name data]
+  (let [create-ingest-tx (:create-ingest-tx fns)
+        tx (some-> (cond->> data
                      (ifn? create-ingest-tx) (create-ingest-tx file-name))
                    (conj [:db/add (d/tempid :db.part/tx) :tx-source/file-name file-name]))]
     (when tx
@@ -228,10 +229,11 @@
                       :exception e}
                      (ex-data e)))))))
 
-(defn call-ingest-callback [{:keys [config conn on-ingested ch-ch-ch-changes error-events]}]
+(defn call-ingest-callback [{:keys [config conn fns ch-ch-ch-changes error-events]}]
   (try
-    (when (ifn? on-ingested)
-      (on-ingested {:config config :conn conn}))
+    (let [on-ingested (:on-ingested fns)]
+      (when (ifn? on-ingested)
+        (on-ingested {:config config :conn conn})))
     (catch Exception e
       (put! (:ch error-events)
             {:kind ::callback

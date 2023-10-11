@@ -163,12 +163,13 @@
      :headers {"Content-Type" "application/edn"}
      :body (pr-str rendered)}))
 
-(defn handle-request [req {:keys [render-page post-processors context]}]
+(defn handle-request [req {:keys [fns context]}]
   (let [context (-> context
                     (assoc :req/uri (:uri req))
                     (assoc :powerpack/config (:config req))
                     (assoc :app/db (:db req))
-                    (assoc :optimus-assets (:optimus-assets req)))]
+                    (assoc :optimus-assets (:optimus-assets req)))
+        render-page (:render-page fns)]
     (-> (if-let [page (d/entity (:db req) [:page/uri (:uri req)])]
           (get-response-map (render-page context page))
           {:status 404
@@ -176,7 +177,7 @@
                    (slurp file)
                    "Page not found")
            :headers {"Content-Type" "text/html"}})
-        (post-process-page context (concat post-processors [get-markup-url-optimizers])))))
+        (post-process-page context (concat (:page-post-process-fns fns) [get-markup-url-optimizers])))))
 
 (defn serve-pages [opt]
   (fn [req]
