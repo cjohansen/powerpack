@@ -32,7 +32,7 @@
       (optimus/wrap
        #(web/get-assets config)
        optimizations
-       strategies/serve-live-assets-autorefresh
+       strategies/serve-live-assets
        {:assets-dir (first (:powerpack/resource-dirs config))})
       wrap-content-type
       web/wrap-utf-8
