@@ -14,6 +14,12 @@
 (defn get-page-hash [{:keys [body]}]
   (str (hash body)))
 
+(defn get-uri-hash [handler uri]
+  (try
+    (get-page-hash (handler {:uri uri}))
+    (catch Exception e
+      nil)))
+
 (defn create-watcher [{:keys [ch-ch-ch-changes hud]} handler uri body-hash]
   (let [client-ch (chan)
         msg-ch (chan)
@@ -28,7 +34,9 @@
       (loop []
         (when-let [msg (<! msg-ch)]
           (if (= "reload" (:action msg))
-            (if (= body-hash (get-page-hash (handler {:uri uri})))
+            (if (= body-hash (or (get-uri-hash handler uri)
+                                 ;; If it crashes, don't reload
+                                 body-hash))
               (do
                 (log/debug "No changes")
                 (when (put! client-ch (stream-msg (dissoc msg :action)))
@@ -48,7 +56,9 @@
 
 (defn live-reload-handler [opt handler req]
   (let [{:strs [uri hash]} (:params req)
-        channel (if (not= hash (get-page-hash (handler {:uri uri})))
+        channel (if (not= hash (or (get-uri-hash handler uri)
+                                   ;; If it crashes, don't reload
+                                   hash))
                   (go (stream-msg {:type :client-outdated
                                    :action "reload"}))
                   (create-watcher opt handler uri hash))]

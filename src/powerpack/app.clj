@@ -190,6 +190,7 @@
    :app/logger {:config (ig/ref :powerpack/config)}
    :app/handler {:conn (ig/ref :datomic/conn)
                  :config (ig/ref :powerpack/config)
+                 :error-events (ig/ref :dev/error-events)
                  :fns (ig/ref :powerpack/app)
                  :context (ig/ref :powerpack/context)
                  :ch-ch-ch-changes (ig/ref :dev/app-events)

@@ -1,5 +1,6 @@
 (ns powerpack.web
-  (:require [clojure.java.io :as io]
+  (:require [clojure.core.async :refer [put!]]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [datomic-type-extensions.api :as d]
             [html5-walker.core :as html5-walker]
@@ -163,21 +164,42 @@
      :headers {"Content-Type" "application/edn"}
      :body (pr-str rendered)}))
 
-(defn handle-request [req {:keys [fns context]}]
+(defn render-error [status message]
+  {:status status
+   :body (if-let [file (io/resource (str status ".html"))]
+           (slurp file)
+           message)
+   :headers {"Content-Type" "text/html"}})
+
+(defn render-page [{:keys [fns error-events]} context page]
+  (try
+    (let [res (get-response-map ((:render-page fns) context page))]
+      (put! (:ch error-events)
+            {:id [::render-page (:req/uri context)]
+             :resolved? true})
+      res)
+    (catch Exception e
+      (put! (:ch error-events)
+            {:exception e
+             :uri (:req/uri context)
+             :message (str "Failed to render page " (:req/uri context))
+             :kind ::render-page
+             :id [::render-page (:req/uri context)]})
+      (throw e))))
+
+(defn handle-request [req {:keys [context fns] :as opt}]
   (let [context (-> context
                     (assoc :req/uri (:uri req))
                     (assoc :powerpack/config (:config req))
                     (assoc :app/db (:db req))
-                    (assoc :optimus-assets (:optimus-assets req)))
-        render-page (:render-page fns)]
+                    (assoc :optimus-assets (:optimus-assets req)))]
     (-> (if-let [page (d/entity (:db req) [:page/uri (:uri req)])]
-          (get-response-map (render-page context page))
-          {:status 404
-           :body (if-let [file (io/resource "404.html")]
-                   (slurp file)
-                   "Page not found")
-           :headers {"Content-Type" "text/html"}})
-        (post-process-page context (concat (:page-post-process-fns fns) [get-markup-url-optimizers])))))
+          (render-page opt context page)
+          (render-error 404 "Page not found"))
+        (post-process-page
+         context
+         (concat (:page-post-process-fns fns)
+                 [get-markup-url-optimizers])))))
 
 (defn serve-pages [opt]
   (fn [req]

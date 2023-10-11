@@ -54,6 +54,7 @@
      [:div
       [:h1 (:page/title page)]
       [:p "Hi!"]
+      ;;(throw (ex-info "Oh noes!" {}))
       (when-let [published (:blog-post/published page)]
         [:p "Published " (str published)])
       [:pre [:code {:class "language-clj"}
