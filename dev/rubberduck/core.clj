@@ -43,12 +43,9 @@
 
 (defn render-page [context page]
   (if (= ::build-date (:page/kind page))
-    (html/render-hiccup
-     context
-     page
-     [:div
-      [:h1 "Build date: " (str (:date page))]
-      [:p "Your custom context, Sir: " (:custom context)]])
+    {:status 200
+     :content-type (:page/response-type page)
+     :body {:build-date (:date context)}}
     (html/render-hiccup
      context
      page
@@ -66,9 +63,13 @@
   (-> {:config config
        :create-ingest-tx #'create-tx
        :render-page #'render-page
-       :get-context (fn [] {:custom (str (java.time.LocalDate/now))})
+       :get-context (fn [] {:date (str (java.time.LocalDate/now))})
        :on-started (fn [powerpack-app]
-                     (->> [{:page/uri "/build-date/"
+                     (->> [{:page/uri "/build-date.edn"
+                            :page/response-type :edn
+                            :page/kind ::build-date}
+                           {:page/uri "/build-date.json"
+                            :page/response-type :json
                             :page/kind ::build-date}]
                           (d/transact (:datomic/conn powerpack-app))
                           deref))}

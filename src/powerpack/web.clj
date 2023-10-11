@@ -1,5 +1,6 @@
 (ns powerpack.web
   (:require [clojure.core.async :refer [put!]]
+            [clojure.data.json :as json]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [datomic-type-extensions.api :as d]
@@ -146,13 +147,37 @@
             (str/starts-with? "text/html"))
     (update :body tweak-page-markup context post-processors)))
 
+(defn prepare-response [response]
+  (if (string? (:body response))
+    response
+    (let [content-type (get-content-type response)]
+      (cond
+        (:content-type response)
+        (case (:content-type response)
+          :json (update response :body json/write-str)
+          :edn (update response :body pr-str)
+          (throw (ex-info (str "Unknown :content-type " (:content-type response))
+                          {:response response})))
+
+        (and (string? content-type)
+             (re-find #"application/json" content-type))
+        (update response :body json/write-str)
+
+        (or (nil? content-type)
+            (and (string? content-type)
+                 (re-find #"application/edn" content-type)))
+        (update response :body pr-str)
+
+        :else
+        response))))
+
 (defn get-response-map [rendered]
   (cond
     (and (map? rendered)
          (or (:status rendered)
              (:headers rendered)
              (:body rendered)))
-    rendered
+    (prepare-response rendered)
 
     (string? rendered)
     {:status 200
