@@ -163,14 +163,13 @@
      :headers {"Content-Type" "application/edn"}
      :body (pr-str rendered)}))
 
-(defn handle-request [req {:keys [get-page render-page post-processors context]}]
+(defn handle-request [req {:keys [render-page post-processors context]}]
   (let [context (-> context
                     (assoc :req/uri (:uri req))
                     (assoc :powerpack/config (:config req))
                     (assoc :app/db (:db req))
                     (assoc :optimus-assets (:optimus-assets req)))]
-    (-> (if-let [page (or (when (ifn? get-page) (get-page context))
-                          (d/entity (:db req) [:page/uri (:uri req)]))]
+    (-> (if-let [page (d/entity (:db req) [:page/uri (:uri req)])]
           (get-response-map (render-page context page))
           {:status 404
            :body (if-let [file (io/resource "404.html")]
