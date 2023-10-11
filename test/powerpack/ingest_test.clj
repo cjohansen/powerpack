@@ -1,18 +1,22 @@
 (ns powerpack.ingest-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.core.async :refer [chan close!]]
+            [clojure.test :refer [deftest is testing]]
             [datomic-type-extensions.api :as d]
             [powerpack.db :as db]
             [powerpack.ingest :as sut]))
 
-(defmacro with-conn [schema binding & body]
+(defmacro with-test-system [schema binding & body]
   `(do
      (let [uri# (str "datomic:mem://" (random-uuid))]
        (db/create-database uri# ~schema)
        (let [conn# (d/connect uri#)
-             ~binding conn#]
+             errors# (chan)
+             ~binding {:conn conn#
+                       :error-events {:ch errors#}}]
          (try
            ~@body
            (finally
+             (close! errors#)
              (d/delete-database uri#)))))))
 
 (defmacro with-schema-db [schema binding & body]
@@ -212,54 +216,54 @@
 
 (deftest ingest-data-test
   (testing "Ingests data from file"
-    (is (= (-> (with-conn {} conn
+    (is (= (-> (with-test-system {} system
                  (->> [{:page/uri "/some-file/"
                         :page/title "Hello"}]
-                      (sut/ingest-data {:conn conn} "some-file.md")))
+                      (sut/ingest-data system "some-file.md")))
                :db-after
                (d/entity [:page/uri "/some-file/"])
                mapify)
            {:page/uri "/some-file/", :page/title "Hello"})))
 
   (testing "Does not retract data before attempting failing ingest"
-    (is (= (with-conn {} conn
+    (is (= (with-test-system {} system
              (->> [{:page/uri "/some-file/"
                     :page/title "Hello"}]
-                  (sut/ingest-data {:conn conn} "some-file.md"))
+                  (sut/ingest-data system "some-file.md"))
              (try
                (->> [{:bogus/wow "Boom"}]
-                    (sut/ingest-data {:conn conn} "some-file.md"))
+                    (sut/ingest-data system "some-file.md"))
                (catch Exception _e nil))
-             (mapify (d/entity (d/db conn) [:page/uri "/some-file/"])))
+             (mapify (d/entity (d/db (:conn system)) [:page/uri "/some-file/"])))
            {:page/uri "/some-file/", :page/title "Hello"})))
 
   (testing "Retracts datomic type extension attrs"
-    (is (= (with-conn [{:db/ident :blog-post/published
-                        :dte/valueType :java.time/local-date-time
-                        :db/cardinality :db.cardinality/one}] conn
+    (is (= (with-test-system [{:db/ident :blog-post/published
+                               :dte/valueType :java.time/local-date-time
+                               :db/cardinality :db.cardinality/one}] system
              (->> [{:page/uri "/blog/post/"
                     :blog-post/published #time/ldt "2023-09-30T09:00"}]
-                  (sut/ingest-data {:conn conn} "post.md"))
+                  (sut/ingest-data system "post.md"))
              (->> [{:page/uri "/blog/post/"
                     :blog-post/published #time/ldt "2023-09-29T09:00"}]
-                  (sut/ingest-data {:conn conn} "post.md"))
-             (mapify (d/entity (d/db conn) [:page/uri "/blog/post/"])))
+                  (sut/ingest-data system "post.md"))
+             (mapify (d/entity (d/db (:conn system)) [:page/uri "/blog/post/"])))
            {:page/uri "/blog/post/"
             :blog-post/published #time/ldt "2023-09-29T09:00"})))
 
   (testing "Retracts ref attrs"
-    (is (= (with-conn [{:db/ident :blog-post/author
-                        :db/valueType :db.type/ref
-                        :db/cardinality :db.cardinality/one}
-                       {:db/ident :person/id
-                        :db/valueType :db.type/string
-                        :db/cardinality :db.cardinality/one
-                        :db/unique :db.unique/identity}] conn
+    (is (= (with-test-system [{:db/ident :blog-post/author
+                               :db/valueType :db.type/ref
+                               :db/cardinality :db.cardinality/one}
+                              {:db/ident :person/id
+                               :db/valueType :db.type/string
+                               :db/cardinality :db.cardinality/one
+                               :db/unique :db.unique/identity}] system
              (->> [{:page/uri "/blog/post/"
                     :blog-post/author {:person/id "person1"}}]
-                  (sut/ingest-data {:conn conn} "post.md"))
+                  (sut/ingest-data system "post.md"))
              (->> [{:page/uri "/blog/post/"
                     :blog-post/author {:person/id "person1"}}]
-                  (sut/ingest-data {:conn conn} "post.md"))
-             (:page/uri (d/entity (d/db conn) [:page/uri "/blog/post/"])))
+                  (sut/ingest-data system "post.md"))
+             (:page/uri (d/entity (d/db (:conn system)) [:page/uri "/blog/post/"])))
            "/blog/post/"))))

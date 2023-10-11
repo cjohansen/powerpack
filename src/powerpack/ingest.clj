@@ -46,7 +46,7 @@
                      f f)])))
        (into {})))
 
-(defmulti parse-file (fn [db file-name file]
+(defmulti parse-file (fn [_db file-name _file]
                        (keyword (last (str/split file-name #"\.")))))
 
 (defn suggest-url [url file-name]
@@ -189,8 +189,8 @@
                            :description "This is most certainly a bug in powerpack, please report it."
                            :exception e} e)))))
     (let [res (when tx
-                @(d/transact conn tx)
-                (log/info "Ingested" file-name))]
+                @(d/transact conn tx))]
+      (when res (log/info "Ingested" file-name))
       (put! (:ch error-events)
             {:id [::transact file-name]
              :resolved? true})
