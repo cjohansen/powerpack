@@ -66,11 +66,6 @@
        (remove nil?)
        (map render-meta)))
 
-(defn get-bundle-links [req]
-  (->> req :powerpack/config :optimus/bundles keys
-       (link/bundle-paths req)
-       (map (fn [url] [:link {:rel "stylesheet" :href url}]))))
-
 (defn get-favicon-links [req]
   (when-let [favicon (link/file-path req "/favicon.ico")]
     (list [:link {:href favicon :rel "icon" :type "image/x-icon"}]
@@ -78,24 +73,40 @@
           [:link {:href favicon :rel "shortcut icon" :type "image/x-icon"}]
           [:link {:href favicon :rel "shortcut icon" :type "image/vnd.microsoft.icon"}])))
 
+(defn get-bundles [req kind]
+  (->> req :optimus-assets (keep :bundle) set
+       (filter #(re-find (re-pattern (str "\\." kind "$")) %))
+       seq))
+
+(defn link-to-css-bundles [req bundles]
+  (for [path (link/bundle-paths req bundles)]
+    [:link {:rel "stylesheet" :href path}]))
+
+(defn link-to-js-bundles [req bundles]
+  (for [path (link/bundle-paths req bundles)]
+    [:script {:type "text/javascript" :src path}]))
+
 (defn get-head [req page]
   (into [:head]
         (concat
          [[:meta {:charset "utf-8"}]
           [:meta {:name "viewport" :content "width=device-width, initial-scale=1.0"}]]
          (get-open-graph-metas page (:powerpack/config req))
-         (get-bundle-links req)
+         (->> (get-bundles req "css")
+              (link-to-css-bundles req))
          (get-favicon-links req)
          (:page/head-elements page)
          [[:title (head-title (:powerpack/config req) (:page/title page))]])))
 
 (defn build-doc [req page body]
-  [:html (let [lang (or (:page/locale page)
-                        (-> req :powerpack/config :site/default-locale))]
-           (cond-> {:prefix "og: http://ogp.me/ns#"}
-             lang (assoc :lang (name lang))))
-   (get-head req page)
-   body])
+  (into [:html (let [lang (or (:page/locale page)
+                              (-> req :powerpack/config :site/default-locale))]
+                 (cond-> {:prefix "og: http://ogp.me/ns#"}
+                   lang (assoc :lang (name lang))))
+         (get-head req page)
+         body]
+        (->> (get-bundles req "js")
+             (link-to-js-bundles req))))
 
 (defn render-hiccup [req page body]
   (str "<!DOCTYPE html>"

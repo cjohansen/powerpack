@@ -11,7 +11,7 @@
        (filter #(str/starts-with? (:property (second %)) "og:"))))
 
 (deftest build-doc
-  (testing "Renders a head element"
+  (testing "Renders a reasonable document"
     (is (= (sut/build-doc {} {} [:h1 "Hello world"])
            [:html {:prefix "og: http://ogp.me/ns#"}
             [:head
@@ -20,6 +20,28 @@
              [:meta {:property "og:type", :content "article"}]
              [:title ""]]
             [:h1 "Hello world"]])))
+
+  (testing "Renders link and script tags"
+    (is (= (sut/build-doc {:optimus-assets [{:path "/source1.css"
+                                             :bundle "/styles.css"}
+                                            {:path "/source2.css"
+                                             :bundle "/styles.css"}
+                                            {:path "/source1.js"
+                                             :bundle "/app.js"}
+                                            {:path "/source2.js"
+                                             :bundle "/app.js"}]}
+                          {} [:h1 "Hello world"])
+           [:html {:prefix "og: http://ogp.me/ns#"}
+            [:head
+             [:meta {:charset "utf-8"}]
+             [:meta {:name "viewport", :content "width=device-width, initial-scale=1.0"}]
+             [:meta {:property "og:type", :content "article"}]
+             [:link {:href "/source1.css", :rel "stylesheet"}]
+             [:link {:href "/source2.css", :rel "stylesheet"}]
+             [:title ""]]
+            [:h1 "Hello world"]
+            [:script {:type "text/javascript", :src "/source1.js"}]
+            [:script {:type "text/javascript", :src "/source2.js"}]])))
 
   (testing "Includes lang attribute with default lang"
     (is (= (-> (sut/build-doc {:powerpack/config {:site/default-locale :nb}} {} [:h1 "Hello world"])
