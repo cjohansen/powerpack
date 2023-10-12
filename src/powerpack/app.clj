@@ -20,14 +20,21 @@
             [powerpack.web :as web]
             [prone.middleware :as prone]
             [ring.middleware.content-type :refer [wrap-content-type]]
-            [ring.middleware.params :refer [wrap-params]]))
+            [ring.middleware.params :refer [wrap-params]]
+            [ring.middleware.resource :refer [wrap-resource]]))
 
 (defn optimizations [assets _options]
   (-> assets
       optimizations/add-cache-busted-expires-headers))
 
+(defn wrap-dev-assets [handler config]
+  (if-let [dir (:powerpack/dev-assets-root-path config)]
+    (wrap-resource handler dir)
+    handler))
+
 (defn create-handler [{:keys [conn config] :as opts}]
   (-> (web/serve-pages opts)
+      (wrap-dev-assets config)
       (imagine/wrap-images (:imagine/config config))
       (optimus/wrap
        #(web/get-assets config)
