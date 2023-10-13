@@ -7,6 +7,7 @@
             [imagine.core :as imagine]
             [optimus.export :as export]
             [optimus.optimizations :as optimizations]
+            [powerpack.assets :as assets]
             [powerpack.db :as db]
             [powerpack.ingest :as ingest]
             [powerpack.web :as web]
@@ -62,7 +63,7 @@
                       create-ingest-tx
                       on-ingested] :as opt} & [{:keys [format]}]]
   (let [export-directory (or (:stasis/build-dir config) "build")
-        assets (optimize (web/get-assets config) {})
+        assets (optimize (assets/get-assets config) {})
         old-files (load-export-dir export-directory)
         request {:optimus-assets assets
                  :config config}

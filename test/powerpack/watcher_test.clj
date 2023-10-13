@@ -9,7 +9,7 @@
             {:powerpack/source-dirs ["src" "dev" "non-existent"]
              :powerpack/content-dir "content"
              :datomic/schema-file "dev-resources/schema.edn"})
-           ["src" "dev"])))
+           ["src" "dev" "dev-resources"])))
 
   (testing "Only watches the top-level distinct dirs"
     (is (= (sut/get-watch-paths
@@ -24,7 +24,8 @@
     (is (= (sut/get-app-event
             {:datomic/schema-file "dev-resources/schema.edn"}
             {:path (.toPath (io/file "dev-resources/schema.edn"))})
-           {:kind :powerpack/edited-schema})))
+           {:kind :powerpack/edited-schema
+            :action "reload"})))
 
   (testing "Edits content"
     (is (= (sut/get-app-event
@@ -35,7 +36,8 @@
              :path (.toPath (io/file "dev-resources/blog/sample.md"))})
            {:kind :powerpack/edited-content
             :type :modify
-            :path "blog/sample.md"})))
+            :path "blog/sample.md"
+            :action "reload"})))
 
   (testing "Respects content file suffixes"
     (is (= (sut/get-app-event
@@ -53,7 +55,8 @@
              :powerpack/source-dirs ["src" "dev"]}
             {:type :modify
              :path (.toPath (io/file "dev/rubberduck/core.clj"))})
-           {:kind :powerpack/edited-source})))
+           {:kind :powerpack/edited-source
+            :action "reload"})))
 
   (testing "Edits asset"
     (is (= (sut/get-app-event
@@ -68,7 +71,8 @@
              :path (.toPath (io/file "dev-resources/public/images/ducks.jpg"))})
            {:kind :powerpack/edited-asset
             :type :modify
-            :path "/images/ducks.jpg"})))
+            :path "/images/ducks.jpg"
+            :action "reload"})))
 
   (testing "Edits asset in bundle"
     (is (= (sut/get-app-event
@@ -79,9 +83,11 @@
              :powerpack/content-file-suffixes ["edn"]
              :optimus/bundles {"styles.css"
                                {:public-dir "public"
-                                :paths ["/styles/powerpack.css"]}}}
+                                :paths ["/styles/test.css"]}}}
             {:type :modify
-             :path (.toPath (io/file "dev-resources/public/styles/powerpack.css"))})
+             :path (.toPath (io/file "dev-resources/public/styles/test.css"))})
            {:kind :powerpack/edited-asset
+            :action "reload-css"
             :type :modify
-            :path "/styles/powerpack.css"}))))
+            :path "/styles/test.css"
+            :updatedPath "/styles/b8936d0bc201/test.css"}))))

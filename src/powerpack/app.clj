@@ -1,15 +1,16 @@
 (ns powerpack.app
   (:require [clojure.core.async :refer [<! chan close! go mult tap untap]]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.tools.namespace.repl :as repl]
             [imagine.core :as imagine]
             [integrant.core :as ig]
             [integrant.repl]
             [integrant.repl.state]
-            [optimus.optimizations :as optimizations]
             [optimus.prime :as optimus]
             [optimus.strategies :as strategies]
             [org.httpkit.server :as server]
+            [powerpack.assets :as assets]
             [powerpack.db :as db]
             [powerpack.error-logger :as errors]
             [powerpack.hud :as hud]
@@ -23,27 +24,28 @@
             [ring.middleware.params :refer [wrap-params]]
             [ring.middleware.resource :refer [wrap-resource]]))
 
-(defn optimizations [assets _options]
-  (-> assets
-      optimizations/add-cache-busted-expires-headers))
-
 (defn wrap-dev-assets [handler config]
   (if-let [dir (:powerpack/dev-assets-root-path config)]
     (wrap-resource handler dir)
     handler))
+
+(defn wrap-no-query-params [handler]
+  (fn [req]
+    (handler (update req :uri #(first (str/split % #"\?"))))))
 
 (defn create-handler [{:keys [conn config] :as opts}]
   (-> (web/serve-pages opts)
       (wrap-dev-assets config)
       (imagine/wrap-images (:imagine/config config))
       (optimus/wrap
-       #(web/get-assets config)
-       optimizations
+       #(assets/get-assets config)
+       assets/optimizations
        strategies/serve-live-assets
        {:assets-dir (first (:powerpack/resource-dirs config))})
       wrap-content-type
       web/wrap-utf-8
       (web/wrap-system {:config config :conn conn})
+      wrap-no-query-params
       (live-reload/wrap-live-reload opts)
       wrap-params))
 

@@ -43,6 +43,49 @@
             [:script {:type "text/javascript", :src "/source1.js"}]
             [:script {:type "text/javascript", :src "/source2.js"}]])))
 
+  (testing "Indicates original paths for non-concatenated bundles when live reload is active"
+    (is (= (->> (sut/build-doc
+                 {:powerpack/live-reload? true
+                  :optimus-assets [{:path "/source1.css"
+                                    :bundle "/styles.css"
+                                    :outdated true}
+                                   {:path "/source2.css"
+                                    :bundle "/styles.css"
+                                    :outdated true}
+                                   {:path "/styles/398036080389/source1.css"
+                                    :original-path "/source1.css"
+                                    :bundle "/styles.css"}
+                                   {:path "/styles/b8936d0bc201/source2.css"
+                                    :original-path "/source2.css"
+                                    :bundle "/styles.css"}]}
+                 {} [:h1 "Hello world"])
+                (tree-seq coll? identity)
+                (filter vector?)
+                (filter (comp #{:link} first)))
+           [[:link {:rel "stylesheet", :href "/styles/398036080389/source1.css", :path "/source1.css"}]
+            [:link {:rel "stylesheet", :href "/styles/b8936d0bc201/source2.css", :path "/source2.css"}]])))
+
+  (testing "Does not indicates original paths when live reload is not active"
+    (is (= (->> (sut/build-doc
+                 {:optimus-assets [{:path "/source1.css"
+                                    :bundle "/styles.css"
+                                    :outdated true}
+                                   {:path "/source2.css"
+                                    :bundle "/styles.css"
+                                    :outdated true}
+                                   {:path "/styles/398036080389/source1.css"
+                                    :original-path "/source1.css"
+                                    :bundle "/styles.css"}
+                                   {:path "/styles/b8936d0bc201/source2.css"
+                                    :original-path "/source2.css"
+                                    :bundle "/styles.css"}]}
+                 {} [:h1 "Hello world"])
+                (tree-seq coll? identity)
+                (filter vector?)
+                (filter (comp #{:link} first)))
+           [[:link {:rel "stylesheet", :href "/styles/398036080389/source1.css"}]
+            [:link {:rel "stylesheet", :href "/styles/b8936d0bc201/source2.css"}]])))
+
   (testing "Includes lang attribute with default lang"
     (is (= (-> (sut/build-doc {:powerpack/config {:site/default-locale :nb}} {} [:h1 "Hello world"])
                second

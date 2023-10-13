@@ -16,8 +16,8 @@
 
 (defn get-uri-hash [handler uri]
   (try
-    (get-page-hash (handler {:uri uri}))
-    (catch Exception e
+    (get-page-hash (handler {:uri uri :powerpack/live-reload? true}))
+    (catch Exception _e
       nil)))
 
 (defn create-watcher [{:keys [ch-ch-ch-changes hud]} handler uri body-hash]
@@ -104,16 +104,17 @@
                (str % styles)))))
 
 (defn handle-request [handler opt req]
-  (if (= (get-route (:config opt)) (:uri req))
-    (live-reload-handler opt handler req)
-    (let [response (handler req)]
-      (if (and (some->> (web/get-content-type response)
-                        (re-find #"html"))
-               (string? (:body response)))
-        (-> response
-            (inject-script (:config opt))
-            inject-css)
-        response))))
+  (let [req (assoc req :powerpack/live-reload? true)]
+    (if (= (get-route (:config opt)) (:uri req))
+      (live-reload-handler opt handler req)
+      (let [response (handler req)]
+        (if (and (some->> (web/get-content-type response)
+                          (re-find #"html"))
+                 (string? (:body response)))
+          (-> response
+              (inject-script (:config opt))
+              inject-css)
+          response)))))
 
 (defn wrap-live-reload [handler opt]
   (fn [req]

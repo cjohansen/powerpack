@@ -6,6 +6,12 @@
     powerpack.innerHTML = markup;
   }
 
+  function reloadCSS(oldPath, newPath) {
+    Array.from(document.querySelectorAll("link"))
+      .filter(link => link.getAttribute("path") === oldPath)
+      .map(link => link.href = newPath);
+  }
+
   function connect() {
     var source = new EventSource("{{route}}?hash={{hash}}&uri=" + location.pathname);
 
@@ -16,6 +22,8 @@
 
         if (payload.action == "reload") {
           location.reload(true);
+        } else if (payload.action == "reload-css") {
+          reloadCSS(payload.path, payload.updatedPath);
         } else if (payload.action == "render-hud") {
           renderHud(payload);
         }

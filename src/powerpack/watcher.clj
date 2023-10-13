@@ -2,6 +2,7 @@
   (:require [clojure.core.async :refer [put!]]
             [clojure.string :as str]
             [nextjournal.beholder :as beholder]
+            [powerpack.assets :as assets]
             [powerpack.files :as files]
             [powerpack.logger :as log]))
 
@@ -89,10 +90,14 @@
        :action "reload"}
 
       (asset-file? config file)
-      {:kind :powerpack/edited-asset
-       :action "reload"
-       :type type
-       :path (get-asset-path config (files/get-absolute-path file))})))
+      (let [path (get-asset-path config (files/get-absolute-path file))]
+        (cond-> {:kind :powerpack/edited-asset
+                 :action "reload"
+                 :type type
+                 :path path}
+          (re-find #"\.css$" path)
+          (merge {:action "reload-css"
+                  :updatedPath (assets/find-asset-path (assets/get-assets config) path)}))))))
 
 (defn start-watching! [{:keys [config fs-events]}]
   (->> (get-watch-paths config)

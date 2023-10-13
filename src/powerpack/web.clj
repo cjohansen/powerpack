@@ -6,7 +6,6 @@
             [datomic-type-extensions.api :as d]
             [html5-walker.core :as html5-walker]
             [imagine.core :as imagine]
-            [optimus.assets :as assets]
             [optimus.link :as link]))
 
 (defn get-content-type-k [response]
@@ -34,15 +33,6 @@
   send UTF-8."
   [handler]
   (fn [req] (-> req handler make-utf-8)))
-
-(defn get-assets [config]
-  (concat
-   (mapcat (fn [{:keys [public-dir paths]}]
-             (assets/load-assets (or public-dir "public") paths))
-           (:optimus/assets config))
-   (mapcat (fn [[bundle {:keys [public-dir paths]}]]
-             (assets/load-bundle (or public-dir "public") bundle paths))
-           (:optimus/bundles config))))
 
 (defn optimize-asset-url [req src]
   (try
@@ -218,7 +208,8 @@
                     (assoc :req/uri (:uri req))
                     (assoc :powerpack/config (:config req))
                     (assoc :app/db (:db req))
-                    (assoc :optimus-assets (:optimus-assets req)))]
+                    (assoc :optimus-assets (:optimus-assets req))
+                    (merge (select-keys req [:powerpack/live-reload?])))]
     (-> (if-let [page (d/entity (:db req) [:page/uri (:uri req)])]
           (render-page opt context page)
           (render-error 404 "Page not found"))

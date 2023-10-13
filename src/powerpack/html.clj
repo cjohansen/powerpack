@@ -79,12 +79,20 @@
        seq))
 
 (defn link-to-css-bundles [req bundles]
-  (for [path (link/bundle-paths req bundles)]
-    [:link {:rel "stylesheet" :href path}]))
+  (for [bundle-path (link/bundle-paths req bundles)]
+    (let [original-path (when (:powerpack/live-reload? req)
+                          (->> (:optimus-assets req)
+                               (filter (comp #{bundle-path} :path))
+                               first
+                               :original-path))]
+      [:link (cond-> {:rel "stylesheet"
+                      :href bundle-path}
+               (seq original-path)
+               (assoc :path original-path))])))
 
 (defn link-to-js-bundles [req bundles]
-  (for [path (link/bundle-paths req bundles)]
-    [:script {:type "text/javascript" :src path}]))
+  (for [bundle-path (link/bundle-paths req bundles)]
+    [:script {:type "text/javascript" :src bundle-path}]))
 
 (defn get-head [req page]
   (into [:head]
