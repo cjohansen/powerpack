@@ -23,7 +23,7 @@
                      {:public-dir "public"
                       :paths ["/styles/powerpack.css"]}}
 
-   :powerpack.server/port 5051
+   :powerpack/port 5051
 
    :imagine/config {:prefix "image-assets"
                     :resource-path "public"

@@ -91,7 +91,7 @@
         prone/wrap-exceptions)))
 
 (defmethod ig/init-key :app/server [_ {:keys [handler config]}]
-  (let [port (or (:powerpack.server/port config) 5051)]
+  (let [port (or (:powerpack/port config) 5051)]
     (with-timing-info :info (str "Started server on port " port)
       (server/run-server handler {:port port}))))
 

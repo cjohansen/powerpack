@@ -95,7 +95,7 @@ The following is an example of setting up a page with Powerpack:
                       :paths ["/css/blog.css"
                               "/css/pygments.css"]}}
 
-   :powerpack.server/port 5051
+   :powerpack/port 5051
 
    :imagine/config {:prefix "image-assets"
                     :resource-path "public"
