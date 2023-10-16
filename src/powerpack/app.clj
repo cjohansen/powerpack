@@ -36,7 +36,6 @@
        assets/optimizations
        strategies/serve-live-assets-autorefresh
        {:assets-dirs (:powerpack/resource-dirs config)})
-      web/wrap-content-type
       web/wrap-utf-8
       (web/wrap-system {:config config :conn conn})
       (live-reload/wrap-live-reload opts)

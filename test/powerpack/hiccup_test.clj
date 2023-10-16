@@ -194,3 +194,15 @@
            [[:meta {:property "og:image", :content "/vcard-small/images/ducks.jpg"}]
             [:meta {:property "og:image:width", :content "184"}]
             [:meta {:property "og:image:height", :content "184"}]]))))
+
+(deftest hiccup?-test
+  (testing "Recognizes hiccup"
+    (is (sut/hiccup? [:html]))
+    (is (sut/hiccup? [:a {:href "#"} "Click"]))
+    (is (sut/hiccup? [:h1 "Hello"]))
+    (is (sut/hiccup? [:div {:style {:border "1px solid"}}
+                      [:h1 "Hello"]]))
+    (is (not (sut/hiccup? {:style {:border "1px solid"}})))
+    (is (not (sut/hiccup? "1px solid")))
+    (is (sut/hiccup? (list [:h1 "Hello"]
+                           [:p "World"])))))

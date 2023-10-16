@@ -117,6 +117,15 @@
          (->> (get-bundles req "js")
               (link-to-js-bundles req)))))
 
-(defn ^:export render-html [req page & body]
-  (str "<!DOCTYPE html>"
-       (dumdom/render (apply build-doc req page body))))
+(defn ^:export render-html [hiccup]
+  (str (when (= :html (first hiccup))
+         "<!DOCTYPE html>")
+       (dumdom/render hiccup)))
+
+(defn hiccup? [data]
+  (or (and (vector? data)
+           (keyword? (first data))
+           (not (keyword? (second data))))
+      (and (coll? data)
+           (not (map? data))
+           (every? hiccup? data))))

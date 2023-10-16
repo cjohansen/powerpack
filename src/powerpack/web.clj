@@ -7,6 +7,7 @@
             [html5-walker.core :as html5-walker]
             [imagine.core :as imagine]
             [optimus.link :as link]
+            [powerpack.hiccup :as hiccup]
             [ring.middleware.content-type :as content-type]))
 
 (defn get-content-type-k [response]
@@ -143,12 +144,16 @@
    :json "application/json"
    :html "text/html"})
 
-(defn wrap-content-type [handler]
-  (fn [req]
-    (let [res (handler req)]
-      (if (and (:content-type req) (empty? (get-content-type res)))
-        (assoc-in res [:headers "Content-Type"] (content-types (:content-type req)))
-        (content-type/content-type-response res req)))))
+(defn ensure-content-type [req res]
+  (let [content-type (get-content-type res)]
+    (or
+     (when (and (:content-type res) (empty? content-type))
+       (-> res
+           (dissoc :content-type)
+           (assoc-in [:headers "Content-Type"] (content-types (:content-type res)))))
+     (when (and (string? (:body res)) (empty? content-type))
+       (assoc-in res [:headers "Content-Type"] "text/html"))
+     (content-type/content-type-response res req))))
 
 (defn prepare-response [response]
   (if (string? (:body response))
@@ -157,6 +162,7 @@
       (cond
         (:content-type response)
         (case (:content-type response)
+          :html (update response :body hiccup/render-html)
           :json (update response :body json/write-str)
           :edn (update response :body pr-str)
           (throw (ex-info (str "Unknown :content-type " (:content-type response))
@@ -166,6 +172,12 @@
              (re-find #"application/json" content-type))
         (update response :body json/write-str)
 
+        (or (and (nil? content-type)
+                 (hiccup/hiccup? (:body response)))
+            (and (string? content-type)
+                 (re-find #"text/html" content-type)))
+        (update response :body hiccup/render-html)
+
         (or (nil? content-type)
             (and (string? content-type)
                  (re-find #"application/edn" content-type)))
@@ -174,23 +186,31 @@
         :else
         response))))
 
-(defn get-response-map [rendered]
-  (cond
-    (and (map? rendered)
-         (or (:status rendered)
-             (:headers rendered)
-             (:body rendered)))
-    (prepare-response rendered)
+(defn get-response-map [req rendered]
+  (merge
+   {:status 200}
+   (->> (cond
+          (and (map? rendered)
+               (or (:status rendered)
+                   (:headers rendered)
+                   (:body rendered)))
+          (prepare-response rendered)
 
-    (string? rendered)
-    {:status 200
-     :headers {"Content-Type" "text/html"}
-     :body rendered}
+          (string? rendered)
+          {:status 200
+           :headers {"Content-Type" "text/html"}
+           :body rendered}
 
-    :else
-    {:status 200
-     :headers {"Content-Type" "application/edn"}
-     :body (pr-str rendered)}))
+          (hiccup/hiccup? rendered)
+          {:status 200
+           :headers {"Content-Type" "text/html"}
+           :body (hiccup/render-html rendered)}
+
+          :else
+          {:status 200
+           :headers {"Content-Type" "application/edn"}
+           :body (pr-str rendered)})
+        (ensure-content-type req))))
 
 (defn render-error [req status message]
   (if (re-find #"\.js$" (:uri req))
@@ -207,7 +227,7 @@
 
 (defn render-page [{:keys [fns error-events]} context page]
   (try
-    (let [res (get-response-map ((:render-page fns) context page))]
+    (let [res (get-response-map context ((:render-page fns) context page))]
       (put! (:ch error-events)
             {:id [::render-page (:uri context)]
              :resolved? true})
