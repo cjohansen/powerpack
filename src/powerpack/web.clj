@@ -222,11 +222,11 @@
   (fn [req]
     (handle-request req opt)))
 
-(defn get-pages [db req opt]
+(defn get-pages [db context opt]
   (into {}
         (for [uri (d/q '[:find [?uri ...] :where [_ :page/uri ?uri]] db)]
           (try
-            [uri (:body (handle-request (assoc req :uri uri) opt))]
+            [uri (:body (handle-request (assoc context :uri uri) opt))]
             (catch Exception e
               (throw (ex-info (str "Unable to render page " uri)
                               {:uri uri}
