@@ -3,8 +3,7 @@
             [integrant.core :as ig]
             [powerpack.app :as app]
             [powerpack.export :as export]
-            [powerpack.highlight :as highlight]
-            [powerpack.hiccup :as hiccup]))
+            [powerpack.highlight :as highlight]))
 
 (def config
   {:site/default-locale :en
@@ -47,18 +46,17 @@
     {:status 200
      :content-type (:page/response-type page)
      :body {:build-date (:date context)}}
-    (html/build-doc
-     context
-     page
-     [:h1 (:page/title page)]
-     [:p "Hi!"]
-     ;;(throw (ex-info "Oh noes!" {}))
-     (when-let [published (:blog-post/published page)]
-       [:p "Published " (str published)])
-     [:pre [:code {:class "language-clj"}
-            "(prn 'Hello :there)"]]
-     [:img {:src "/vcard-small/images/ducks.jpg"}]
-     [:script {:src "/dev-debug.js"}])))
+    [:html
+     [:body
+      [:h1 (:page/title page)]
+      [:p "Hi!"]
+      ;;(throw (ex-info "Oh noes!" {}))
+      (when-let [published (:blog-post/published page)]
+        [:p "Published " (str published)])
+      [:pre [:code {:class "language-clj"}
+             "(prn 'Hello :there)"]]
+      [:img {:src "/vcard-small/images/ducks.jpg"}]
+      [:script {:src "/dev-debug.js"}]]]))
 
 (def app
   (-> {:config config

@@ -74,7 +74,6 @@ The following is an example of setting up a page with Powerpack:
 (ns myblog.core
   (:require [powerpack.app :as app]
             [powerpack.export :as export]
-            [powerpack.html :as html]
             [powerpack.markdown :as md]))
 
 (def config
@@ -140,11 +139,12 @@ The following is an example of setting up a page with Powerpack:
   datas)
 
 (defn render-page [req page]
-  (html/render-hiccup req page
-   [:div
-    [:h1 (:page/title page)]
-    [:img {:src "/vcard-small/images/christian.jpg"}]
-    (md/html (:page/body page))]))
+  [:html
+   [:body
+    [:div
+     [:h1 (:page/title page)]
+     [:img {:src "/vcard-small/images/christian.jpg"}]
+     (md/render-html (:page/body page))]]])
 
 (comment
 
