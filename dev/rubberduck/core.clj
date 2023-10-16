@@ -49,10 +49,10 @@
     [:html
      [:body
       [:h1 (:page/title page)]
-      [:p "Hi!"]
+      [:p [:i18n ::greeting]]
       ;;(throw (ex-info "Oh noes!" {}))
       (when-let [published (:blog-post/published page)]
-        [:p "Published " (str published)])
+        [:p [:i18n ::published {:published published}]])
       [:pre [:code {:class "language-clj"}
              "(prn 'Hello :there)"]]
       [:img {:src "/vcard-small/images/ducks.jpg"}]
@@ -60,6 +60,11 @@
 
 (def app
   (-> {:config config
+       :i18n/dictionaries
+       {:nb {::greeting "Heisann!"
+             ::published [:fn/str "Publisert {{:published}}"]}
+        :en {::greeting "Hi there!"
+             ::published [:fn/str "Published {{:published}}"]}}
        :create-ingest-tx #'create-tx
        :render-page #'render-page
        :get-context (fn [] {:date (str (java.time.LocalDate/now))})

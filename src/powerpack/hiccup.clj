@@ -4,6 +4,7 @@
             [dumdom.string :as dumdom]
             [fivetonine.collage.util :as util]
             [imagine.core :as imagine]
+            [m1p.core :as m1p]
             [optimus.link :as link]))
 
 (defn escape-str [s]
@@ -182,6 +183,15 @@
   (->> (ensure-css-bundles context hiccup)
        (ensure-js-bundles context)))
 
+(defn interpolate-i18n [context page hiccup]
+  (let [locale (or (:page/locale page)
+                   (-> context :config :i18n/default-locale))]
+    (cond-> hiccup
+      (:i18n/dictionaries context)
+      (m1p/interpolate
+       {:dictionaries
+        {:i18n (get (:i18n/dictionaries context) locale)}}))))
+
 (defn embellish-document [context page hiccup]
   (->> hiccup
        (set-lang context page)
@@ -192,7 +202,8 @@
        ensure-viewport
        (ensure-open-graphs-metas context page)
        (ensure-favicon-links context)
-       (ensure-bundles context)))
+       (ensure-bundles context)
+       (interpolate-i18n context page)))
 
 (defn build-doc [context page & body]
   (embellish-document context page (into [:html] body)))

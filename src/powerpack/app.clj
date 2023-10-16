@@ -27,7 +27,7 @@
     (wrap-resource handler dir)
     handler))
 
-(defn create-handler [{:keys [conn config] :as opts}]
+(defn create-handler [{:keys [config] :as opts}]
   (-> (web/serve-pages opts)
       (wrap-dev-assets config)
       (imagine/wrap-images (:imagine/config config))
@@ -37,7 +37,7 @@
        strategies/serve-live-assets-autorefresh
        {:assets-dirs (:powerpack/resource-dirs config)})
       web/wrap-utf-8
-      (web/wrap-system {:config config :conn conn})
+      (web/wrap-system opts)
       (live-reload/wrap-live-reload opts)
       wrap-params))
 

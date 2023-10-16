@@ -1,4 +1,4 @@
-* Todo [5/12]
+* Todo [6/12]
 ** TODO Trigger live reloads from C-x C-e
 ** DONE Link to Prone when rendering exceptions occur
 ** TODO Add live-reload to the Prone page
@@ -10,7 +10,7 @@
 ** TODO Evaluate a source namespace when it changes (require namespace with force)
 ** DONE asset-dirs i Optimus
 ** DONE Separate hiccup->string from the HTML namespace, do it in a separate middleware
-** TODO Add a m1p middleware
+** DONE Add a m1p middleware
 * Documentation [0/2]
 ** TODO dev vs build (different configs, where to put it, etc)
 ** TODO The html tools place CSS bundles in head and JS bundles at the end of body (no assets)

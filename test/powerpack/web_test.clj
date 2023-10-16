@@ -232,4 +232,14 @@
                (qsa :body))
            #{[:body
               [:script {:type "text/javascript" :src "/source1.js"}]
-              [:script {:type "text/javascript" :src "/source2.js"}]]}))))
+              [:script {:type "text/javascript" :src "/source2.js"}]]})))
+
+  (testing "Translates content with m1p"
+    (is (= (-> (sut/embellish-hiccup
+                {:uri "/"
+                 :i18n/dictionaries {:nb {::greeting "Hei, verden"}
+                                     :en {::greeting "Hello world"}}}
+                {:page/locale :nb}
+                [:html [:body [:h1 [:i18n ::greeting]]]])
+               last)
+           [:body [:h1 "Hei, verden"]]))))

@@ -233,7 +233,8 @@
   (let [context (-> (when (ifn? (:get-context fns))
                       ((:get-context fns)))
                     (assoc :uri (:uri req))
-                    (assoc :powerpack/config (:config req))
+                    (assoc :powerpack/config (:config opt))
+                    (assoc :i18n/dictionaries (:i18n/dictionaries fns)) ;; 😬
                     (assoc :app/db (:db req))
                     (assoc :optimus-assets (:optimus-assets req))
                     (merge (select-keys req [:powerpack/live-reload?])))]
@@ -253,15 +254,12 @@
   (into {}
         (for [uri (d/q '[:find [?uri ...] :where [_ :page/uri ?uri]] db)]
           (try
-            [uri (:body (handle-request (assoc context :uri uri) opt))]
+            [uri (:body (handle-request (assoc context :uri uri :db db) opt))]
             (catch Exception e
               (throw (ex-info (str "Unable to render page " uri)
                               {:uri uri}
                               e)))))))
 
-(defn wrap-system [handler {:keys [conn config]}]
+(defn wrap-system [handler {:keys [conn]}]
   (fn [req]
-    (-> req
-        (assoc :config config)
-        (assoc :db (d/db conn))
-        handler)))
+    (handler (assoc req :db (d/db conn)))))

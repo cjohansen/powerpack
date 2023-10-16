@@ -4,6 +4,7 @@
         org.clojure/data.json {:mvn/version "2.4.0"}
         cjohansen/dumdom {:mvn/version "2023.04.26"}
         cjohansen/imagine {:mvn/version "2023.10.11"}
+        no.cjohansen/m1p {:mvn/version "2022.11.15"}
         clygments/clygments {:mvn/version "2.0.2"}
         com.datomic/peer {:mvn/version "1.0.6726"}
         com.nextjournal/beholder {:mvn/version "1.0.2"}
