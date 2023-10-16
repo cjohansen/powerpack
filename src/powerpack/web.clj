@@ -145,72 +145,55 @@
    :html "text/html"})
 
 (defn ensure-content-type [req res]
-  (let [content-type (get-content-type res)]
-    (or
-     (when (and (:content-type res) (empty? content-type))
-       (-> res
-           (dissoc :content-type)
-           (assoc-in [:headers "Content-Type"] (content-types (:content-type res)))))
-     (when (and (string? (:body res)) (empty? content-type))
-       (assoc-in res [:headers "Content-Type"] "text/html"))
-     (content-type/content-type-response res req))))
+  (-> (let [content-type (get-content-type res)]
+        (or
+         (when (and (:content-type res) (empty? content-type))
+           (-> res
+               (assoc-in [:headers "Content-Type"] (content-types (:content-type res)))))
+         (when (and (string? (:body res)) (empty? content-type))
+           (assoc-in res [:headers "Content-Type"] "text/html"))
+         (content-type/content-type-response res req)))
+      (dissoc :content-type)))
 
 (defn prepare-response [response]
-  (if (string? (:body response))
-    response
-    (let [content-type (get-content-type response)]
-      (cond
-        (:content-type response)
-        (case (:content-type response)
-          :html (update response :body hiccup/render-html)
-          :json (update response :body json/write-str)
-          :edn (update response :body pr-str)
-          (throw (ex-info (str "Unknown :content-type " (:content-type response))
-                          {:response response})))
+  (let [content-type (get-content-type response)]
+    (cond
+      (string? (:body response))
+      response
 
-        (and (string? content-type)
-             (re-find #"application/json" content-type))
-        (update response :body json/write-str)
+      (or (and (nil? content-type)
+               (hiccup/hiccup? (:body response)))
+          (and (string? content-type)
+               (re-find #"text/html" content-type)))
+      (update response :body hiccup/render-html)
 
-        (or (and (nil? content-type)
-                 (hiccup/hiccup? (:body response)))
-            (and (string? content-type)
-                 (re-find #"text/html" content-type)))
-        (update response :body hiccup/render-html)
+      (or (= :json (:content-type response))
+          (and (string? content-type)
+               (re-find #"application/json" content-type)))
+      (-> response
+          (update :body json/write-str)
+          (assoc :content-type :json))
 
-        (or (nil? content-type)
-            (and (string? content-type)
-                 (re-find #"application/edn" content-type)))
-        (update response :body pr-str)
+      (or (contains? #{nil :edn} (:content-type response))
+          (and (string? content-type)
+               (re-find #"application/edn" content-type)))
+      (-> response
+          (update :body pr-str)
+          (assoc :content-type :edn))
 
-        :else
-        response))))
+      :else
+      response)))
 
 (defn get-response-map [req rendered]
-  (merge
-   {:status 200}
-   (->> (cond
-          (and (map? rendered)
-               (or (:status rendered)
-                   (:headers rendered)
-                   (:body rendered)))
-          (prepare-response rendered)
-
-          (string? rendered)
-          {:status 200
-           :headers {"Content-Type" "text/html"}
-           :body rendered}
-
-          (hiccup/hiccup? rendered)
-          {:status 200
-           :headers {"Content-Type" "text/html"}
-           :body (hiccup/render-html rendered)}
-
-          :else
-          {:status 200
-           :headers {"Content-Type" "application/edn"}
-           :body (pr-str rendered)})
-        (ensure-content-type req))))
+  (->> (if (and (map? rendered)
+                (or (:status rendered)
+                    (:headers rendered)
+                    (:body rendered)))
+         rendered
+         {:body rendered})
+       prepare-response
+       (ensure-content-type req)
+       (merge {:status 200})))
 
 (defn render-error [req status message]
   (if (re-find #"\.js$" (:uri req))
