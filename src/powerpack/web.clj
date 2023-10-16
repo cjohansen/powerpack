@@ -190,22 +190,22 @@
   (try
     (let [res (get-response-map ((:render-page fns) context page))]
       (put! (:ch error-events)
-            {:id [::render-page (:req/uri context)]
+            {:id [::render-page (:uri context)]
              :resolved? true})
       res)
     (catch Exception e
       (put! (:ch error-events)
             {:exception e
-             :uri (:req/uri context)
-             :message (str "Failed to render page " (:req/uri context))
+             :uri (:uri context)
+             :message (str "Failed to render page " (:uri context))
              :kind ::render-page
-             :id [::render-page (:req/uri context)]})
+             :id [::render-page (:uri context)]})
       (throw e))))
 
 (defn handle-request [req {:keys [fns] :as opt}]
   (let [context (-> (when (ifn? (:get-context fns))
                       ((:get-context fns)))
-                    (assoc :req/uri (:uri req))
+                    (assoc :uri (:uri req))
                     (assoc :powerpack/config (:config req))
                     (assoc :app/db (:db req))
                     (assoc :optimus-assets (:optimus-assets req))
