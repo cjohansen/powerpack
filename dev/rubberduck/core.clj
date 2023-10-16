@@ -47,19 +47,18 @@
     {:status 200
      :content-type (:page/response-type page)
      :body {:build-date (:date context)}}
-    (html/render-hiccup
+    (html/build-doc
      context
      page
-     [:div
-      [:h1 (:page/title page)]
-      [:p "Hi!"]
-      ;;(throw (ex-info "Oh noes!" {}))
-      (when-let [published (:blog-post/published page)]
-        [:p "Published " (str published)])
-      [:pre [:code {:class "language-clj"}
-             "(prn 'Hello :there)"]]
-      [:img {:src "/vcard-small/images/ducks.jpg"}]
-      [:script {:src "/dev-debug.js"}]])))
+     [:h1 (:page/title page)]
+     [:p "Hi!"]
+     ;;(throw (ex-info "Oh noes!" {}))
+     (when-let [published (:blog-post/published page)]
+       [:p "Published " (str published)])
+     [:pre [:code {:class "language-clj"}
+            "(prn 'Hello :there)"]]
+     [:img {:src "/vcard-small/images/ducks.jpg"}]
+     [:script {:src "/dev-debug.js"}])))
 
 (def app
   (-> {:config config

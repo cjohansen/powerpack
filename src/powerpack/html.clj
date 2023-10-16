@@ -106,16 +106,17 @@
          (:page/head-elements page)
          [[:title (head-title (:powerpack/config req) (:page/title page))]])))
 
-(defn build-doc [req page body]
+(defn build-doc [req page & body]
   (into [:html (let [lang (or (:page/locale page)
                               (-> req :powerpack/config :site/default-locale))]
                  (cond-> {:prefix "og: http://ogp.me/ns#"}
                    lang (assoc :lang (name lang))))
-         (get-head req page)
-         body]
-        (->> (get-bundles req "js")
-             (link-to-js-bundles req))))
+         (get-head req page)]
+        (concat
+         body
+         (->> (get-bundles req "js")
+              (link-to-js-bundles req)))))
 
-(defn render-hiccup [req page body]
+(defn ^:export render-hiccup [req page & body]
   (str "<!DOCTYPE html>"
-       (dumdom/render (build-doc req page body))))
+       (dumdom/render (apply build-doc req page body))))
