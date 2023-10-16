@@ -1,8 +1,8 @@
-* Todo [1/12]
+* Todo [2/12]
 ** TODO Trigger live reloads from C-x C-e
 ** DONE Link to Prone when rendering exceptions occur
 ** TODO Add live-reload to the Prone page
-** TODO Set proper content-type header when using :content-type
+** DONE Set proper content-type header when using :content-type
 ** TODO Fail the export when using assets that can't be found (use a specific error for dev assets)
 ** TODO Add a link checker
 ** TODO Run alert from the 404 response for JS requests

@@ -6,7 +6,8 @@
             [datomic-type-extensions.api :as d]
             [html5-walker.core :as html5-walker]
             [imagine.core :as imagine]
-            [optimus.link :as link]))
+            [optimus.link :as link]
+            [ring.middleware.content-type :as content-type]))
 
 (defn get-content-type-k [response]
   (or (->> (keys (:headers response))
@@ -136,6 +137,18 @@
     (some-> (get-content-type response)
             (str/starts-with? "text/html"))
     (update :body tweak-page-markup context post-processors)))
+
+(def content-types
+  {:edn "application/edn"
+   :json "application/json"
+   :html "text/html"})
+
+(defn wrap-content-type [handler]
+  (fn [req]
+    (let [res (handler req)]
+      (if (and (:content-type req) (empty? (get-content-type res)))
+        (assoc-in res [:headers "Content-Type"] (content-types (:content-type req)))
+        (content-type/content-type-response res req)))))
 
 (defn prepare-response [response]
   (if (string? (:body response))

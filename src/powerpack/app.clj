@@ -1,7 +1,6 @@
 (ns powerpack.app
   (:require [clojure.core.async :refer [<! chan close! go mult tap untap]]
             [clojure.java.io :as io]
-            [clojure.string :as str]
             [clojure.tools.namespace.repl :as repl]
             [imagine.core :as imagine]
             [integrant.core :as ig]
@@ -20,7 +19,6 @@
             [powerpack.watcher :as watcher]
             [powerpack.web :as web]
             [prone.middleware :as prone]
-            [ring.middleware.content-type :refer [wrap-content-type]]
             [ring.middleware.params :refer [wrap-params]]
             [ring.middleware.resource :refer [wrap-resource]]))
 
@@ -38,7 +36,7 @@
        assets/optimizations
        strategies/serve-live-assets
        {:assets-dir (first (:powerpack/resource-dirs config))})
-      wrap-content-type
+      web/wrap-content-type
       web/wrap-utf-8
       (web/wrap-system {:config config :conn conn})
       (live-reload/wrap-live-reload opts)
