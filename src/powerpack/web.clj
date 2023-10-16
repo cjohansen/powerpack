@@ -155,7 +155,12 @@
          (content-type/content-type-response res req)))
       (dissoc :content-type)))
 
-(defn prepare-response [response]
+(defn embellish-hiccup [context page hiccup]
+  (cond->> hiccup
+    (= :html (first hiccup))
+    (hiccup/embellish-document context page)))
+
+(defn prepare-response [context page response]
   (let [content-type (get-content-type response)]
     (cond
       (string? (:body response))
@@ -165,7 +170,7 @@
                (hiccup/hiccup? (:body response)))
           (and (string? content-type)
                (re-find #"text/html" content-type)))
-      (update response :body hiccup/render-html)
+      (update response :body (comp hiccup/render-html #(embellish-hiccup context page %)))
 
       (or (= :json (:content-type response))
           (and (string? content-type)
@@ -184,14 +189,14 @@
       :else
       response)))
 
-(defn get-response-map [req rendered]
+(defn get-response-map [req page rendered]
   (->> (if (and (map? rendered)
                 (or (:status rendered)
                     (:headers rendered)
                     (:body rendered)))
          rendered
          {:body rendered})
-       prepare-response
+       (prepare-response req page)
        (ensure-content-type req)
        (merge {:status 200})))
 
@@ -210,7 +215,7 @@
 
 (defn render-page [{:keys [fns error-events]} context page]
   (try
-    (let [res (get-response-map context ((:render-page fns) context page))]
+    (let [res (get-response-map context page ((:render-page fns) context page))]
       (put! (:ch error-events)
             {:id [::render-page (:uri context)]
              :resolved? true})

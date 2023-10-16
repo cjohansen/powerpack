@@ -1,4 +1,4 @@
-* Todo [4/12]
+* Todo [5/12]
 ** TODO Trigger live reloads from C-x C-e
 ** DONE Link to Prone when rendering exceptions occur
 ** TODO Add live-reload to the Prone page
@@ -6,10 +6,10 @@
 ** TODO Fail the export when using assets that can't be found (use a specific error for dev assets)
 ** TODO Add a link checker
 ** DONE Run alert from the 404 response for JS requests
-** TODO Valider: {:headers {:content-type "application/edn"} :body (index/build-index db (:page/locale page))}
+** TODO Validate non-string headers: {:headers {:content-type "application/edn"} :body (index/build-index db (:page/locale page))}
 ** TODO Evaluate a source namespace when it changes (require namespace with force)
 ** DONE asset-dirs i Optimus
-** TODO Separate hiccup->string from the HTML namespace, do it in a separate middleware
+** DONE Separate hiccup->string from the HTML namespace, do it in a separate middleware
 ** TODO Add a m1p middleware
 * Documentation [0/2]
 ** TODO dev vs build (different configs, where to put it, etc)

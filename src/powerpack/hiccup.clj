@@ -39,9 +39,7 @@
 
 (defn get-open-graph-metas [page config]
   (->> (concat
-        [{:property "og:type"
-          :content "article"}
-         (when-let [description (:open-graph/description page)]
+        [(when-let [description (:open-graph/description page)]
            {:property "og:description"
             :content (-> description
                          (truncate-str 200)
@@ -94,28 +92,110 @@
   (for [bundle-path (link/bundle-paths req bundles)]
     [:script {:type "text/javascript" :src bundle-path}]))
 
-(defn get-head [req page]
-  (into [:head]
-        (concat
-         [[:meta {:charset "utf-8"}]
-          [:meta {:name "viewport" :content "width=device-width, initial-scale=1.0"}]]
-         (get-open-graph-metas page (:powerpack/config req))
-         (->> (get-bundles req "css")
-              (link-to-css-bundles req))
-         (get-favicon-links req)
-         (:page/head-elements page)
-         [[:title (head-title (:powerpack/config req) (:page/title page))]])))
+(defn format-title [context page]
+  (when-let [title (not-empty (head-title (:powerpack/config context) (:page/title page)))]
+    [:title title]))
 
-(defn build-doc [req page & body]
-  (into [:html (let [lang (or (:page/locale page)
-                              (-> req :powerpack/config :site/default-locale))]
-                 (cond-> {:prefix "og: http://ogp.me/ns#"}
-                   lang (assoc :lang (name lang))))
-         (get-head req page)]
-        (concat
-         body
-         (->> (get-bundles req "js")
-              (link-to-js-bundles req)))))
+(defn set-attribute [hiccup k v]
+  (if (map? (second hiccup))
+    (assoc-in hiccup [1 k] v)
+    (into [(first hiccup) {k v}] (rest hiccup))))
+
+(defn set-lang [context page hiccup]
+  (let [locale (or (:page/locale page)
+                 (-> context :powerpack/config :site/default-locale))]
+    (cond-> hiccup
+      (and locale (not (contains? (second hiccup) :lang)))
+      (set-attribute :lang (name locale)))))
+
+(defn set-og-prefix [hiccup]
+  (cond-> hiccup
+    (not (contains? (second hiccup) :prefix))
+    (set-attribute :prefix "og: http://ogp.me/ns#")))
+
+(defn ensure-head [hiccup]
+  (let [n (if (map? (second hiccup)) 2 1)]
+    (if (= :head (get-in hiccup [n 0]))
+      hiccup
+      (into (conj (vec (take n hiccup)) [:head]) (drop n hiccup)))))
+
+(defn add-to-head [hiccup & elements]
+  (update hiccup 2 into (remove empty? elements)))
+
+(defn add-to-body [hiccup & elements]
+  (if (= :body (first (last hiccup)))
+    (update hiccup (dec (count hiccup)) into elements)
+    (into hiccup elements)))
+
+(defn ensure-title [context page hiccup]
+  (if (->> (tree-seq coll? identity hiccup)
+           (filter vector?)
+           (filter (comp #{:title} first))
+           empty?)
+    (add-to-head hiccup (format-title context page))
+    hiccup))
+
+(defn get-tags [hiccup tag]
+  (->> (tree-seq coll? identity hiccup)
+       (filter vector?)
+       (filter (comp #{tag} first))))
+
+(defn ensure-utf8 [hiccup]
+  (cond-> hiccup
+    (->> (get-tags hiccup :meta)
+         (filter (comp :charset second))
+         empty?)
+    (add-to-head [:meta {:charset "utf-8"}])))
+
+(defn ensure-viewport [hiccup]
+  (cond-> hiccup
+    (->> (get-tags hiccup :meta)
+         (filter (comp #{"viewport"} :name second))
+         empty?)
+    (add-to-head [:meta {:name "viewport" :content "width=device-width, initial-scale=1.0"}])))
+
+(defn ensure-open-graphs-metas [context page hiccup]
+  (let [og-property (comp :property second)
+        existing (set (map og-property (get-tags hiccup :meta)))]
+    (->> (get-open-graph-metas page (:powerpack/config context))
+         (remove (comp existing og-property))
+         (apply add-to-head hiccup))))
+
+(defn ensure-favicon-links [context hiccup]
+  (if (->> (get-tags hiccup :link)
+           (filter (comp #{"icon"} :rel second))
+           empty?)
+    (apply add-to-head hiccup (get-favicon-links context))
+    hiccup))
+
+(defn ensure-css-bundles [context hiccup]
+  (->> (get-bundles context "css")
+       (link-to-css-bundles context)
+       (apply add-to-head hiccup)))
+
+(defn ensure-js-bundles [context hiccup]
+  (->> (get-bundles context "js")
+       (link-to-js-bundles context)
+       (apply add-to-body hiccup)))
+
+(defn ensure-bundles [context hiccup]
+  (->> (ensure-css-bundles context hiccup)
+       (ensure-js-bundles context)))
+
+(defn embellish-document [context page hiccup]
+  (->> hiccup
+       (set-lang context page)
+       set-og-prefix
+       ensure-head
+       (ensure-title context page)
+       ensure-utf8
+       ensure-viewport
+       (ensure-open-graphs-metas context page)
+       (ensure-favicon-links context)
+       (ensure-bundles context)))
+
+(defn build-doc [context page & body]
+  (embellish-document context page (into [:html] body)))
 
 (defn ^:export render-html [hiccup]
   (str (when (= :html (first hiccup))

@@ -16,9 +16,7 @@
            [:html {:prefix "og: http://ogp.me/ns#"}
             [:head
              [:meta {:charset "utf-8"}]
-             [:meta {:name "viewport", :content "width=device-width, initial-scale=1.0"}]
-             [:meta {:property "og:type", :content "article"}]
-             [:title ""]]
+             [:meta {:name "viewport", :content "width=device-width, initial-scale=1.0"}]]
             [:h1 "Hello world"]])))
 
   (testing "Renders link and script tags"
@@ -35,10 +33,8 @@
             [:head
              [:meta {:charset "utf-8"}]
              [:meta {:name "viewport", :content "width=device-width, initial-scale=1.0"}]
-             [:meta {:property "og:type", :content "article"}]
              [:link {:href "/source1.css", :rel "stylesheet"}]
-             [:link {:href "/source2.css", :rel "stylesheet"}]
-             [:title ""]]
+             [:link {:href "/source2.css", :rel "stylesheet"}]]
             [:h1 "Hello world"]
             [:script {:type "text/javascript", :src "/source1.js"}]
             [:script {:type "text/javascript", :src "/source2.js"}]])))
@@ -104,13 +100,12 @@
   (testing "Includes open graph meta tags"
     (is (= (-> (sut/build-doc
                 {:powerpack/config {:site/base-url "https://greetings.world"}}
-              {:open-graph/description "A greeting of worlds"
-               :open-graph/title "Hello!"
-               :page/uri "/hello-world/"}
-              [:h1 "Hello world"])
+                {:open-graph/description "A greeting of worlds"
+                 :open-graph/title "Hello!"
+                 :page/uri "/hello-world/"}
+                [:h1 "Hello world"])
                get-open-graph-metas)
-           [[:meta {:property "og:type", :content "article"}]
-            [:meta {:property "og:description", :content "A greeting of worlds"}]
+           [[:meta {:property "og:description", :content "A greeting of worlds"}]
             [:meta {:property "og:title", :content "Hello!"}]
             [:meta {:property "og:url", :content "https://greetings.world/hello-world/"}]])))
 
@@ -122,7 +117,7 @@
                  :page/uri "/hello-world/"}
                 [:h1 "Hello world"])
                get-open-graph-metas
-               second
+               first
                second
                :content)
            (str "A greeting of worlds that is much too long to have any hope "
@@ -138,7 +133,7 @@
                   :page/uri "/hello-world/"}
                  [:h1 "Hello world"])
                 get-open-graph-metas
-                (drop 2)
+                (drop 1)
                 first
                 second
                 :content)
@@ -152,8 +147,7 @@
                  :page/uri "/hello-world/"}
                 [:h1 "Hello world"])
                get-open-graph-metas)
-           [[:meta {:property "og:type", :content "article"}]
-            [:meta {:property "og:description", :content "A greeting of worlds &amp; people"}]
+           [[:meta {:property "og:description", :content "A greeting of worlds &amp; people"}]
             [:meta {:property "og:title", :content "Hello &lt;world&gt;"}]
             [:meta {:property "og:url", :content "https://greetings.world/hello-world/"}]])))
 
@@ -165,7 +159,7 @@
                   :page/uri "/hello-world/"}
                  [:h1 "Hello world"])
                 get-open-graph-metas
-                (drop 3))
+                (drop 2))
            [[:meta {:property "og:image", :content "/images/ducks.jpg"}]
             [:meta {:property "og:image:width", :content "640"}]
             [:meta {:property "og:image:height", :content "427"}]])))
@@ -190,7 +184,7 @@
                   :page/uri "/hello-world/"}
                  [:h1 "Hello world"])
                 get-open-graph-metas
-                (drop 3))
+                (drop 2))
            [[:meta {:property "og:image", :content "/vcard-small/images/ducks.jpg"}]
             [:meta {:property "og:image:width", :content "184"}]
             [:meta {:property "og:image:height", :content "184"}]]))))
@@ -206,3 +200,17 @@
     (is (not (sut/hiccup? "1px solid")))
     (is (sut/hiccup? (list [:h1 "Hello"]
                            [:p "World"])))))
+
+(deftest set-attribute-test
+  (testing "Adds attribute map"
+    (is (= (sut/set-attribute [:html] :lang "nb")
+           [:html {:lang "nb"}])))
+
+  (testing "Adds attribute map before children"
+    (is (= (sut/set-attribute [:html [:body]] :lang "nb")
+           [:html {:lang "nb"} [:body]])))
+
+  (testing "Updates attribute map"
+    (is (= (sut/set-attribute [:html {:prefix "og: http://ogp.me/ns#"} [:body]] :lang "nb")
+           [:html {:prefix "og: http://ogp.me/ns#"
+                   :lang "nb"} [:body]]))))
