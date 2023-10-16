@@ -53,7 +53,7 @@
     (concat (take 1 lines)
             (map #(subs* % superflous-spaces) (drop 1 lines)))))
 
-(defn to-html [s]
+(defn ^:export render-html [s]
   (if (string? s)
     (md-to-html (->> s
                      str/split-lines
