@@ -29,7 +29,7 @@
    [:summary.h4 title]
    [:div body]])
 
-(defn render-error-hud [{:keys [message description errors exception tx data]}]
+(defn render-error-hud [{:keys [kind message description errors exception tx data]}]
   [:div.powerpack
    [:div.hud.warn
     [:div.logo stasis-logo]
@@ -46,6 +46,8 @@
      (when exception
        [:div
         [:h4.h4.error "Exception: " (.getMessage exception)]
+        (when (= :powerpack.web/render-page kind)
+          [:p [:a {:href "" :onclick "location.reload()"} "Inspect error"]])
         (when-let [data (ex-data exception)]
           (accordion "Exception data" [:pre [:code.language-clojure (pp data)]]))
         (when-let [stack (error-logger/get-stack-trace exception)]
@@ -66,7 +68,6 @@
   (let [client-ch (chan)
         k (random-uuid)
         emit-error (fn [errors]
-
                      (->> (if-let [error (first errors)]
                             {:kind :powerpack/error
                              :action "render-hud"
@@ -78,9 +79,9 @@
     (when (seq @(:errors hud))
       (emit-error @(:errors hud)))
     (add-watch (:errors hud) k
-      (fn [_ _ old-errors errors]
-        (when-not (= old-errors errors)
-          (emit-error errors))))
+               (fn [_ _ old-errors errors]
+                 (when-not (= old-errors errors)
+                   (emit-error errors))))
     {:stop #(remove-watch (:errors hud) k)
      :ch client-ch}))
 
