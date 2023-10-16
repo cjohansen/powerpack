@@ -29,10 +29,6 @@
     (wrap-resource handler dir)
     handler))
 
-(defn wrap-no-query-params [handler]
-  (fn [req]
-    (handler (update req :uri #(first (str/split % #"\?"))))))
-
 (defn create-handler [{:keys [conn config] :as opts}]
   (-> (web/serve-pages opts)
       (wrap-dev-assets config)
@@ -45,7 +41,6 @@
       wrap-content-type
       web/wrap-utf-8
       (web/wrap-system {:config config :conn conn})
-      wrap-no-query-params
       (live-reload/wrap-live-reload opts)
       wrap-params))
 
