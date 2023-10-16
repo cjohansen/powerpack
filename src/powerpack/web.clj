@@ -192,12 +192,18 @@
      :headers {"Content-Type" "application/edn"}
      :body (pr-str rendered)}))
 
-(defn render-error [status message]
-  {:status status
-   :body (if-let [file (io/resource (str status ".html"))]
-           (slurp file)
-           message)
-   :headers {"Content-Type" "text/html"}})
+(defn render-error [req status message]
+  (if (re-find #"\.js$" (:uri req))
+    {:status status
+     :body (if-let [file (io/resource (str status ".js"))]
+             (slurp file)
+             (str "alert('" (:uri req) " " status  ": " message "');"))
+     :headers {"Content-Type" "application/javascript"}}
+    {:status status
+     :body (if-let [file (io/resource (str status ".html"))]
+             (slurp file)
+             message)
+     :headers {"Content-Type" "text/html"}}))
 
 (defn render-page [{:keys [fns error-events]} context page]
   (try
@@ -225,7 +231,7 @@
                     (merge (select-keys req [:powerpack/live-reload?])))]
     (-> (if-let [page (d/entity (:db req) [:page/uri (:uri req)])]
           (render-page opt context page)
-          (render-error 404 "Page not found"))
+          (render-error req 404 "Page not found"))
         (post-process-page
          context
          (concat (:page-post-process-fns fns)
