@@ -16,7 +16,7 @@
         java-time-dte/java-time-dte {:mvn/version "2018-04-18"}
         java-time-literals/java-time-literals {:mvn/version "2018-04-06"}
         mapdown/mapdown {:mvn/version "0.2.1"}
-        optimus/optimus {:mvn/version "2023-10-03"}
+        optimus/optimus {:mvn/version "2023.10.13"}
         prone/prone {:mvn/version "2021-04-23"}
         ring/ring {:mvn/version "2.0.0-alpha1"}
         stasis/stasis {:mvn/version "2023.06.03"}}
