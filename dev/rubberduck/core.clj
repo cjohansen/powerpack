@@ -16,6 +16,7 @@
    :powerpack/source-dirs ["src" "dev"]
    :powerpack/resource-dirs ["dev-resources" "dev"]
    :powerpack/log-level :debug
+   :powerpack/dev-assets-root-path "dev-assets"
 
    :optimus/assets [{:public-dir "public"
                      :paths [#"/images/*.*"]}]
@@ -57,7 +58,8 @@
         [:p "Published " (str published)])
       [:pre [:code {:class "language-clj"}
              "(prn 'Hello :there)"]]
-      [:img {:src "/vcard-small/images/ducks.jpg"}]])))
+      [:img {:src "/vcard-small/images/ducks.jpg"}]
+      [:script {:src "/dev-debug.js"}]])))
 
 (def app
   (-> {:config config
