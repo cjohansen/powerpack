@@ -1,15 +1,15 @@
-* Todo [13/14]
+* Todo [0/11]
 ** TODO Trigger live reloads from C-x C-e
-** DONE Automatically set image dimensions for OpenGraph images
-** DONE Watch resource dirs for asset changes
-** DONE Add java-time-dte
-** DONE read-string some data according to the schema
-** DONE Replace create-app with an integrant impl
-** DONE Read db schema from resource
-** DONE Schema changes: Restart server
-** DONE Tests
-** DONE Docstrings
-** DONE Design error message box
-** DONE Validate open graph title and description lengths on ingest
-** DONE Tag each error with a unique id to track if it's been resolved
-** DONE 404 page has null for its content sha, causing a reload loop
+** TODO Link to Prone when rendering exceptions occur (refresh)
+** TODO Set proper content-type header when using :content-type
+** TODO Fail the export when using assets that can't be found (use a specific error for dev assets)
+** TODO Add a link checker
+** TODO Run alert from the 404 response for JS requests
+** TODO Valider: {:headers {:content-type "application/edn"} :body (index/build-index db (:page/locale page))}
+** TODO Evaluate a source namespace when it changes (require namespace with force)
+** TODO asset-dirs i Optimus
+** TODO Separate hiccup->string from the HTML namespace, do it in a separate middleware
+** TODO Add a m1p middleware
+* Documentation [0/2]
+** TODO dev vs build (different configs, where to put it, etc)
+** TODO The html tools place CSS bundles in head and JS bundles at the end of body (no assets)
