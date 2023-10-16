@@ -4,7 +4,7 @@
             [powerpack.app :as app]
             [powerpack.export :as export]
             [powerpack.highlight :as highlight]
-            [powerpack.html :as html]))
+            [powerpack.hiccup :as hiccup]))
 
 (def config
   {:site/default-locale :en

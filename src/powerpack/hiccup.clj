@@ -1,4 +1,4 @@
-(ns powerpack.html
+(ns powerpack.hiccup
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [dumdom.string :as dumdom]
@@ -117,6 +117,6 @@
          (->> (get-bundles req "js")
               (link-to-js-bundles req)))))
 
-(defn ^:export render-hiccup [req page & body]
+(defn ^:export render-html [req page & body]
   (str "<!DOCTYPE html>"
        (dumdom/render (apply build-doc req page body))))

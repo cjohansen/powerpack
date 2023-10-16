@@ -1,7 +1,7 @@
-(ns powerpack.html-test
-  (:require [powerpack.html :as sut]
+(ns powerpack.hiccup-test
+  (:require [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
-            [clojure.string :as str]))
+            [powerpack.hiccup :as sut]))
 
 (defn get-open-graph-metas [html]
   (->> (tree-seq coll? identity html)
