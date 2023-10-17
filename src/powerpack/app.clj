@@ -93,11 +93,14 @@
   (with-timing-info :info "Stopped server"
     (stop-server)))
 
+(defn create-database [config]
+  (->> (or (:datomic/schema config)
+           (read-string (slurp (io/file (:datomic/schema-file config)))))
+       (db/create-database (:powerpack/db config))))
+
 (defmethod ig/init-key :datomic/conn [_ {:keys [config]}]
   (with-timing-info :info "Created database"
-    (->> (or (:datomic/schema config)
-             (read-string (slurp (io/file (:datomic/schema-file config)))))
-         (db/create-database (:powerpack/db config)))))
+    (create-database config)))
 
 (defmethod ig/init-key :dev/ingestion-watcher [_ opt]
   (with-timing-info :info "Ingested all data"
@@ -173,8 +176,11 @@
   (merge x (into {} (for [k (keys defaults)]
                       [k (or (k x) (k defaults))]))))
 
-(defmethod ig/init-key :powerpack/config [_ {:keys [config]}]
+(defn initialize-config [config]
   (with-defaults config config-defaults))
+
+(defmethod ig/init-key :powerpack/config [_ {:keys [config]}]
+  (initialize-config config))
 
 (defmethod ig/init-key :powerpack/on-started [_ {:keys [on-started]}]
   on-started)

@@ -1,5 +1,6 @@
 (ns powerpack.export
-  (:require [clojure.core.memoize :as memoize]
+  (:require [clojure.core.async :refer [chan close!]]
+            [clojure.core.memoize :as memoize]
             [clojure.data.json :as json]
             [clojure.string :as str]
             [datomic-type-extensions.api :as d]
@@ -7,8 +8,8 @@
             [imagine.core :as imagine]
             [optimus.export :as export]
             [optimus.optimizations :as optimizations]
+            [powerpack.app :as app]
             [powerpack.assets :as assets]
-            [powerpack.db :as db]
             [powerpack.ingest :as ingest]
             [powerpack.web :as web]
             [stasis.core :as stasis]))
@@ -59,30 +60,39 @@
 (defn- load-export-dir [export-directory]
   (stasis/slurp-directory export-directory #"\.[^.]+$"))
 
-(defn export [{:keys [config
-                      create-ingest-tx
-                      on-ingested] :as opt} & [{:keys [format]}]]
-  (let [export-directory (or (:stasis/build-dir config) "build")
+(defn export [{:keys [config] :as opt} & [{:keys [format]}]]
+  (let [config (app/initialize-config config)
+        export-directory (or (:stasis/build-dir config) "build")
         assets (optimize (assets/get-assets config) {})
         old-files (load-export-dir export-directory)
         request {:optimus-assets assets
                  :config config}
-        conn (db/create-database (str "datomic:mem://" (d/squuid)) (:datomic/schema config))]
-    (ingest/ingest-all {:config config
-                        :conn conn
-                        :create-ingest-tx create-ingest-tx
-                        :on-ingested on-ingested})
+        conn (app/create-database (assoc config :powerpack/db (str "datomic:mem://" (d/squuid))))
+        error-events {:ch (chan)}
+        handler-deps {:conn conn
+                      :config config
+                      :error-events error-events
+                      :fns opt}]
+    (ingest/ingest-all
+     {:config config
+      :conn conn
+      :error-events error-events
+      :fns opt})
+    (when (ifn? (:on-started opt))
+      ((:on-started opt) {:datomic/conn conn}))
     (stasis/empty-directory! export-directory)
     (export/save-assets assets export-directory)
-    (stasis/export-pages (web/get-pages (d/db conn) request opt) export-directory request)
+    (stasis/export-pages (web/get-pages (d/db conn) request handler-deps) export-directory request)
     (println "Exporting images from <img> <source> <meta property=\"og:image\"> and select style attributes")
     (when-let [imagine-config (some-> (:imagine/config config)
                                       (assoc :cacheable-urls? true))]
       (export-images export-directory export-directory imagine-config))
-    (if (= format :json)
-      (println (json/write-str (dissoc (stasis/diff-maps old-files old-files) :unchanged)))
-      (do
-        (println)
-        (println "Export complete:")
-        (stasis/report-differences old-files old-files)
-        (println)))))
+    (let [new-files (load-export-dir export-directory)]
+      (if (= format :json)
+        (println (json/write-str (dissoc (stasis/diff-maps old-files new-files) :unchanged)))
+        (do
+          (println)
+          (println "Export complete:")
+          (stasis/report-differences old-files new-files)
+          (println))))
+    (close! (:ch error-events))))
