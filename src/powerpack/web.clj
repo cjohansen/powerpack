@@ -57,14 +57,6 @@
   (or (not-empty (link/file-path req path))
       path))
 
-(defn fix-links [req path]
-  (when-let [path (try-optimize-path req path)]
-    (if (and (-> req :powerpack/config :site/base-url)
-             (str/starts-with? path "/")
-             (not (str/starts-with? path "//")))
-      (str (-> req :powerpack/config :site/base-url) path)
-      path)))
-
 (defn update-attr [node attr f]
   (.setAttribute node attr (f (.getAttribute node attr))))
 
@@ -112,8 +104,8 @@
      ;; use optimized svgs
      [:svg :use] #(replace-attr % "href" "xlink:href" optimize-path)
 
-     ;; use optimized links, if possible
-     [:a] #(update-attr % "href" (partial fix-links context))}))
+     ;; make sure to use optimized asset paths when linking to assets
+     [:a] #(update-attr % "href" (partial try-optimize-path context))}))
 
 (defn combine-post-processors [context post-processors]
   (->> (for [[selector fns] (->> post-processors
