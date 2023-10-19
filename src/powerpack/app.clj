@@ -230,10 +230,6 @@
   (when-let [on-started (:powerpack/on-started integrant.repl.state/system)]
     (with-timing-info :info "Ran on-started hook"
       (on-started integrant.repl.state/system)))
-  (apply repl/set-refresh-dirs
-         (-> integrant.repl.state/system
-             :powerpack/config
-             :powerpack/source-dirs))
   :powerpack/started)
 
 (defn stop []

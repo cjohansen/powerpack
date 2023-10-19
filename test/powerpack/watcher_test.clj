@@ -57,7 +57,7 @@
              :path (.toPath (io/file "dev/rubberduck/core.clj"))})
            {:kind :powerpack/edited-source
             :action "reload"
-            :file "dev/rubberduck/core.clj"})))
+            :path "dev/rubberduck/core.clj"})))
 
   (testing "Edits asset"
     (is (= (sut/get-app-event
