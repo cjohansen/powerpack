@@ -7,7 +7,9 @@ the way you want.
 
 ## Status
 
-This is an experiment. Do not use. I'm not even sure if this is a good idea yet.
+This is an experiment. Do not use. ~~I'm not even sure if this is a good idea
+yet.~~ Powerpack is starting to shape up, but some parts of the API are still in
+flux.
 
 ## What does it do?
 
@@ -37,6 +39,7 @@ Stasis Powerpack combines the following libraries:
 - [Datomic](https://datomic.com) - relational database
 - [Imagine](https://github.com/cjohansen/imagine) - image manipulation (crop,
   resize, greyscale, etc)
+- [m1p](https://github.com/cjohansen/m1p) - i18n
 - [Mapdown](https://github.com/magnars/mapdown) - key/value markdown files
 - [Beholder](https://github.com/nextjournal/beholder) - file watching (live
   reload)
