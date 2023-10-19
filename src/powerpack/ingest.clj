@@ -6,6 +6,7 @@
             [datomic-type-extensions.api :as d]
             [mapdown.core :as mapdown]
             [powerpack.db :as db]
+            [powerpack.errors :as errors]
             [powerpack.files :as files]
             [powerpack.logger :as log])
   (:import (java.net URI)))
@@ -87,24 +88,22 @@
       data
       [data])))
 
-(defmethod parse-file :default [db file-name file]
+(defmethod parse-file :default [_db _file-name file]
   (slurp file))
 
 (defn load-data [db {:keys [config error-events]} file-name]
   (when-let [file (io/file (str (:powerpack/content-dir config) "/" file-name))]
     (try
       (let [data (vec (parse-file db file-name file))]
-        (put! (:ch error-events)
-              {:id [::parse-file file-name]
-               :resolved? true})
+        (errors/resolve-error error-events [::parse-file file-name])
         data)
       (catch Exception e
-        (put! (:ch error-events)
-              {:exception e
-               :file-name file-name
-               :message (str "Failed to parse file " file-name)
-               :kind ::parse-file
-               :id [::parse-file file-name]})
+        (->> {:exception e
+              :file-name file-name
+              :message (str "Failed to parse file " file-name)
+              :kind ::parse-file
+              :id [::parse-file file-name]}
+             (errors/report-error error-events))
         nil))))
 
 (def attrs-to-keep #{:db/ident
@@ -205,29 +204,25 @@
     (let [res (when tx
                 @(d/transact conn tx))]
       (when res (log/info "Ingested" file-name))
-      (put! (:ch error-events)
-            {:id [::transact file-name]
-             :resolved? true})
+      (errors/resolve-error error-events [::transact file-name])
       res)))
 
 (defn ingest [{:keys [conn error-events] :as opt} file-name]
   (when-let [data (load-data (d/db conn) opt file-name)]
     (try
       (let [ingested (ingest-data opt file-name data)]
-        (put! (:ch error-events)
-              {:id [::ingest-data file-name]
-               :resolved? true})
+        (errors/resolve-error error-events [::ingest-data file-name])
         ingested)
       (catch Exception e
-        (put! (:ch error-events)
-              (merge {:kind ::ingest-data
-                      :id [::ingest-data file-name]
-                      :file-name file-name
-                      :message (str "Failed to transact content from " file-name " to Datomic.")
-                      :description "This is likely a Powerpack bug, please report it."
-                      :data data
-                      :exception e}
-                     (ex-data e)))))))
+        (->> (ex-data e)
+             (merge {:kind ::ingest-data
+                     :id [::ingest-data file-name]
+                     :file-name file-name
+                     :message (str "Failed to transact content from " file-name " to Datomic.")
+                     :description "This is likely a Powerpack bug, please report it."
+                     :data data
+                     :exception e})
+             (errors/report-error error-events))))))
 
 (defn call-ingest-callback [{:keys [config conn fns ch-ch-ch-changes error-events]}]
   (try
@@ -235,11 +230,11 @@
       (when (ifn? on-ingested)
         (on-ingested {:config config :conn conn})))
     (catch Exception e
-      (put! (:ch error-events)
-            {:kind ::callback
-             :id [::callback]
-             :message "Encountered an exception while calling your `on-ingested` hook, please investigate."
-             :exception e})))
+      (->> {:kind ::callback
+            :id [::callback]
+            :message "Encountered an exception while calling your `on-ingested` hook, please investigate."
+            :exception e}
+           (errors/report-error error-events))))
   (when-let [ch (:ch ch-ch-ch-changes)]
     (put! ch {:kind :powerpack/ingested-content
               :action "reload"})))

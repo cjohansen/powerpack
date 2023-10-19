@@ -1,6 +1,5 @@
 (ns powerpack.export
-  (:require [clojure.core.async :refer [chan close!]]
-            [clojure.core.memoize :as memoize]
+  (:require [clojure.core.memoize :as memoize]
             [clojure.data.json :as json]
             [clojure.string :as str]
             [datomic-type-extensions.api :as d]
@@ -68,15 +67,12 @@
         request {:optimus-assets assets
                  :config config}
         conn (app/create-database (assoc config :powerpack/db (str "datomic:mem://" (d/squuid))))
-        error-events {:ch (chan)}
         handler-deps {:conn conn
                       :config config
-                      :error-events error-events
                       :fns opt}]
     (ingest/ingest-all
      {:config config
       :conn conn
-      :error-events error-events
       :fns opt})
     (when (ifn? (:on-started opt))
       ((:on-started opt) {:datomic/conn conn}))
@@ -94,5 +90,4 @@
           (println)
           (println "Export complete:")
           (stasis/report-differences old-files new-files)
-          (println))))
-    (close! (:ch error-events))))
+          (println))))))

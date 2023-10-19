@@ -1,12 +1,12 @@
 (ns powerpack.web
-  (:require [clojure.core.async :refer [put!]]
-            [clojure.data.json :as json]
+  (:require [clojure.data.json :as json]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [datomic-type-extensions.api :as d]
             [html5-walker.core :as html5-walker]
             [imagine.core :as imagine]
             [optimus.link :as link]
+            [powerpack.errors :as errors]
             [powerpack.hiccup :as hiccup]
             [ring.middleware.content-type :as content-type]))
 
@@ -208,17 +208,15 @@
 (defn render-page [{:keys [fns error-events]} context page]
   (try
     (let [res (get-response-map context page ((:render-page fns) context page))]
-      (put! (:ch error-events)
-            {:id [::render-page (:uri context)]
-             :resolved? true})
+      (errors/resolve-error error-events [::render-page (:uri context)])
       res)
     (catch Exception e
-      (put! (:ch error-events)
-            {:exception e
-             :uri (:uri context)
-             :message (str "Failed to render page " (:uri context))
-             :kind ::render-page
-             :id [::render-page (:uri context)]})
+      (->> {:exception e
+            :uri (:uri context)
+            :message (str "Failed to render page " (:uri context))
+            :kind ::render-page
+            :id [::render-page (:uri context)]}
+           (errors/report-error error-events))
       (throw e))))
 
 (defn handle-request [req {:keys [fns] :as opt}]
