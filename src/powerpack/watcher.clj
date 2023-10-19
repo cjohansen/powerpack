@@ -87,7 +87,8 @@
 
       (source-file? config file)
       {:kind :powerpack/edited-source
-       :action "reload"}
+       :action "reload"
+       :path (str file)}
 
       (asset-file? config file)
       (let [path (get-asset-path config (files/get-absolute-path file))]

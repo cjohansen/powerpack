@@ -1,7 +1,7 @@
 (ns powerpack.watcher-test
-  (:require [powerpack.watcher :as sut]
+  (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
-            [clojure.java.io :as io]))
+            [powerpack.watcher :as sut]))
 
 (deftest get-watch-paths
   (testing "Filters out non-existent dirs"
@@ -56,7 +56,8 @@
             {:type :modify
              :path (.toPath (io/file "dev/rubberduck/core.clj"))})
            {:kind :powerpack/edited-source
-            :action "reload"})))
+            :action "reload"
+            :file "dev/rubberduck/core.clj"})))
 
   (testing "Edits asset"
     (is (= (sut/get-app-event

@@ -120,6 +120,9 @@
   (fn [req]
     (handle-request handler opt req)))
 
+(defn get-ns [clojure-code-s]
+  (symbol (second (re-find #"(?s)ns[\s]+([^\s]+)" clojure-code-s))))
+
 (defn start-watching! [{:keys [fs-events app-events]}]
   (let [watching? (atom true)
         fs-ch (chan)]
@@ -129,12 +132,7 @@
         (when-let [event (<! fs-ch)]
           (when (= :powerpack/edited-source (:kind event))
             (log/debug "Source edited")
-            ;; We're currently relying on the fact that Emacs saves files after
-            ;; evaluating the entire buffer. This is imprecise and prone to
-            ;; races. A small timeout greatly improves the accuracy of this
-            ;; hook. Eventually this will be replaced with an nrepl middleware
-            ;; that instead reacts to code evaulation.
-            (<! (timeout 500)))
+            (require (get-ns (slurp (io/file (:path event)))) :reload))
           (when (= :powerpack/edited-asset (:kind event))
             (log/debug "Asset edited")
             ;; The autorefresh Optimus strategy needs some time to update its
