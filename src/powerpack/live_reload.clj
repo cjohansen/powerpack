@@ -149,6 +149,7 @@
           (when @watching? (recur)))))
     (fn []
       (untap (:mult fs-events) fs-ch)
+      (close! fs-ch)
       (reset! watching? false))))
 
 (defn stop-watching! [stop]
