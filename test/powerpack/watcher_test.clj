@@ -44,8 +44,7 @@
     (is (= (sut/get-app-event
             {:datomic/schema-file "dev-resources/schema.edn"}
             {:path (.toPath (io/file "dev-resources/schema.edn"))})
-           {:kind :powerpack/edited-schema
-            :action "reload"})))
+           {:kind :powerpack/edited-schema})))
 
   (testing "Edits content"
     (is (= (sut/get-app-event

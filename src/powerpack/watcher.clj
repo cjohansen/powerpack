@@ -1,6 +1,5 @@
 (ns powerpack.watcher
   (:require [clojure.core.async :refer [put!]]
-            [clojure.java.io :as io]
             [clojure.string :as str]
             [nextjournal.beholder :as beholder]
             [powerpack.assets :as assets]
@@ -91,8 +90,7 @@
   (let [file (.toFile path)]
     (cond
       (files/same-file? file (:datomic/schema-file config))
-      {:kind :powerpack/edited-schema
-       :action "reload"}
+      {:kind :powerpack/edited-schema}
 
       (dictionary? config file)
       {:kind :powerpack/edited-dictionary
