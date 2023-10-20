@@ -1,22 +1,22 @@
 * Todo [7/13]
-** TODO Trigger live reloads from C-x C-e
 ** DONE Link to Prone when rendering exceptions occur
-** TODO Add live-reload to the Prone page
 ** DONE Set proper content-type header when using :content-type
-** TODO Fail the export when using assets that can't be found (use a specific error for dev assets)
-** TODO Add a link checker
 ** DONE Run alert from the 404 response for JS requests
-** TODO Validate non-string headers: {:headers {:content-type "application/edn"} :body (index/build-index db (:page/locale page))}
 ** DONE Evaluate a source namespace when it changes (require namespace with force)
 ** DONE asset-dirs i Optimus
 ** DONE Separate hiccup->string from the HTML namespace, do it in a separate middleware
-** TODO Catch exceptions in i18n interpolation
 ** DONE Add a m1p middleware
-* Export [1/4]
+** TODO Trigger live reloads from C-x C-e
+** TODO Add live-reload to the Prone page
+** TODO Add a link checker
+** TODO Validate non-string headers: {:headers {:content-type "application/edn"} :body (index/build-index db (:page/locale page))}
+** TODO Catch exceptions in i18n interpolation
+* Export [0/5]
 ** TODO Validate existence of :stasis/build-dir
-** DONE error-events
+** TODO Fail the export when using assets that can't be found (use a specific error for dev assets)
 ** TODO DON'T send the integrant system to on-started
 ** TODO Streamline naming of keys in integrant components and "context"
+** TODO Export og:image images that use imagine
 * Documentation [0/2]
 ** TODO dev vs build (different configs, where to put it, etc)
 ** TODO The html tools place CSS bundles in head and JS bundles at the end of body (no assets)
