@@ -79,6 +79,14 @@
             :action "reload"
             :path "dev/rubberduck/core.clj"})))
 
+  (testing "Edits irrelevant source"
+    (is (nil? (sut/get-app-event
+               {:datomic/schema-file "dev-resources/schema.edn"
+                :powerpack/content-dir "dev-resources"
+                :powerpack/source-dirs ["src" "dev"]}
+               {:type :modify
+                :path (.toPath (io/file "dev/rubberduck/core.cljs"))}))))
+
   (testing "Edits asset"
     (is (= (sut/get-app-event
             {:datomic/schema-file "dev-resources/schema.edn"

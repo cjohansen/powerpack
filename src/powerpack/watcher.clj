@@ -34,8 +34,9 @@
              (:powerpack/content-file-suffixes config))))
 
 (defn source-file? [config file]
-  (->> (:powerpack/source-dirs config)
-       (some #(files/parent? % file))))
+  (and (re-find #"\.cljc?$" (str file))
+       (->> (:powerpack/source-dirs config)
+            (some #(files/parent? % file)))))
 
 (defn get-asset-dirs [config]
   (for [resources (:powerpack/resource-dirs config)
