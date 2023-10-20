@@ -1,4 +1,4 @@
-* Todo [7/13]
+* Todo [7/12]
 ** DONE Link to Prone when rendering exceptions occur
 ** DONE Set proper content-type header when using :content-type
 ** DONE Run alert from the 404 response for JS requests
@@ -6,18 +6,18 @@
 ** DONE asset-dirs i Optimus
 ** DONE Separate hiccup->string from the HTML namespace, do it in a separate middleware
 ** DONE Add a m1p middleware
-** TODO Trigger live reloads from C-x C-e
 ** TODO Add live-reload to the Prone page
 ** TODO Add a link checker
 ** TODO Validate non-string headers: {:headers {:content-type "application/edn"} :body (index/build-index db (:page/locale page))}
 ** TODO Catch exceptions in i18n interpolation
 ** TODO Catch errors when loading i18n
-* Export [0/5]
+* Export [0/6]
 ** TODO Validate existence of :stasis/build-dir
 ** TODO Fail the export when using assets that can't be found (use a specific error for dev assets)
 ** TODO DON'T send the integrant system to on-started
 ** TODO Streamline naming of keys in integrant components and "context"
 ** TODO Export og:image images that use imagine
+** TODO Run i18n parity-tests
 * Documentation [0/2]
 ** TODO dev vs build (different configs, where to put it, etc)
-** TODO The html tools place CSS bundles in head and JS bundles at the end of body (no assets)
+** TODO The hiccup tools place CSS bundles in head and JS bundles at the end of body (no assets)
