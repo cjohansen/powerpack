@@ -177,14 +177,15 @@
   (merge x (into {} (for [k (keys defaults)]
                       [k (or (k x) (k defaults))]))))
 
-(defn initialize-config [config]
-  (with-defaults config config-defaults))
-
 (defn get-m1p-config [opt]
   (select-keys opt (filter (comp #{"m1p"} namespace) (keys opt))))
 
+(defn initialize-config [opt]
+  (-> (merge (:config opt) (get-m1p-config opt))
+      (with-defaults config-defaults)))
+
 (defmethod ig/init-key :powerpack/config [_ opt]
-  (initialize-config (merge (:config opt) (get-m1p-config opt))))
+  (initialize-config opt))
 
 (defmethod ig/init-key :powerpack/on-started [_ {:keys [on-started]}]
   on-started)

@@ -9,6 +9,7 @@
             [optimus.optimizations :as optimizations]
             [powerpack.app :as app]
             [powerpack.assets :as assets]
+            [powerpack.i18n :as i18n]
             [powerpack.ingest :as ingest]
             [powerpack.web :as web]
             [stasis.core :as stasis]))
@@ -60,7 +61,7 @@
   (stasis/slurp-directory export-directory #"\.[^.]+$"))
 
 (defn export [{:keys [config] :as opt} & [{:keys [format]}]]
-  (let [config (app/initialize-config config)
+  (let [config (app/initialize-config opt)
         export-directory (or (:stasis/build-dir config) "build")
         assets (optimize (assets/get-assets config) {})
         old-files (load-export-dir export-directory)
@@ -69,7 +70,8 @@
         conn (app/create-database (assoc config :powerpack/db (str "datomic:mem://" (d/squuid))))
         handler-deps {:conn conn
                       :config config
-                      :fns opt}]
+                      :fns opt
+                      :dictionaries (atom (i18n/load-dictionaries config))}]
     (ingest/ingest-all
      {:config config
       :conn conn
