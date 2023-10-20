@@ -196,6 +196,19 @@
              [:link {:href "/favicon.ico" :rel "shortcut icon" :type "image/ico"}]
              [:link {:href "/favicon.ico" :rel "shortcut icon" :type "image/x-icon"}]})))
 
+  (testing "Links to fancy favicons"
+    (is (= (-> (sut/embellish-hiccup
+                {:uri "/"
+                 :optimus-assets [{:path "/favicon-16x16.png"}
+                                  {:path "/favicon-32x32.png"}
+                                  {:path "/apple-touch-icon.png"}]}
+                {}
+                [:html [:body [:h1 "Hello world"]]])
+               (qsa :link))
+           #{[:link {:href "/favicon-32x32.png" :rel "icon" :type "image/png" :sizes "32x32"}]
+             [:link {:href "/favicon-16x16.png" :rel "icon" :type "image/png" :sizes "16x16"}]
+             [:link {:href "/apple-touch-icon.png" :rel "icon" :type "image/png" :sizes "180x180"}]})))
+
   (testing "Does not add extra favicon links"
     (is (= (-> (sut/embellish-hiccup
                 {:uri "/"

@@ -66,11 +66,18 @@
        (map render-meta)))
 
 (defn get-favicon-links [req]
-  (when-let [favicon (link/file-path req "/favicon.ico")]
-    (list [:link {:href favicon :rel "icon" :type "image/x-icon"}]
-          [:link {:href favicon :rel "shortcut icon" :type "image/ico"}]
-          [:link {:href favicon :rel "shortcut icon" :type "image/x-icon"}]
-          [:link {:href favicon :rel "shortcut icon" :type "image/vnd.microsoft.icon"}])))
+  (concat
+   (when-let [favicon (link/file-path req "/favicon.ico")]
+     (list [:link {:href favicon :rel "icon" :type "image/x-icon"}]
+           [:link {:href favicon :rel "shortcut icon" :type "image/ico"}]
+           [:link {:href favicon :rel "shortcut icon" :type "image/x-icon"}]
+           [:link {:href favicon :rel "shortcut icon" :type "image/vnd.microsoft.icon"}]))
+   (when-let [favicon (link/file-path req "/favicon-16x16.png")]
+     (list [:link {:href favicon :rel "icon" :type "image/png" :sizes "16x16"}]))
+   (when-let [favicon (link/file-path req "/favicon-32x32.png")]
+     (list [:link {:href favicon :rel "icon" :type "image/png" :sizes "32x32"}]))
+   (when-let [favicon (link/file-path req "/apple-touch-icon.png")]
+     (list [:link {:href favicon :rel "icon" :type "image/png" :sizes "180x180"}]))))
 
 (defn get-bundles [req kind]
   (->> req :optimus-assets (keep :bundle) set
