@@ -124,27 +124,36 @@
 (defn get-ns [clojure-code-s]
   (symbol (second (re-find #"(?s)ns[\s]+([^\s]+)" clojure-code-s))))
 
-(defn start-watching! [{:keys [fs-events app-events config dictionaries]}]
+(defmulti process-event (fn [e _opt] (:kind e)))
+
+(defmethod process-event :default [e _opt]
+  (log/debug "Noop event" e))
+
+(defmethod process-event :powerpack/edited-source [{:keys [path]} _opt]
+  (log/debug "Source edited, reloading namespace")
+  (require (get-ns (slurp (io/file path))) :reload))
+
+(defmethod process-event :powerpack/edited-dictionary [_e {:keys [config dictionaries]}]
+  (log/debug "Dictionary edited, reloading dictionaries")
+  (reset! dictionaries (i18n/load-dictionaries config)))
+
+(defmethod process-event :powerpack/edited-asset [_e opt]
+  (log/debug "Asset edited")
+  ;; The autorefresh Optimus strategy needs some time to update its
+  ;; cache, so we'll postpone slightly to be sure new assets are
+  ;; loaded.
+  {:wait 100})
+
+(defn start-watching! [{:keys [fs-events app-events config dictionaries] :as opt}]
   (let [watching? (atom true)
         fs-ch (chan)]
     (tap (:mult fs-events) fs-ch)
     (go
       (loop []
         (when-let [event (<! fs-ch)]
-          (when (= :powerpack/edited-source (:kind event))
-            (log/debug "Source edited")
-            (require (get-ns (slurp (io/file (:path event)))) :reload))
-          (when (= :powerpack/edited-dictionary (:kind event))
-            (reset! dictionaries (i18n/load-dictionaries config)))
-          (when (= :powerpack/edited-asset (:kind event))
-            (log/debug "Asset edited")
-            ;; The autorefresh Optimus strategy needs some time to update its
-            ;; cache, so we'll postpone slightly to be sure new assets are
-            ;; loaded.
-            (<! (timeout 100)))
-          (when (#{:powerpack/edited-source
-                   :powerpack/edited-asset
-                   :powerpack/edited-dictionary} (:kind event))
+          (when-let [wait (:wait (process-event event opt))]
+            (<! (timeout wait)))
+          (when (:action event)
             (put! (:ch app-events) event))
           (when @watching? (recur)))))
     (fn []
