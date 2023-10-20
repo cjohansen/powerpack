@@ -17,7 +17,27 @@
              :powerpack/resource-dirs ["dev-resources"]
              :powerpack/content-dir "dev-resources/public"
              :datomic/schema-file "dev-resources/schema.edn"})
-           ["src" "dev-resources"]))))
+           ["src" "dev-resources"])))
+
+  (testing "Adds i18n directories to the watch path"
+    (is (= (sut/get-watch-paths
+            {:powerpack/source-dirs ["src"]
+             :powerpack/resource-dirs ["dev-resources"]
+             :powerpack/content-dir "dev-resources/public"
+             :datomic/schema-file "dev-resources/schema.edn"
+             :m1p/dictionaries {:nb ["dev/i18n/nb.edn"]
+                                :en ["dev/i18n/en.edn"]}})
+           ["dev/i18n" "src" "dev-resources"])))
+
+  (testing "Accepts raw dirs as i18n places"
+    (is (= (sut/get-watch-paths
+            {:powerpack/source-dirs ["src"]
+             :powerpack/resource-dirs ["dev-resources"]
+             :powerpack/content-dir "dev-resources/public"
+             :datomic/schema-file "dev-resources/schema.edn"
+             :m1p/dictionaries {:nb ["dev/i18n"]
+                                :en ["dev/i18n"]}})
+           ["dev/i18n" "src" "dev-resources"]))))
 
 (deftest get-app-event
   (testing "Edits schema"
@@ -91,4 +111,20 @@
             :action "reload-css"
             :type :modify
             :path "/styles/test.css"
-            :updatedPath "/styles/b8936d0bc201/test.css"}))))
+            :updatedPath "/styles/b8936d0bc201/test.css"})))
+
+  (testing "Edits i18n dictionary"
+    (is (= (sut/get-app-event
+            {:datomic/schema-file "dev-resources/schema.edn"
+             :powerpack/content-dir "dev-resources"
+             :powerpack/source-dirs ["src" "dev"]
+             :powerpack/resource-dirs ["dev-resources"]
+             :powerpack/content-file-suffixes ["edn"]
+             :m1p/dictionaries {:nb ["dev/i18n/nb.edn"]
+                                :en ["dev/i18n/en.edn"]}}
+            {:type :modify
+             :path (.toPath (io/file "dev/i18n/nb.edn"))})
+           {:kind :powerpack/edited-dictionary
+            :action "reload"
+            :type :modify
+            :path "dev/i18n/nb.edn"}))))

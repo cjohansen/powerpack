@@ -1,17 +1,28 @@
 (ns powerpack.watcher
   (:require [clojure.core.async :refer [put!]]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [nextjournal.beholder :as beholder]
             [powerpack.assets :as assets]
             [powerpack.files :as files]
             [powerpack.logger :as log]))
 
+(defn get-dictionary-dir [path]
+  (if (re-find #"\.edn$" path)
+    (files/get-dir path)
+    path))
+
+(defn get-dictionary-dirs [config]
+  (->> (vals (:m1p/dictionaries config))
+       (mapcat #(map get-dictionary-dir %))))
+
 (defn get-watch-paths [config]
   (let [dirs (->> (concat
                    (:powerpack/source-dirs config)
                    (:powerpack/resource-dirs config)
                    [(:powerpack/content-dir config)]
-                   [(files/get-dir (:datomic/schema-file config))])
+                   [(files/get-dir (:datomic/schema-file config))]
+                   (get-dictionary-dirs config))
                   set)]
     (->> dirs
          (remove (fn [dir] (some #(files/parent? % dir) dirs)))
@@ -71,12 +82,22 @@
              (str/split path)
              second)))
 
+(defn dictionary? [config file]
+  (->> (get-dictionary-dirs config)
+       (some #(files/parent? % file))))
+
 (defn get-app-event [config {:keys [type path]}]
   (let [file (.toFile path)]
     (cond
       (files/same-file? file (:datomic/schema-file config))
       {:kind :powerpack/edited-schema
        :action "reload"}
+
+      (dictionary? config file)
+      {:kind :powerpack/edited-dictionary
+       :action "reload"
+       :type :modify
+       :path (str path)}
 
       (content-file? config (.getAbsolutePath file))
       {:kind :powerpack/edited-content

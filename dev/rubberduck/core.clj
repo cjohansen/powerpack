@@ -1,6 +1,7 @@
 (ns rubberduck.core
   (:require [datomic-type-extensions.api :as d]
             [integrant.core :as ig]
+            [m1p.core :as m1p]
             [powerpack.app :as app]
             [powerpack.export :as export]
             [powerpack.highlight :as highlight]))
@@ -60,11 +61,10 @@
 
 (def app
   (-> {:config config
-       :i18n/dictionaries
-       {:nb {::greeting "Heisann!"
-             ::published [:fn/str "Publisert {{:published}}"]}
-        :en {::greeting "Hi there!"
-             ::published [:fn/str "Published {{:published}}"]}}
+       :m1p/dictionaries
+       {:nb ["dev/i18n/nb.edn"]
+        :en ["dev/i18n/en.edn"]}
+
        :create-ingest-tx #'create-tx
        :render-page #'render-page
        :get-context (fn [] {:date (str (java.time.LocalDate/now))})
@@ -89,6 +89,8 @@
   (app/start)
   (app/stop)
   (app/reset)
+
+  (:i18n/dictionaries integrant.repl.state/system)
 
   (-> app
       (assoc-in [:config :site/base-url] "https://rubberduck.example")

@@ -5,6 +5,7 @@
             [clojure.string :as str]
             [org.httpkit.server :as http-kit]
             [powerpack.hud :as hud]
+            [powerpack.i18n :as i18n]
             [powerpack.logger :as log]
             [powerpack.web :as web]))
 
@@ -123,7 +124,7 @@
 (defn get-ns [clojure-code-s]
   (symbol (second (re-find #"(?s)ns[\s]+([^\s]+)" clojure-code-s))))
 
-(defn start-watching! [{:keys [fs-events app-events]}]
+(defn start-watching! [{:keys [fs-events app-events config dictionaries]}]
   (let [watching? (atom true)
         fs-ch (chan)]
     (tap (:mult fs-events) fs-ch)
@@ -133,6 +134,8 @@
           (when (= :powerpack/edited-source (:kind event))
             (log/debug "Source edited")
             (require (get-ns (slurp (io/file (:path event)))) :reload))
+          (when (= :powerpack/edited-dictionary (:kind event))
+            (reset! dictionaries (i18n/load-dictionaries config)))
           (when (= :powerpack/edited-asset (:kind event))
             (log/debug "Asset edited")
             ;; The autorefresh Optimus strategy needs some time to update its
@@ -140,7 +143,8 @@
             ;; loaded.
             (<! (timeout 100)))
           (when (#{:powerpack/edited-source
-                   :powerpack/edited-asset} (:kind event))
+                   :powerpack/edited-asset
+                   :powerpack/edited-dictionary} (:kind event))
             (put! (:ch app-events) event))
           (when @watching? (recur)))))
     (fn []

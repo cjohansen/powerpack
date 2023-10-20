@@ -11,6 +11,7 @@
 ** TODO Add a link checker
 ** TODO Validate non-string headers: {:headers {:content-type "application/edn"} :body (index/build-index db (:page/locale page))}
 ** TODO Catch exceptions in i18n interpolation
+** TODO Catch errors when loading i18n
 * Export [0/5]
 ** TODO Validate existence of :stasis/build-dir
 ** TODO Fail the export when using assets that can't be found (use a specific error for dev assets)

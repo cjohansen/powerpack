@@ -1,0 +1,3 @@
+[#:rubberduck.core
+ {:greeting "Hi there!"
+  :published [:fn/str "Published {{:published}}"]}]

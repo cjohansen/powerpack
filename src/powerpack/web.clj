@@ -219,12 +219,12 @@
            (errors/report-error error-events))
       (throw e))))
 
-(defn handle-request [req {:keys [fns] :as opt}]
+(defn handle-request [req {:keys [fns dictionaries] :as opt}]
   (let [context (-> (when (ifn? (:get-context fns))
                       ((:get-context fns)))
                     (assoc :uri (:uri req))
                     (assoc :powerpack/config (:config opt))
-                    (assoc :i18n/dictionaries (:i18n/dictionaries fns)) ;; 😬
+                    (assoc :i18n/dictionaries @dictionaries)
                     (assoc :app/db (:db req))
                     (assoc :optimus-assets (:optimus-assets req))
                     (merge (select-keys req [:powerpack/live-reload?])))]

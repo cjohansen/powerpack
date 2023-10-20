@@ -13,6 +13,7 @@
             [powerpack.db :as db]
             [powerpack.error-logger :as errors]
             [powerpack.hud :as hud]
+            [powerpack.i18n :as i18n]
             [powerpack.ingest :as ingest]
             [powerpack.live-reload :as live-reload]
             [powerpack.logger :as log]
@@ -179,11 +180,17 @@
 (defn initialize-config [config]
   (with-defaults config config-defaults))
 
-(defmethod ig/init-key :powerpack/config [_ {:keys [config]}]
-  (initialize-config config))
+(defn get-m1p-config [opt]
+  (select-keys opt (filter (comp #{"m1p"} namespace) (keys opt))))
+
+(defmethod ig/init-key :powerpack/config [_ opt]
+  (initialize-config (merge (:config opt) (get-m1p-config opt))))
 
 (defmethod ig/init-key :powerpack/on-started [_ {:keys [on-started]}]
   on-started)
+
+(defmethod ig/init-key :i18n/dictionaries [_ {:keys [config]}]
+  (atom (i18n/load-dictionaries config)))
 
 (defn get-system-map []
   {:powerpack/app {}
@@ -197,19 +204,24 @@
                  :fns (ig/ref :powerpack/app)
                  :ch-ch-ch-changes (ig/ref :dev/app-events)
                  :logger (ig/ref :app/logger)
-                 :hud (ig/ref :dev/hud)}
+                 :hud (ig/ref :dev/hud)
+                 :dictionaries (ig/ref :i18n/dictionaries)}
    :app/server {:config (ig/ref :powerpack/config)
                 :handler (ig/ref :app/handler)}
+   :i18n/dictionaries {:config (ig/ref :powerpack/config)}
 
    :dev/fs-events {}
    :dev/app-events {}
    :dev/error-events {}
 
    :dev/file-watcher {:config (ig/ref :powerpack/config)
-                      :fs-events (ig/ref :dev/fs-events)}
+                      :fs-events (ig/ref :dev/fs-events)
+                      :dictionaries (ig/ref :i18n/dictionaries)}
 
    :dev/source-watcher {:fs-events (ig/ref :dev/fs-events)
-                        :app-events (ig/ref :dev/app-events)}
+                        :app-events (ig/ref :dev/app-events)
+                        :dictionaries (ig/ref :i18n/dictionaries)
+                        :config (ig/ref :powerpack/config)}
 
    :dev/schema-watcher {:fs-events (ig/ref :dev/fs-events)}
 
