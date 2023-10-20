@@ -38,3 +38,9 @@
 
 (defmacro debug [& msg]
   `(log :debug ~msg))
+
+(defmacro with-timing [level name exp]
+  `(let [start# (System/currentTimeMillis)
+         res# ~exp]
+     (log ~level [~name "in" (- (System/currentTimeMillis) start#) "ms"])
+     res#))

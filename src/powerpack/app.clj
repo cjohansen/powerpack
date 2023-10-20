@@ -42,18 +42,12 @@
       (live-reload/wrap-live-reload opts)
       wrap-params))
 
-(defmacro with-timing-info [level name exp]
-  `(let [start# (System/currentTimeMillis)
-         res# ~exp]
-     (log/log ~level [~name "in" (- (System/currentTimeMillis) start#) "ms"])
-     res#))
-
 (defmethod ig/init-key :app/logger [_ {:keys [config]}]
-  (with-timing-info :debug "Started logger"
+  (log/with-timing :debug "Started logger"
     (log/start-logger (:powerpack/log-level config))))
 
 (defmethod ig/halt-key! :app/logger [_ logger]
-  (with-timing-info :debug "Stopped logger"
+  (log/with-timing :debug "Stopped logger"
     (log/stop-logger logger)))
 
 (defmethod ig/init-key :dev/fs-events [_ _opt]
@@ -81,17 +75,17 @@
   (close! ch))
 
 (defmethod ig/init-key :app/handler [_ opts]
-  (with-timing-info :info "Created web app"
+  (log/with-timing :info "Created web app"
     (-> (create-handler opts)
         prone/wrap-exceptions)))
 
 (defmethod ig/init-key :app/server [_ {:keys [handler config]}]
   (let [port (or (:powerpack/port config) 5051)]
-    (with-timing-info :info (str "Started server on port " port)
+    (log/with-timing :info (str "Started server on port " port)
       (server/run-server handler {:port port}))))
 
 (defmethod ig/halt-key! :app/server [_ stop-server]
-  (with-timing-info :info "Stopped server"
+  (log/with-timing :info "Stopped server"
     (stop-server)))
 
 (defn create-database [config]
@@ -100,53 +94,53 @@
        (db/create-database (:powerpack/db config))))
 
 (defmethod ig/init-key :datomic/conn [_ {:keys [config]}]
-  (with-timing-info :info "Created database"
+  (log/with-timing :info "Created database"
     (create-database config)))
 
 (defmethod ig/init-key :dev/ingestion-watcher [_ opt]
-  (with-timing-info :info "Ingested all data"
+  (log/with-timing :info "Ingested all data"
     (ingest/ingest-all opt))
-  (with-timing-info :debug "Started content watcher"
+  (log/with-timing :debug "Started content watcher"
    (ingest/start-watching! opt)))
 
 (defmethod ig/halt-key! :dev/ingestion-watcher [_ watcher]
-  (with-timing-info :debug "Stopped content watcher"
+  (log/with-timing :debug "Stopped content watcher"
     (ingest/stop-watching! watcher)))
 
 (defmethod ig/init-key :dev/source-watcher [_ opt]
-  (with-timing-info :debug "Started source code watcher"
+  (log/with-timing :debug "Started source code watcher"
     (live-reload/start-watching! opt)))
 
 (defmethod ig/halt-key! :dev/source-watcher [_ watcher]
-  (with-timing-info :debug "Stopped source code watcher"
+  (log/with-timing :debug "Stopped source code watcher"
     (live-reload/stop-watching! watcher)))
 
 (defmethod ig/init-key :dev/file-watcher [_ opt]
-  (with-timing-info :info "Started file system watcher"
+  (log/with-timing :info "Started file system watcher"
     (watcher/start-watching! opt)))
 
 (defmethod ig/halt-key! :dev/file-watcher [_ watcher]
-  (with-timing-info :info "Stopped file system watcher"
+  (log/with-timing :info "Stopped file system watcher"
     (watcher/stop-watching! watcher)))
 
 (defmethod ig/init-key :dev/error-logger [_ opt]
-  (with-timing-info :debug "Started error logger"
+  (log/with-timing :debug "Started error logger"
     (errors/start-watching! opt)))
 
 (defmethod ig/halt-key! :dev/error-logger [_ watcher]
-  (with-timing-info :debug "Stopped error logger"
+  (log/with-timing :debug "Stopped error logger"
     (errors/stop-watching! watcher)))
 
 (defmethod ig/init-key :dev/hud [_ opt]
-  (with-timing-info :debug "Started HUD"
+  (log/with-timing :debug "Started HUD"
     (hud/start-watching! opt)))
 
 (defmethod ig/halt-key! :dev/hud [_ watcher]
-  (with-timing-info :debug "Stopped HUD"
+  (log/with-timing :debug "Stopped HUD"
     (hud/stop-watching! watcher)))
 
 (defmethod ig/init-key :dev/schema-watcher [_ {:keys [fs-events]}]
-  (with-timing-info :debug "Started schema watcher"
+  (log/with-timing :debug "Started schema watcher"
     (let [watching? (atom true)
           fs-ch (chan)]
       (tap (:mult fs-events) fs-ch)
@@ -162,7 +156,7 @@
         (reset! watching? false)))))
 
 (defmethod ig/halt-key! :dev/schema-watcher [_ stop-watcher]
-  (with-timing-info :debug "Stopped schema watcher"
+  (log/with-timing :debug "Stopped schema watcher"
     (stop-watcher)))
 
 (def config-defaults
@@ -241,7 +235,7 @@
 (defn start []
   (integrant.repl/go)
   (when-let [on-started (:powerpack/on-started integrant.repl.state/system)]
-    (with-timing-info :info "Ran on-started hook"
+    (log/with-timing :info "Ran on-started hook"
       (on-started integrant.repl.state/system)))
   :powerpack/started)
 
