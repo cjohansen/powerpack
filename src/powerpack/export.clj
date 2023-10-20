@@ -7,8 +7,8 @@
             [imagine.core :as imagine]
             [optimus.export :as export]
             [optimus.optimizations :as optimizations]
-            [powerpack.app :as app]
             [powerpack.assets :as assets]
+            [powerpack.dev :as dev]
             [powerpack.i18n :as i18n]
             [powerpack.ingest :as ingest]
             [powerpack.web :as web]
@@ -61,13 +61,13 @@
   (stasis/slurp-directory export-directory #"\.[^.]+$"))
 
 (defn export [{:keys [config] :as opt} & [{:keys [format]}]]
-  (let [config (app/initialize-config opt)
+  (let [config (dev/initialize-config opt)
         export-directory (or (:stasis/build-dir config) "build")
         assets (optimize (assets/get-assets config) {})
         old-files (load-export-dir export-directory)
         request {:optimus-assets assets
                  :config config}
-        conn (app/create-database (assoc config :powerpack/db (str "datomic:mem://" (d/squuid))))
+        conn (dev/create-database (assoc config :powerpack/db (str "datomic:mem://" (d/squuid))))
         handler-deps {:conn conn
                       :config config
                       :fns opt

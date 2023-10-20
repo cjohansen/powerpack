@@ -1,8 +1,7 @@
 (ns rubberduck.core
   (:require [datomic-type-extensions.api :as d]
             [integrant.core :as ig]
-            [m1p.core :as m1p]
-            [powerpack.app :as app]
+            [powerpack.dev :as dev]
             [powerpack.export :as export]
             [powerpack.highlight :as highlight]))
 
@@ -86,9 +85,9 @@
 
   (set! *print-namespace-maps* false)
 
-  (app/start)
-  (app/stop)
-  (app/reset)
+  (dev/start)
+  (dev/stop)
+  (dev/reset)
 
   (:i18n/dictionaries integrant.repl.state/system)
 
