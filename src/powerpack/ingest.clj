@@ -1,5 +1,5 @@
 (ns powerpack.ingest
-  (:require [clojure.core.async :refer [<! chan go put! tap untap]]
+  (:require [clojure.core.async :refer [<! chan close! go put! tap untap]]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -276,6 +276,7 @@
           (when @watching? (recur)))))
     (fn []
       (untap (:mult fs-events) fs-ch)
+      (close! fs-ch)
       (reset! watching? false))))
 
 (defn stop-watching! [stop]

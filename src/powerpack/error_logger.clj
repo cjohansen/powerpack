@@ -1,5 +1,5 @@
 (ns powerpack.error-logger
-  (:require [clojure.core.async :refer [<! chan go tap untap]]
+  (:require [clojure.core.async :refer [<! chan close! go tap untap]]
             [clojure.pprint :as pprint]
             [clojure.string :as str]
             [powerpack.logger :as log]))
@@ -117,6 +117,7 @@
           (when @watching? (recur)))))
     (fn []
       (untap (:mult error-events) err-ch)
+      (close! err-ch)
       (reset! watching? false))))
 
 (defn stop-watching! [stop]

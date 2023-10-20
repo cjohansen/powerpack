@@ -1,5 +1,5 @@
 (ns powerpack.hud
-  (:require [clojure.core.async :refer [<! chan go put! tap untap]]
+  (:require [clojure.core.async :refer [<! chan close! go put! tap untap]]
             [clojure.pprint :as pprint]
             [clojure.string :as str]
             [dumdom.string :as dumdom]
@@ -82,7 +82,9 @@
                (fn [_ _ old-errors errors]
                  (when-not (= old-errors errors)
                    (emit-error errors))))
-    {:stop #(remove-watch (:errors hud) k)
+    {:stop (fn []
+             (remove-watch (:errors hud) k)
+             (close! client-ch))
      :ch client-ch}))
 
 (defn resolve-error-event [errors event]
@@ -102,6 +104,7 @@
           (when @watching? (recur)))))
     {:stop (fn []
              (untap (:mult error-events) err-ch)
+             (close! err-ch)
              (reset! watching? false))
      :errors errors}))
 
