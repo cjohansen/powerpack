@@ -1,7 +1,8 @@
 (ns powerpack.error-logger
-  (:require [clojure.core.async :refer [<! chan close! go tap untap]]
+  (:require [clojure.core.async :refer [<!]]
             [clojure.pprint :as pprint]
             [clojure.string :as str]
+            [powerpack.async :refer [create-watcher]]
             [powerpack.logger :as log]))
 
 (defmacro with-err-str [& body]
@@ -106,19 +107,9 @@
            format-error-message))))
 
 (defn start-watching! [{:keys [error-events]}]
-  (let [watching? (atom true)
-        err-ch (chan)]
-    (tap (:mult error-events) err-ch)
-    (go
-      (loop []
-        (when-let [event (<! err-ch)]
-          (when-not (:resolved? event)
-            (log/error (format-error event)))
-          (when @watching? (recur)))))
-    (fn []
-      (untap (:mult error-events) err-ch)
-      (close! err-ch)
-      (reset! watching? false))))
+  (create-watcher [event (:mult error-events)]
+    (when-not (:resolved? event)
+      (log/error (format-error event)))))
 
 (defn stop-watching! [stop]
   (stop))

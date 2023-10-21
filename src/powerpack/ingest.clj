@@ -1,5 +1,5 @@
 (ns powerpack.ingest
-  (:require [clojure.core.async :refer [<! put!]]
+  (:require [clojure.core.async :refer [put!]]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
