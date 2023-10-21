@@ -11,11 +11,11 @@
 ** TODO Validate non-string headers: {:headers {:content-type "application/edn"} :body (index/build-index db (:page/locale page))}
 ** DONE Catch exceptions in i18n interpolation
 ** DONE Catch errors when loading i18n
-* Export [0/6]
-** TODO Validate existence of :stasis/build-dir
+* Export [2/6]
+** TODO Validate existence of :powerpack/build-dir
 ** TODO Fail the export when using assets that can't be found (use a specific error for dev assets)
-** TODO DON'T send the integrant system to on-started
-** TODO Streamline naming of keys in integrant components and "context"
+** DONE DON'T send the integrant system to on-started
+** DONE Streamline naming of keys in integrant components and "context"
 ** TODO Export og:image images that use imagine
 ** TODO Run i18n parity-tests
 * Documentation [0/2]
