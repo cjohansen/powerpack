@@ -18,6 +18,7 @@
       [:h1 (:page/title page)]
       [:p [:i18n ::greeting]]
       ;;(throw (ex-info "Oh noes!" {}))
+      [:p [:i18n ::uri page]]
       (when-let [published (:blog-post/published page)]
         [:p [:i18n ::published {:published published}]])
       [:pre [:code {:class "language-clj"}

@@ -1,6 +1,7 @@
 (ns powerpack.hiccup
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
+            [clojure.walk :as walk]
             [dumdom.string :as dumdom]
             [fivetonine.collage.util :as util]
             [imagine.core :as imagine]
@@ -190,14 +191,22 @@
   (->> (ensure-css-bundles context hiccup)
        (ensure-js-bundles context)))
 
+(defn translate [hiccup context locale]
+  (m1p/interpolate
+   (walk/prewalk
+    (fn [x]
+      (cond->> x
+        (:db/id x) (into {})))
+    hiccup)
+   {:dictionaries
+    {:i18n (get (:i18n/dictionaries context) locale)}}))
+
 (defn interpolate-i18n [context page hiccup]
   (let [locale (or (:page/locale page)
                    (-> context :config :i18n/default-locale))]
     (cond-> hiccup
       (:i18n/dictionaries context)
-      (m1p/interpolate
-       {:dictionaries
-        {:i18n (get (:i18n/dictionaries context) locale)}}))))
+      (translate context locale))))
 
 (defn embellish-document [context page hiccup]
   (->> hiccup

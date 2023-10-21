@@ -1,3 +1,4 @@
 [#:rubberduck.core
  {:greeting "Hi there!"
-  :published [:fn/str "Published {{:published}}"]}]
+  :published [:fn/str "Published {{:published}}"]
+  :uri [:fn/str "You are at {{:page/uri}}"]}]
