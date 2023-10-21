@@ -1,4 +1,4 @@
-* Todo [7/12]
+* Todo [8/12]
 ** DONE Link to Prone when rendering exceptions occur
 ** DONE Set proper content-type header when using :content-type
 ** DONE Run alert from the 404 response for JS requests
@@ -10,7 +10,7 @@
 ** TODO Add a link checker
 ** TODO Validate non-string headers: {:headers {:content-type "application/edn"} :body (index/build-index db (:page/locale page))}
 ** TODO Catch exceptions in i18n interpolation
-** TODO Catch errors when loading i18n
+** DONE Catch errors when loading i18n
 * Export [0/6]
 ** TODO Validate existence of :stasis/build-dir
 ** TODO Fail the export when using assets that can't be found (use a specific error for dev assets)

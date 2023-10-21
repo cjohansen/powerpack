@@ -70,7 +70,7 @@
 (s/def :powerpack/resource-dirs (s/coll-of :file/directory))
 (s/def :powerpack/source-dirs (s/coll-of :file/directory))
 
-(s/def :powerpack/options
+(s/def :powerpack/powerpack
   (s/keys :req [:datomic/schema-file
                 :optimus/assets
                 :optimus/bundles
@@ -115,16 +115,16 @@
     (->> (read-string (slurp (io/file (:datomic/schema-file config))))
          (db/create-database (:datomic/uri config)))))
 
-(defn create-app [options]
-  (assert (s/valid? :powerpack/options options)
-          (s/explain-data :powerpack/options options))
-  (let [config (with-defaults options defaults)]
-    (cond-> config
-      (:m1p/dictionaries config)
-      (assoc :i18n/dictionaries (atom (i18n/load-dictionaries config)))
+(defn create-app [powerpack & [opt]]
+  (assert (s/valid? :powerpack/powerpack powerpack)
+          (s/explain-data :powerpack/powerpack powerpack))
+  (let [powerpack (with-defaults powerpack defaults)]
+    (cond-> powerpack
+      (:m1p/dictionaries powerpack)
+      (assoc :i18n/dictionaries (atom (i18n/load-dictionaries powerpack opt)))
 
-      (:datomic/uri config)
-      (assoc :datomic/conn (create-database config)))))
+      (:datomic/uri powerpack)
+      (assoc :datomic/conn (create-database powerpack)))))
 
 (defn start [app & [opt]]
   (log/with-timing :info "Ingested all data"

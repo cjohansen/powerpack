@@ -138,29 +138,29 @@
   (log/with-timing :debug "Stopped schema watcher"
     (stop-watcher)))
 
-(defmethod ig/init-key :powerpack/app [_ powerpack]
-  (app/create-app powerpack))
+(defmethod ig/init-key :powerpack/app [_ opt]
+  (app/create-app (:powerpack/powerpack opt) (:dev/opts opt)))
 
 (defmethod ig/init-key :dev/opts [_ opts]
   opts)
 
 (defn get-system-map []
-  {;; Wire up user app spec
-   :powerpack/powerpack {}
-   :powerpack/app (ig/ref :powerpack/powerpack)
-
-   ;; Dev-time resources
+  {;; Dev-time resources
    :dev/app-events {}
    :dev/error-events {}
    :dev/fs-events {}
    :dev/hud {:error-events (ig/ref :dev/error-events)}
-   :dev/logger (ig/ref :powerpack/app)
 
    ;; Dev tooling dependency map
    :dev/opts {:app-events (ig/ref :dev/app-events)
               :error-events (ig/ref :dev/error-events)
               :fs-events (ig/ref :dev/fs-events)
               :hud (ig/ref :dev/hud)}
+
+   ;; Wire up user app spec
+   :powerpack/powerpack {}
+   :powerpack/app {:powerpack/powerpack (ig/ref :powerpack/powerpack)
+                   :dev/opts (ig/ref :dev/opts)}
 
    ;; Watcher processes
    :dev/file-watcher {:powerpack/app (ig/ref :powerpack/app)
@@ -174,7 +174,8 @@
    :dev/ingestion-watcher {:powerpack/app (ig/ref :powerpack/app)
                            :powerpack/dev (ig/ref :dev/opts)}
 
-   ;; Console logger
+   ;; Console logging
+   :dev/logger (ig/ref :powerpack/app)
    :dev/error-logger (ig/ref :dev/opts)   
 
    ;; Web app

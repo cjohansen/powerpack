@@ -124,34 +124,34 @@
 (defn get-ns [clojure-code-s]
   (symbol (second (re-find #"(?s)ns[\s]+([^\s]+)" clojure-code-s))))
 
-(defmulti process-event (fn [e _powerpack] (:kind e)))
+(defmulti process-event (fn [e _powerpack _opt] (:kind e)))
 
-(defmethod process-event :default [e _powerpack]
+(defmethod process-event :default [e _powerpack _opt]
   (log/debug "Noop event" e))
 
-(defmethod process-event :powerpack/edited-source [{:keys [path]} _powerpack]
+(defmethod process-event :powerpack/edited-source [{:keys [path]} _powerpack _opt]
   (log/debug "Source edited, reloading namespace")
   (require (get-ns (slurp (io/file path))) :reload))
 
-(defmethod process-event :powerpack/edited-dictionary [_e powerpack]
+(defmethod process-event :powerpack/edited-dictionary [_e powerpack opt]
   (log/debug "Dictionary edited, reloading dictionaries")
-  (reset! (:i18n/dictionaries powerpack) (i18n/load-dictionaries powerpack)))
+  (reset! (:i18n/dictionaries powerpack) (i18n/load-dictionaries powerpack opt)))
 
-(defmethod process-event :powerpack/edited-asset [_e _powerpack]
+(defmethod process-event :powerpack/edited-asset [_e _powerpack _opt]
   (log/debug "Asset edited")
   ;; The autorefresh Optimus strategy needs some time to update its
   ;; cache, so we'll postpone slightly to be sure new assets are
   ;; loaded.
   {:wait 100})
 
-(defn start-watching! [powerpack {:keys [fs-events app-events]}]
+(defn start-watching! [powerpack {:keys [fs-events app-events] :as opt}]
   (let [watching? (atom true)
         fs-ch (chan)]
     (tap (:mult fs-events) fs-ch)
     (go
       (loop []
         (when-let [event (<! fs-ch)]
-          (when-let [wait (:wait (process-event event powerpack))]
+          (when-let [wait (:wait (process-event event powerpack opt))]
             (<! (timeout wait)))
           (when (:action event)
             (put! (:ch app-events) event))
