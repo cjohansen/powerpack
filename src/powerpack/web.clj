@@ -211,14 +211,14 @@
           res (get-response-map context page (render-page* context page))]
       (errors/resolve-error opt [::render-page (:uri context)])
       res)
-    (catch Exception e
+    (catch Throwable e
       (->> {:exception e
             :uri (:uri context)
             :message (str "Failed to render page " (:uri context))
             :kind ::render-page
             :id [::render-page (:uri context)]}
            (errors/report-error opt))
-      (throw e))))
+      (throw (ex-info "Failed to render page" {:uri (:uri context)} e)))))
 
 (defn handle-request [req powerpack opt]
   (let [context (-> (when (ifn? (:powerpack/get-context powerpack))

@@ -1,4 +1,4 @@
-* Todo [8/12]
+* Todo [9/12]
 ** DONE Link to Prone when rendering exceptions occur
 ** DONE Set proper content-type header when using :content-type
 ** DONE Run alert from the 404 response for JS requests
@@ -9,7 +9,7 @@
 ** TODO Add live-reload to the Prone page
 ** TODO Add a link checker
 ** TODO Validate non-string headers: {:headers {:content-type "application/edn"} :body (index/build-index db (:page/locale page))}
-** TODO Catch exceptions in i18n interpolation
+** DONE Catch exceptions in i18n interpolation
 ** DONE Catch errors when loading i18n
 * Export [0/6]
 ** TODO Validate existence of :stasis/build-dir
