@@ -2,14 +2,14 @@
   (:require [optimus.assets :as assets]
             [optimus.optimizations :as optimizations]))
 
-(defn get-assets [config]
+(defn get-assets [powerpack]
   (concat
    (mapcat (fn [{:keys [public-dir paths]}]
              (assets/load-assets (or public-dir "public") paths))
-           (:optimus/assets config))
+           (:optimus/assets powerpack))
    (mapcat (fn [[bundle {:keys [public-dir paths]}]]
              (assets/load-bundle (or public-dir "public") bundle paths))
-           (:optimus/bundles config))))
+           (:optimus/bundles powerpack))))
 
 (defn optimizations [assets & [_options]]
   (-> assets

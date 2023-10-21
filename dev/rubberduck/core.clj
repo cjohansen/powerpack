@@ -5,39 +5,6 @@
             [powerpack.export :as export]
             [powerpack.highlight :as highlight]))
 
-(def config
-  {:site/default-locale :en
-   :site/title "Rubberduck"
-
-   :stasis/build-dir "build"
-   :powerpack/content-dir "dev-resources"
-   :powerpack/db "datomic:mem://rubberduck"
-   :powerpack/source-dirs ["src" "dev"]
-   :powerpack/resource-dirs ["dev-resources" "dev"]
-   :powerpack/log-level :debug
-   :powerpack/dev-assets-root-path "dev-assets"
-
-   :optimus/assets [{:public-dir "public"
-                     :paths [#"/images/*.*"]}]
-   :optimus/bundles {"styles.css"
-                     {:public-dir "public"
-                      :paths ["/styles/powerpack.css"]}}
-
-   :powerpack/port 5051
-
-   :imagine/config {:prefix "image-assets"
-                    :resource-path "public"
-                    :disk-cache? true
-                    :transformations
-                    {:vcard-small
-                     {:transformations [[:fit {:width 184 :height 184}]
-                                        [:crop {:preset :square}]]
-                      :retina-optimized? true
-                      :retina-quality 0.4
-                      :width 184}}}
-
-   :datomic/schema-file "dev-resources/schema.edn"})
-
 (defn create-tx [_file-name data]
   data)
 
@@ -58,28 +25,60 @@
       [:img {:src "/vcard-small/images/ducks.jpg"}]
       [:script {:src "/dev-debug.js"}]]]))
 
-(def app
-  (-> {:config config
+(def powerpack
+  (-> {:site/default-locale :en
+       :site/title "Rubberduck"
+
+       :powerpack/content-dir "dev-resources"
+       :powerpack/source-dirs ["src" "dev"]
+       :powerpack/resource-dirs ["dev-resources" "dev"]
+       :powerpack/log-level :debug
+       :powerpack/dev-assets-root-path "dev-assets"
+
+       :powerpack/build-dir "build"
+       :optimus/assets [{:public-dir "public"
+                         :paths [#"/images/*.*"]}]
+       :optimus/bundles {"styles.css"
+                         {:public-dir "public"
+                          :paths ["/styles/powerpack.css"]}}
+
+       :powerpack/port 5051
+
+       :imagine/config {:prefix "image-assets"
+                        :resource-path "public"
+                        :disk-cache? true
+                        :transformations
+                        {:vcard-small
+                         {:transformations [[:fit {:width 184 :height 184}]
+                                            [:crop {:preset :square}]]
+                          :retina-optimized? true
+                          :retina-quality 0.4
+                          :width 184}}}
+
+       :datomic/uri "datomic:mem://rubberduck"
+       :datomic/schema-file "dev-resources/schema.edn"
+
        :m1p/dictionaries
        {:nb ["dev/i18n/nb.edn"]
         :en ["dev/i18n/en.edn"]}
 
-       :create-ingest-tx #'create-tx
-       :render-page #'render-page
-       :get-context (fn [] {:date (str (java.time.LocalDate/now))})
-       :on-started (fn [powerpack-app]
-                     (->> [{:page/uri "/build-date.edn"
-                            :page/response-type :edn
-                            :page/kind ::build-date}
-                           {:page/uri "/build-date.json"
-                            :page/response-type :json
-                            :page/kind ::build-date}]
-                          (d/transact (:datomic/conn powerpack-app))
-                          deref))}
+       :powerpack/create-ingest-tx #'create-tx
+       :powerpack/render-page #'render-page
+       :powerpack/get-context (fn [] {:date (str (java.time.LocalDate/now))})
+       :powerpack/on-started
+       (fn [powerpack-app]
+         (->> [{:page/uri "/build-date.edn"
+                :page/response-type :edn
+                :page/kind ::build-date}
+               {:page/uri "/build-date.json"
+                :page/response-type :json
+                :page/kind ::build-date}]
+              (d/transact (:datomic/conn powerpack-app))
+              deref))}
       highlight/install))
 
-(defmethod ig/init-key :powerpack/app [_ _]
-  app)
+(defmethod ig/init-key :powerpack/powerpack [_ _]
+  powerpack)
 
 (comment
 
@@ -89,9 +88,11 @@
   (dev/stop)
   (dev/reset)
 
-  (:i18n/dictionaries integrant.repl.state/system)
+  (require 'integrant.repl.state)
 
-  (-> app
+  integrant.repl.state/system
+
+  (-> powerpack
       (assoc-in [:config :site/base-url] "https://rubberduck.example")
       export/export)
 

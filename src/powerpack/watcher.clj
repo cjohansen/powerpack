@@ -120,14 +120,14 @@
           (merge {:action "reload-css"
                   :updatedPath (assets/find-asset-path (assets/get-assets config) path)}))))))
 
-(defn start-watching! [{:keys [config fs-events]}]
-  (->> (get-watch-paths config)
+(defn start-watching! [powerpack opt]
+  (->> (get-watch-paths powerpack)
        (apply beholder/watch
               (fn [e]
                 (log/debug "File event" e)
-                (when-let [event (get-app-event config e)]
+                (when-let [event (get-app-event powerpack e)]
                   (log/debug "Publish event" event)
-                  (put! (:ch fs-events) event))))))
+                  (put! (:ch (:fs-events opt)) event))))))
 
 (defn stop-watching! [watcher]
   (beholder/stop watcher))

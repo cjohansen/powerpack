@@ -1,23 +1,20 @@
 (ns powerpack.ingest-test
-  (:require [clojure.core.async :refer [chan close!]]
-            [clojure.test :refer [deftest is testing]]
+  (:require [clojure.test :refer [deftest is testing]]
             [datomic-type-extensions.api :as d]
             [powerpack.db :as db]
             [powerpack.ingest :as sut]))
 
-(defmacro with-test-system [schema binding & body]
-  `(do
-     (let [uri# (str "datomic:mem://" (random-uuid))]
-       (db/create-database uri# ~schema)
-       (let [conn# (d/connect uri#)
-             errors# (chan)
-             ~binding {:conn conn#
-                       :error-events {:ch errors#}}]
-         (try
-           ~@body
-           (finally
-             (close! errors#)
-             (d/delete-database uri#)))))))
+(defmacro with-test-powerpack
+  {:clj-kondo/lint-as 'clojure.core/with-open}
+  [binding & body]
+  `(let [uri# (str "datomic:mem://" (random-uuid))]
+     (db/create-database uri# ~(second binding))
+     (let [conn# (d/connect uri#)
+           ~(first binding) {:datomic/conn conn#}]
+       (try
+         ~@body
+         (finally
+           (d/delete-database uri#))))))
 
 (defmacro with-schema-db [schema binding & body]
   `(do
@@ -233,54 +230,58 @@
 
 (deftest ingest-data-test
   (testing "Ingests data from file"
-    (is (= (-> (with-test-system {} system
+    (is (= (-> (with-test-powerpack [powerpack {}]
                  (->> [{:page/uri "/some-file/"
                         :page/title "Hello"}]
-                      (sut/ingest-data system "some-file.md")))
+                      (sut/ingest-data powerpack "some-file.md")))
                :db-after
                (d/entity [:page/uri "/some-file/"])
                mapify)
            {:page/uri "/some-file/", :page/title "Hello"})))
 
   (testing "Does not retract data before attempting failing ingest"
-    (is (= (with-test-system {} system
+    (is (= (with-test-powerpack [powerpack {}]
              (->> [{:page/uri "/some-file/"
                     :page/title "Hello"}]
-                  (sut/ingest-data system "some-file.md"))
+                  (sut/ingest-data powerpack "some-file.md"))
              (try
                (->> [{:bogus/wow "Boom"}]
-                    (sut/ingest-data system "some-file.md"))
+                    (sut/ingest-data powerpack "some-file.md"))
                (catch Exception _e nil))
-             (mapify (d/entity (d/db (:conn system)) [:page/uri "/some-file/"])))
+             (->> [:page/uri "/some-file/"]
+                  (d/entity (d/db (:datomic/conn powerpack)))
+                  mapify))
            {:page/uri "/some-file/", :page/title "Hello"})))
 
   (testing "Retracts datomic type extension attrs"
-    (is (= (with-test-system [{:db/ident :blog-post/published
-                               :dte/valueType :java.time/local-date-time
-                               :db/cardinality :db.cardinality/one}] system
+    (is (= (with-test-powerpack [powerpack [{:db/ident :blog-post/published
+                                             :dte/valueType :java.time/local-date-time
+                                             :db/cardinality :db.cardinality/one}]]
              (->> [{:page/uri "/blog/post/"
                     :blog-post/published #time/ldt "2023-09-30T09:00"}]
-                  (sut/ingest-data system "post.md"))
+                  (sut/ingest-data powerpack "post.md"))
              (->> [{:page/uri "/blog/post/"
                     :blog-post/published #time/ldt "2023-09-29T09:00"}]
-                  (sut/ingest-data system "post.md"))
-             (mapify (d/entity (d/db (:conn system)) [:page/uri "/blog/post/"])))
+                  (sut/ingest-data powerpack "post.md"))
+             (->> [:page/uri "/blog/post/"]
+                  (d/entity (d/db (:datomic/conn powerpack)))
+                  mapify))
            {:page/uri "/blog/post/"
             :blog-post/published #time/ldt "2023-09-29T09:00"})))
 
   (testing "Retracts ref attrs"
-    (is (= (with-test-system [{:db/ident :blog-post/author
-                               :db/valueType :db.type/ref
-                               :db/cardinality :db.cardinality/one}
-                              {:db/ident :person/id
-                               :db/valueType :db.type/string
-                               :db/cardinality :db.cardinality/one
-                               :db/unique :db.unique/identity}] system
+    (is (= (with-test-powerpack [powerpack [{:db/ident :blog-post/author
+                                             :db/valueType :db.type/ref
+                                             :db/cardinality :db.cardinality/one}
+                                            {:db/ident :person/id
+                                             :db/valueType :db.type/string
+                                             :db/cardinality :db.cardinality/one
+                                             :db/unique :db.unique/identity}]]
              (->> [{:page/uri "/blog/post/"
                     :blog-post/author {:person/id "person1"}}]
-                  (sut/ingest-data system "post.md"))
+                  (sut/ingest-data powerpack "post.md"))
              (->> [{:page/uri "/blog/post/"
                     :blog-post/author {:person/id "person1"}}]
-                  (sut/ingest-data system "post.md"))
-             (:page/uri (d/entity (d/db (:conn system)) [:page/uri "/blog/post/"])))
+                  (sut/ingest-data powerpack "post.md"))
+             (:page/uri (d/entity (d/db (:datomic/conn powerpack)) [:page/uri "/blog/post/"])))
            "/blog/post/"))))

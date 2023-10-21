@@ -41,7 +41,7 @@
     (let [[url hash] (str/split src #"#")]
       (str
        (or (not-empty (link/file-path req url))
-           (imagine/realize-url (-> req :powerpack/config :imagine/config) url)
+           (imagine/realize-url (-> req :powerpack/app :imagine/config) url)
            (throw (Exception. (str "Asset not loaded: " url))))
        (some->> hash (str "#"))))
     (catch Exception e
@@ -205,10 +205,11 @@
              message)
      :headers {"Content-Type" "text/html"}}))
 
-(defn render-page [{:keys [fns error-events]} context page]
+(defn render-page [powerpack context page & [opt]]
   (try
-    (let [res (get-response-map context page ((:render-page fns) context page))]
-      (errors/resolve-error error-events [::render-page (:uri context)])
+    (let [render-page* (:powerpack/render-page powerpack)
+          res (get-response-map context page (render-page* context page))]
+      (errors/resolve-error opt [::render-page (:uri context)])
       res)
     (catch Exception e
       (->> {:exception e
@@ -216,40 +217,37 @@
             :message (str "Failed to render page " (:uri context))
             :kind ::render-page
             :id [::render-page (:uri context)]}
-           (errors/report-error error-events))
+           (errors/report-error opt))
       (throw e))))
 
-(defn handle-request [req {:keys [fns dictionaries] :as opt}]
-  (let [context (-> (when (ifn? (:get-context fns))
-                      ((:get-context fns)))
+(defn handle-request [req powerpack opt]
+  (let [context (-> (when (ifn? (:powerpack/get-context powerpack))
+                      ((:powerpack/get-context powerpack)))
                     (assoc :uri (:uri req))
-                    (assoc :powerpack/config (:config opt))
-                    (assoc :i18n/dictionaries @dictionaries)
-                    (assoc :app/db (:db req))
+                    (assoc :powerpack/app powerpack)
+                    (assoc :i18n/dictionaries @(:i18n/dictionaries powerpack))
                     (assoc :optimus-assets (:optimus-assets req))
-                    (merge (select-keys req [:powerpack/live-reload?])))]
-    (-> (if-let [page (d/entity (:db req) [:page/uri (:uri req)])]
-          (render-page opt context page)
+                    (merge (select-keys req [:app/db :powerpack/live-reload?])))]
+    (-> (if-let [page (d/entity (:app/db req) [:page/uri (:uri req)])]
+          (render-page powerpack context page opt)
           (render-error req 404 "Page not found"))
         (post-process-page
          context
-         (concat (:page-post-process-fns fns)
+         (concat (:powerpack/page-post-process-fns powerpack)
                  [get-markup-url-optimizers])))))
 
-(defn serve-pages [opt]
+(defn serve-pages [powerpack opt]
   (fn [req]
-    (handle-request req opt)))
+    (-> req
+        (assoc :app/db (d/db (:datomic/conn powerpack)))
+        (handle-request powerpack opt))))
 
-(defn get-pages [db context opt]
+(defn get-pages [db context powerpack & [opt]]
   (into {}
         (for [uri (d/q '[:find [?uri ...] :where [_ :page/uri ?uri]] db)]
           (try
-            [uri (:body (handle-request (assoc context :uri uri :db db) opt))]
+            [uri (:body (handle-request (assoc context :uri uri :app/db db) powerpack opt))]
             (catch Exception e
               (throw (ex-info (str "Unable to render page " uri)
                               {:uri uri}
                               e)))))))
-
-(defn wrap-system [handler {:keys [conn]}]
-  (fn [req]
-    (handler (assoc req :db (d/db conn)))))

@@ -152,7 +152,7 @@
   (testing "Adds open graph meta tags"
     (is (= (-> (sut/embellish-hiccup
                 {:uri "/"
-                 :powerpack/config {:site/base-url "https://greetings.world"}}
+                 :powerpack/app {:site/base-url "https://greetings.world"}}
                 {:open-graph/description "A greeting of worlds"
                  :open-graph/title "Hello!"
                  :page/uri "/hello-world/"}
@@ -167,7 +167,7 @@
   (testing "Keeps existing open graph tags"
     (is (= (-> (sut/embellish-hiccup
                 {:uri "/"
-                 :powerpack/config {:site/base-url "https://site"}}
+                 :powerpack/app {:site/base-url "https://site"}}
                 {:open-graph/description "Hello"
                  :open-graph/title "Yes"
                  :page/uri "/hello-world/"}

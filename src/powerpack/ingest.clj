@@ -1,10 +1,11 @@
 (ns powerpack.ingest
-  (:require [clojure.core.async :refer [<! chan close! go put! tap untap]]
+  (:require [clojure.core.async :refer [<! put!]]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [datomic-type-extensions.api :as d]
             [mapdown.core :as mapdown]
+            [powerpack.async :refer [create-watcher]]
             [powerpack.db :as db]
             [powerpack.errors :as errors]
             [powerpack.files :as files]
@@ -91,11 +92,11 @@
 (defmethod parse-file :default [_db _file-name file]
   (slurp file))
 
-(defn load-data [db {:keys [config error-events]} file-name]
-  (when-let [file (io/file (str (:powerpack/content-dir config) "/" file-name))]
+(defn load-data [db powerpack file-name & [opt]]
+  (when-let [file (io/file (str (:powerpack/content-dir powerpack) "/" file-name))]
     (try
       (let [data (vec (parse-file db file-name file))]
-        (errors/resolve-error error-events [::parse-file file-name])
+        (errors/resolve-error opt [::parse-file file-name])
         data)
       (catch Exception e
         (->> {:exception e
@@ -103,7 +104,7 @@
               :message (str "Failed to parse file " file-name)
               :kind ::parse-file
               :id [::parse-file file-name]}
-             (errors/report-error error-events))
+             (errors/report-error opt))
         nil))))
 
 (def attrs-to-keep #{:db/ident
@@ -170,15 +171,15 @@
                                 :v v})
                      :tx tx}))))
 
-(defn ingest-data [{:keys [conn fns error-events]} file-name data]
-  (let [create-ingest-tx (:create-ingest-tx fns)
+(defn ingest-data [powerpack file-name data & [opt]]
+  (let [create-ingest-tx (:powerpack/create-ingest-tx powerpack)
         tx (some-> (cond->> data
                      (ifn? create-ingest-tx) (create-ingest-tx file-name))
                    (conj [:db/add (d/tempid :db.part/tx) :tx-source/file-name file-name]))]
     (when tx
       (validate-transaction! tx)
       (try
-        (d/with (d/db conn) tx)
+        (d/with (d/db (:datomic/conn powerpack)) tx)
         (catch Exception e
           (throw (ex-info "Unable to assert"
                           {:kind ::transact
@@ -189,9 +190,9 @@
                                           "This is most likely due to a schema violation.")
                            :file-name file-name
                            :exception e} e)))))
-    (when-let [retractions (get-retract-tx (d/db conn) file-name)]
+    (when-let [retractions (get-retract-tx (d/db (:datomic/conn powerpack)) file-name)]
       (try
-        @(d/transact conn retractions)
+        @(d/transact (:datomic/conn powerpack) retractions)
         (catch Exception e
           (throw (ex-info "Unable to retract"
                           {:kind ::retract
@@ -202,16 +203,16 @@
                            :description "This is most certainly a bug in powerpack, please report it."
                            :exception e} e)))))
     (let [res (when tx
-                @(d/transact conn tx))]
+                @(d/transact (:datomic/conn powerpack) tx))]
       (when res (log/info "Ingested" file-name))
-      (errors/resolve-error error-events [::transact file-name])
+      (errors/resolve-error opt [::transact file-name])
       res)))
 
-(defn ingest [{:keys [conn error-events] :as opt} file-name]
-  (when-let [data (load-data (d/db conn) opt file-name)]
+(defn ingest [powerpack file-name & [opt]]
+  (when-let [data (load-data (d/db (:datomic/conn powerpack)) powerpack file-name opt)]
     (try
-      (let [ingested (ingest-data opt file-name data)]
-        (errors/resolve-error error-events [::ingest-data file-name])
+      (let [ingested (ingest-data powerpack file-name data opt)]
+        (errors/resolve-error opt [::ingest-data file-name])
         ingested)
       (catch Exception e
         (->> (ex-data e)
@@ -222,20 +223,20 @@
                      :description "This is likely a Powerpack bug, please report it."
                      :data data
                      :exception e})
-             (errors/report-error error-events))))))
+             (errors/report-error opt))))))
 
-(defn call-ingest-callback [{:keys [config conn fns ch-ch-ch-changes error-events]}]
+(defn call-ingest-callback [powerpack opt]
   (try
-    (let [on-ingested (:on-ingested fns)]
+    (let [on-ingested (:powerpack/on-ingested powerpack)]
       (when (ifn? on-ingested)
-        (on-ingested {:config config :conn conn})))
+        (on-ingested powerpack)))
     (catch Exception e
       (->> {:kind ::callback
             :id [::callback]
             :message "Encountered an exception while calling your `on-ingested` hook, please investigate."
             :exception e}
-           (errors/report-error error-events))))
-  (when-let [ch (:ch ch-ch-ch-changes)]
+           (errors/report-error opt))))
+  (when-let [ch (-> opt :app-events :ch)]
     (put! ch {:kind :powerpack/ingested-content
               :action "reload"})))
 
@@ -249,35 +250,26 @@
     (->> paths
          (remove #(= schema-file (.getPath (.toURL (io/file (str dir "/" %)))))))))
 
-(defn ingest-all [{:keys [config] :as opt}]
-  (doseq [file-name (->> (get-files-pattern config)
-                         (files/find-file-names (:powerpack/content-dir config))
-                         (get-content-files config))]
-    (ingest opt file-name))
-  (call-ingest-callback opt))
+(defn ingest-all [powerpack & [opt]]
+  (doseq [file-name (->> (get-files-pattern powerpack)
+                         (files/find-file-names (:powerpack/content-dir powerpack))
+                         (get-content-files powerpack))]
+    (ingest powerpack file-name opt))
+  (call-ingest-callback powerpack opt))
 
-(defn start-watching! [{:keys [fs-events] :as opt}]
-  (let [watching? (atom true)
-        fs-ch (chan)]
-    (tap (:mult fs-events) fs-ch)
-    (go
-      (loop []
-        (when-let [{:keys [kind type path]} (<! fs-ch)]
-          (when (= :powerpack/edited-content kind)
-            (log/debug "Content edited")
-            (when (ingest opt path)
-              (call-ingest-callback opt)
-              (log/info (case type
-                          :create "Ingested"
-                          :modify "Updated"
-                          :delete "Removed"
-                          :overflow "Overflowed(?)")
-                        path)))
-          (when @watching? (recur)))))
-    (fn []
-      (untap (:mult fs-events) fs-ch)
-      (close! fs-ch)
-      (reset! watching? false))))
+(defn start-watching! [powerpack opt]
+  (create-watcher [message (-> opt :fs-events :mult)]
+    (when-let [{:keys [kind type path]} message]
+      (when (= :powerpack/edited-content kind)
+        (log/debug "Content edited")
+        (when (ingest powerpack path opt)
+          (call-ingest-callback powerpack opt)
+          (log/info (case type
+                      :create "Ingested"
+                      :modify "Updated"
+                      :delete "Removed"
+                      :overflow "Overflowed(?)")
+                    path))))))
 
 (defn stop-watching! [stop]
   (stop))

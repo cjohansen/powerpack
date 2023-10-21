@@ -101,7 +101,7 @@
     [:script {:type "text/javascript" :src bundle-path}]))
 
 (defn format-title [context page]
-  (when-let [title (not-empty (head-title (:powerpack/config context) (:page/title page)))]
+  (when-let [title (not-empty (head-title (:powerpack/app context) (:page/title page)))]
     [:title title]))
 
 (defn set-attribute [hiccup k v]
@@ -111,7 +111,7 @@
 
 (defn set-lang [context page hiccup]
   (let [locale (or (:page/locale page)
-                 (-> context :powerpack/config :site/default-locale))]
+                   (-> context :powerpack/app :site/default-locale))]
     (cond-> hiccup
       (and locale (not (contains? (second hiccup) :lang)))
       (set-attribute :lang (name locale)))))
@@ -165,7 +165,7 @@
 (defn ensure-open-graphs-metas [context page hiccup]
   (let [og-property (comp :property second)
         existing (set (map og-property (get-tags hiccup :meta)))]
-    (->> (get-open-graph-metas page (:powerpack/config context))
+    (->> (get-open-graph-metas page (:powerpack/app context))
          (remove (comp existing og-property))
          (apply add-to-head hiccup))))
 

@@ -48,4 +48,4 @@
    [:pre] add-hilite-class})
 
 (defn install [app]
-  (update app :page-post-process-fns conj #'get-code-block-highlighters))
+  (update app :powerpack/page-post-process-fns conj #'get-code-block-highlighters))

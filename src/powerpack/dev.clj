@@ -1,6 +1,5 @@
-(ns powerpack.app
-  (:require [clojure.core.async :refer [<! chan close! go mult tap untap]]
-            [clojure.java.io :as io]
+(ns powerpack.dev
+  (:require [clojure.core.async :refer [chan close! mult]]
             [clojure.tools.namespace.repl :as repl]
             [imagine.core :as imagine]
             [integrant.core :as ig]
@@ -9,11 +8,11 @@
             [optimus.prime :as optimus]
             [optimus.strategies :as strategies]
             [org.httpkit.server :as server]
+            [powerpack.app :as app]
             [powerpack.assets :as assets]
-            [powerpack.db :as db]
+            [powerpack.async :refer [create-watcher]]
             [powerpack.error-logger :as errors]
             [powerpack.hud :as hud]
-            [powerpack.i18n :as i18n]
             [powerpack.ingest :as ingest]
             [powerpack.live-reload :as live-reload]
             [powerpack.logger :as log]
@@ -23,34 +22,34 @@
             [ring.middleware.params :refer [wrap-params]]
             [ring.middleware.resource :refer [wrap-resource]]))
 
-(defn wrap-dev-assets [handler config]
-  (if-let [dir (:powerpack/dev-assets-root-path config)]
+(defn wrap-dev-assets [handler powerpack]
+  (if-let [dir (:powerpack/dev-assets-root-path powerpack)]
     (wrap-resource handler dir)
     handler))
 
-(defn create-handler [{:keys [config] :as opts}]
-  (-> (web/serve-pages opts)
-      (wrap-dev-assets config)
-      (imagine/wrap-images (:imagine/config config))
+(defn create-handler [powerpack opt]
+  (-> (web/serve-pages powerpack opt)
+      (wrap-dev-assets powerpack)
+      (imagine/wrap-images (:imagine/config powerpack))
       (optimus/wrap
-       #(assets/get-assets config)
+       #(assets/get-assets powerpack)
        assets/optimizations
        strategies/serve-live-assets-autorefresh
-       {:assets-dirs (:powerpack/resource-dirs config)})
+       {:assets-dirs (:powerpack/resource-dirs powerpack)})
       web/wrap-utf-8
-      (web/wrap-system opts)
-      (live-reload/wrap-live-reload opts)
-      wrap-params))
+      (live-reload/wrap-live-reload powerpack opt)
+      wrap-params
+      prone/wrap-exceptions))
 
-(defmethod ig/init-key :app/logger [_ {:keys [config]}]
+(defmethod ig/init-key :dev/logger [_ powerpack]
   (log/with-timing :debug "Started logger"
-    (log/start-logger (:powerpack/log-level config))))
+    (log/start-logger (:powerpack/log-level powerpack))))
 
-(defmethod ig/halt-key! :app/logger [_ logger]
+(defmethod ig/halt-key! :dev/logger [_ logger]
   (log/with-timing :debug "Stopped logger"
     (log/stop-logger logger)))
 
-(defmethod ig/init-key :dev/fs-events [_ _opt]
+(defmethod ig/init-key :dev/fs-events [_ _]
   (let [ch (chan)]
     {:ch ch
      :mult (mult ch)}))
@@ -58,7 +57,7 @@
 (defmethod ig/halt-key! :dev/fs-events [_ {:keys [ch]}]
   (close! ch))
 
-(defmethod ig/init-key :dev/app-events [_ _opt]
+(defmethod ig/init-key :dev/app-events [_ _]
   (let [ch (chan)]
     {:ch ch
      :mult (mult ch)}))
@@ -66,7 +65,7 @@
 (defmethod ig/halt-key! :dev/app-events [_ {:keys [ch]}]
   (close! ch))
 
-(defmethod ig/init-key :dev/error-events [_ _opt]
+(defmethod ig/init-key :dev/error-events [_ _]
   (let [ch (chan)]
     {:ch ch
      :mult (mult ch)}))
@@ -74,50 +73,38 @@
 (defmethod ig/halt-key! :dev/error-events [_ {:keys [ch]}]
   (close! ch))
 
-(defmethod ig/init-key :app/handler [_ opts]
+(defmethod ig/init-key :app/handler [_ {:powerpack/keys [app dev]}]
   (log/with-timing :info "Created web app"
-    (-> (create-handler opts)
-        prone/wrap-exceptions)))
+    (create-handler app dev)))
 
-(defmethod ig/init-key :app/server [_ {:keys [handler config]}]
-  (let [port (or (:powerpack/port config) 5051)]
+(defmethod ig/init-key :app/server [_ opt]
+  (let [port (-> opt :powerpack/app :powerpack/port)]
     (log/with-timing :info (str "Started server on port " port)
-      (server/run-server handler {:port port}))))
+      (server/run-server (:handler opt) {:port port}))))
 
 (defmethod ig/halt-key! :app/server [_ stop-server]
   (log/with-timing :info "Stopped server"
     (stop-server)))
 
-(defn create-database [config]
-  (->> (or (:datomic/schema config)
-           (read-string (slurp (io/file (:datomic/schema-file config)))))
-       (db/create-database (:powerpack/db config))))
-
-(defmethod ig/init-key :datomic/conn [_ {:keys [config]}]
-  (log/with-timing :info "Created database"
-    (create-database config)))
-
-(defmethod ig/init-key :dev/ingestion-watcher [_ opt]
-  (log/with-timing :info "Ingested all data"
-    (ingest/ingest-all opt))
+(defmethod ig/init-key :dev/ingestion-watcher [_ {:powerpack/keys [app dev]}]
   (log/with-timing :debug "Started content watcher"
-   (ingest/start-watching! opt)))
+    (ingest/start-watching! app dev)))
 
 (defmethod ig/halt-key! :dev/ingestion-watcher [_ watcher]
   (log/with-timing :debug "Stopped content watcher"
     (ingest/stop-watching! watcher)))
 
-(defmethod ig/init-key :dev/source-watcher [_ opt]
+(defmethod ig/init-key :dev/source-watcher [_ {:powerpack/keys [app dev]}]
   (log/with-timing :debug "Started source code watcher"
-    (live-reload/start-watching! opt)))
+    (live-reload/start-watching! app dev)))
 
 (defmethod ig/halt-key! :dev/source-watcher [_ watcher]
   (log/with-timing :debug "Stopped source code watcher"
     (live-reload/stop-watching! watcher)))
 
-(defmethod ig/init-key :dev/file-watcher [_ opt]
+(defmethod ig/init-key :dev/file-watcher [_ {:powerpack/keys [app dev]}]
   (log/with-timing :info "Started file system watcher"
-    (watcher/start-watching! opt)))
+    (watcher/start-watching! app dev)))
 
 (defmethod ig/halt-key! :dev/file-watcher [_ watcher]
   (log/with-timing :info "Stopped file system watcher"
@@ -141,102 +128,66 @@
 
 (defmethod ig/init-key :dev/schema-watcher [_ {:keys [fs-events]}]
   (log/with-timing :debug "Started schema watcher"
-    (let [watching? (atom true)
-          fs-ch (chan)]
-      (tap (:mult fs-events) fs-ch)
-      (go
-        (loop []
-          (when (= :powerpack/edited-schema (:kind (<! fs-ch)))
-            (log/info "Rebooting after schema change")
-            (integrant.repl/halt)
-            (integrant.repl/go))
-          (when @watching? (recur))))
-      (fn []
-        (untap (:mult fs-events) fs-ch)
-        (reset! watching? false)))))
+    (create-watcher [message (:mult fs-events)]
+      (when (= :powerpack/edited-schema (:kind message))
+        (log/info "Rebooting after schema change")
+        (integrant.repl/halt)
+        (integrant.repl/go)))))
 
 (defmethod ig/halt-key! :dev/schema-watcher [_ stop-watcher]
   (log/with-timing :debug "Stopped schema watcher"
     (stop-watcher)))
 
-(def config-defaults
-  {:powerpack/source-dirs ["src"]
-   :powerpack/resource-dirs ["resources"]
-   :powerpack/live-reload-route "/powerpack/live-reload"
-   :powerpack/db "datomic:mem://powerpack"
-   :powerpack/content-file-suffixes ["md" "edn"]
-   :datomic/schema-file "resources/schema.edn"})
+(defmethod ig/init-key :powerpack/app [_ powerpack]
+  (app/create-app powerpack))
 
-(defn with-defaults [x defaults]
-  (merge x (into {} (for [k (keys defaults)]
-                      [k (or (k x) (k defaults))]))))
-
-(defn get-m1p-config [opt]
-  (select-keys opt (filter (comp #{"m1p"} namespace) (keys opt))))
-
-(defn initialize-config [opt]
-  (-> (merge (:config opt) (get-m1p-config opt))
-      (with-defaults config-defaults)))
-
-(defmethod ig/init-key :powerpack/config [_ opt]
-  (initialize-config opt))
-
-(defmethod ig/init-key :powerpack/on-started [_ {:keys [on-started]}]
-  on-started)
-
-(defmethod ig/init-key :i18n/dictionaries [_ {:keys [config]}]
-  (atom (i18n/load-dictionaries config)))
+(defmethod ig/init-key :dev/opts [_ opts]
+  opts)
 
 (defn get-system-map []
-  {:powerpack/app {}
-   :powerpack/config (ig/ref :powerpack/app)
-   :powerpack/on-started (ig/ref :powerpack/app)
-   :datomic/conn {:config (ig/ref :powerpack/config)}
-   :app/logger {:config (ig/ref :powerpack/config)}
-   :app/handler {:conn (ig/ref :datomic/conn)
-                 :config (ig/ref :powerpack/config)
-                 :error-events (ig/ref :dev/error-events)
-                 :fns (ig/ref :powerpack/app)
-                 :ch-ch-ch-changes (ig/ref :dev/app-events)
-                 :logger (ig/ref :app/logger)
-                 :hud (ig/ref :dev/hud)
-                 :dictionaries (ig/ref :i18n/dictionaries)}
-   :app/server {:config (ig/ref :powerpack/config)
-                :handler (ig/ref :app/handler)}
-   :i18n/dictionaries {:config (ig/ref :powerpack/config)}
+  {;; Wire up user app spec
+   :powerpack/powerpack {}
+   :powerpack/app (ig/ref :powerpack/powerpack)
 
-   :dev/fs-events {}
+   ;; Dev-time resources
    :dev/app-events {}
    :dev/error-events {}
+   :dev/fs-events {}
+   :dev/hud {:error-events (ig/ref :dev/error-events)}
+   :dev/logger (ig/ref :powerpack/app)
 
-   :dev/file-watcher {:config (ig/ref :powerpack/config)
-                      :fs-events (ig/ref :dev/fs-events)
-                      :dictionaries (ig/ref :i18n/dictionaries)}
+   ;; Dev tooling dependency map
+   :dev/opts {:app-events (ig/ref :dev/app-events)
+              :error-events (ig/ref :dev/error-events)
+              :fs-events (ig/ref :dev/fs-events)
+              :hud (ig/ref :dev/hud)}
 
-   :dev/source-watcher {:fs-events (ig/ref :dev/fs-events)
-                        :app-events (ig/ref :dev/app-events)
-                        :dictionaries (ig/ref :i18n/dictionaries)
-                        :config (ig/ref :powerpack/config)}
+   ;; Watcher processes
+   :dev/file-watcher {:powerpack/app (ig/ref :powerpack/app)
+                      :powerpack/dev (ig/ref :dev/opts)}
 
-   :dev/schema-watcher {:fs-events (ig/ref :dev/fs-events)}
+   :dev/source-watcher {:powerpack/app (ig/ref :powerpack/app)
+                        :powerpack/dev (ig/ref :dev/opts)}
 
-   :dev/ingestion-watcher {:ch-ch-ch-changes (ig/ref :dev/app-events)
-                           :config (ig/ref :powerpack/config)
-                           :conn (ig/ref :datomic/conn)
-                           :fns (ig/ref :powerpack/app)
-                           :error-events (ig/ref :dev/error-events)
-                           :fs-events (ig/ref :dev/fs-events)}
+   :dev/schema-watcher (ig/ref :dev/opts)
 
-   :dev/error-logger {:error-events (ig/ref :dev/error-events)}
-   :dev/hud {:error-events (ig/ref :dev/error-events)}})
+   :dev/ingestion-watcher {:powerpack/app (ig/ref :powerpack/app)
+                           :powerpack/dev (ig/ref :dev/opts)}
+
+   ;; Console logger
+   :dev/error-logger (ig/ref :dev/opts)   
+
+   ;; Web app
+   :app/handler {:powerpack/app (ig/ref :powerpack/app)
+                 :powerpack/dev (ig/ref :dev/opts)}
+   :app/server {:powerpack/app (ig/ref :powerpack/app)
+                :handler (ig/ref :app/handler)}})
 
 (integrant.repl/set-prep! get-system-map)
 
 (defn start []
   (integrant.repl/go)
-  (when-let [on-started (:powerpack/on-started integrant.repl.state/system)]
-    (log/with-timing :info "Ran on-started hook"
-      (on-started integrant.repl.state/system)))
+  (app/start (:powerpack/app integrant.repl.state/system))
   :powerpack/started)
 
 (defn stop []
@@ -245,5 +196,5 @@
 
 (defn reset []
   (stop)
-  (repl/refresh :after 'powerpack.app/start)
+  (repl/refresh :after 'powerpack.dev/start)
   :powerpack/restarted)

@@ -84,8 +84,8 @@ The following is an example of setting up a page with Powerpack:
    :site/default-locale :en
    :site/title "My blog"
 
-   :stasis/build-dir "build"
-   :powerpack/db "datomic:mem://myblog"
+   :powerpack/build-dir "build"
+   :datomic/uri "datomic:mem://myblog"
    :powerpack/content-dir "content"
    :powerpack/source-dirs ["src" "dev"]
    :powerpack/resource-dirs ["resources"]

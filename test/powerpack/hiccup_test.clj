@@ -83,14 +83,14 @@
             [:link {:rel "stylesheet", :href "/styles/b8936d0bc201/source2.css"}]])))
 
   (testing "Includes lang attribute with default lang"
-    (is (= (-> (sut/build-doc {:powerpack/config {:site/default-locale :nb}} {} [:h1 "Hello world"])
+    (is (= (-> (sut/build-doc {:powerpack/app {:site/default-locale :nb}} {} [:h1 "Hello world"])
                second
                :lang)
            "nb")))
 
   (testing "Includes page language when available"
     (is (= (-> (sut/build-doc
-                {:powerpack/config {:site/default-locale :nb}}
+                {:powerpack/app {:site/default-locale :nb}}
                 {:page/locale :en}
                 [:h1 "Hello world"])
                second
@@ -99,7 +99,7 @@
 
   (testing "Includes open graph meta tags"
     (is (= (-> (sut/build-doc
-                {:powerpack/config {:site/base-url "https://greetings.world"}}
+                {:powerpack/app {:site/base-url "https://greetings.world"}}
                 {:open-graph/description "A greeting of worlds"
                  :open-graph/title "Hello!"
                  :page/uri "/hello-world/"}
@@ -111,7 +111,7 @@
 
   (testing "Truncates open graph description"
     (is (= (-> (sut/build-doc
-                {:powerpack/config {:site/base-url "https://greetings.world"}}
+                {:powerpack/app {:site/base-url "https://greetings.world"}}
                 {:open-graph/description "A greeting of worlds that is much too long to have any hope of appearing in full on the relevant social media platforms that one typically authors open graph descriptions for - and thus, is shortened somewhat brutally."
                  :open-graph/title "Hello!"
                  :page/uri "/hello-world/"}
@@ -127,7 +127,7 @@
 
   (testing "Truncates open graph title"
     (is (= (->> (sut/build-doc
-                 {:powerpack/config {:site/base-url "https://greetings.world"}}
+                 {:powerpack/app {:site/base-url "https://greetings.world"}}
                  {:open-graph/description "A greeting of worlds"
                   :open-graph/title "A few chosen words to greet the peoples of the world that have come here for kindness"
                   :page/uri "/hello-world/"}
@@ -141,7 +141,7 @@
 
   (testing "Escapes title and description"
     (is (= (-> (sut/build-doc
-                {:powerpack/config {:site/base-url "https://greetings.world"}}
+                {:powerpack/app {:site/base-url "https://greetings.world"}}
                 {:open-graph/description "A greeting of worlds & people"
                  :open-graph/title "Hello <world>"
                  :page/uri "/hello-world/"}
@@ -153,7 +153,7 @@
 
   (testing "Renders open graph image"
     (is (= (->> (sut/build-doc
-                 {:powerpack/config {:site/base-url "https://greetings.world"}}
+                 {:powerpack/app {:site/base-url "https://greetings.world"}}
                  {:open-graph/title "Hello world"
                   :open-graph/image "/images/ducks.jpg"
                   :page/uri "/hello-world/"}
@@ -166,7 +166,7 @@
 
   (testing "Renders open graph image with imagine filter"
     (is (= (->> (sut/build-doc
-                 {:powerpack/config
+                 {:powerpack/app
                   {:site/base-url "https://greetings.world"
                    :imagine/config
                    {:prefix "image-assets"

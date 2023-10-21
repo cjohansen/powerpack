@@ -7,8 +7,8 @@
             [imagine.core :as imagine]
             [optimus.export :as export]
             [optimus.optimizations :as optimizations]
+            [powerpack.app :as app]
             [powerpack.assets :as assets]
-            [powerpack.dev :as dev]
             [powerpack.i18n :as i18n]
             [powerpack.ingest :as ingest]
             [powerpack.web :as web]
@@ -60,29 +60,21 @@
 (defn- load-export-dir [export-directory]
   (stasis/slurp-directory export-directory #"\.[^.]+$"))
 
-(defn export [{:keys [config] :as opt} & [{:keys [format]}]]
-  (let [config (dev/initialize-config opt)
-        export-directory (or (:stasis/build-dir config) "build")
-        assets (optimize (assets/get-assets config) {})
+(defn export [options & [{:keys [format]}]]
+  (let [powerpack (app/create-app options)
+        export-directory (:powerpack/build-dir powerpack)
+        assets (optimize (assets/get-assets powerpack) {})
         old-files (load-export-dir export-directory)
-        request {:optimus-assets assets
-                 :config config}
-        conn (dev/create-database (assoc config :powerpack/db (str "datomic:mem://" (d/squuid))))
-        handler-deps {:conn conn
-                      :config config
-                      :fns opt
-                      :dictionaries (atom (i18n/load-dictionaries config))}]
-    (ingest/ingest-all
-     {:config config
-      :conn conn
-      :fns opt})
-    (when (ifn? (:on-started opt))
-      ((:on-started opt) {:datomic/conn conn}))
+        request {:optimus-assets assets}]
+    (app/start powerpack)
     (stasis/empty-directory! export-directory)
     (export/save-assets assets export-directory)
-    (stasis/export-pages (web/get-pages (d/db conn) request handler-deps) export-directory request)
+    (stasis/export-pages
+     (web/get-pages (d/db (:datomic/conn powerpack)) request powerpack)
+     export-directory
+     request)
     (println "Exporting images from <img> <source> <meta property=\"og:image\"> and select style attributes")
-    (when-let [imagine-config (some-> (:imagine/config config)
+    (when-let [imagine-config (some-> (:imagine/config powerpack)
                                       (assoc :cacheable-urls? true))]
       (export-images export-directory export-directory imagine-config))
     (let [new-files (load-export-dir export-directory)]
