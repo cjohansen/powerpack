@@ -1,6 +1,6 @@
 (ns powerpack.highlight-test
   (:require [clojure.test :refer [deftest is testing]]
-            [html5-walker.core :as html5-walker]
+            [html5-walker.walker :as html5-walker]
             [powerpack.highlight :as sut]))
 
 (deftest highlight-test

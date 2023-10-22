@@ -3,7 +3,7 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [datomic-type-extensions.api :as d]
-            [html5-walker.core :as html5-walker]
+            [html5-walker.walker :as html5-walker]
             [imagine.core :as imagine]
             [optimus.link :as link]
             [powerpack.errors :as errors]

@@ -3,7 +3,7 @@
             [clojure.pprint :as pprint]
             [clojure.string :as str]
             [dumdom.string :as dumdom]
-            [html5-walker.core :as html5-walker]
+            [html5-walker.walker :as html5-walker]
             [powerpack.error-logger :as error-logger]
             [powerpack.highlight :as highlight]))
 

@@ -3,14 +3,12 @@
             [clojure.data.json :as json]
             [clojure.string :as str]
             [datomic-type-extensions.api :as d]
-            [html5-walker.core :as html5-walker]
+            [html5-walker.walker :as html5-walker]
             [imagine.core :as imagine]
             [optimus.export :as export]
             [optimus.optimizations :as optimizations]
             [powerpack.app :as app]
             [powerpack.assets :as assets]
-            [powerpack.i18n :as i18n]
-            [powerpack.ingest :as ingest]
             [powerpack.web :as web]
             [stasis.core :as stasis]))
 

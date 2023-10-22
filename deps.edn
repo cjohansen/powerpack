@@ -10,7 +10,7 @@
         com.nextjournal/beholder {:mvn/version "1.0.2"}
         com.vladsch.flexmark/flexmark-all {:mvn/version "0.64.8"}
         datomic-type-extensions/datomic-type-extensions {:mvn/version "2023.09.26"}
-        html5-walker/html5-walker {:mvn/version "2022.03.07"}
+        html5-walker/html5-walker {:mvn/version "2023.10.22"}
         http-kit/http-kit {:mvn/version "2.7.0"}
         integrant/integrant {:mvn/version "0.9.0-alpha2"}
         integrant/repl {:mvn/version "0.3.3"}

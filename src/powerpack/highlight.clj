@@ -1,7 +1,7 @@
 (ns powerpack.highlight
   (:require [clojure.string :as str]
             [clygments.core :as pygments]
-            [html5-walker.core :as html5-walker]))
+            [html5-walker.walker :as html5-walker]))
 
 (defn- extract-code
   "Pulls out just the highlighted code, removing needless fluff and
