@@ -181,6 +181,25 @@
       :else
       response)))
 
+(defn validate-headers! [opt ctx res]
+  (if-let [invalid-ks (->> res :headers keys (remove string?) seq)]
+    (->> {:uri (:uri ctx)
+          :message (str "Page has "
+                        (if (every? keyword? invalid-ks) "keyword" "non-string")
+                        " keys in :headers that will be ignored by ring")
+          :data (with-meta
+                  {:uri (:uri ctx)
+                   :invalid-headers invalid-ks}
+                  {:powerpack.hud/details-expanded? true})
+          :kind ::headers
+          :id [::headers (:uri ctx)]}
+         (errors/report-error opt))
+    (errors/resolve-error opt [::headers (:uri ctx)])))
+
+(defn finalize-response [opt ctx res]
+  (validate-headers! opt ctx res)
+  (update res :headers #(into {} (filter (comp string? key) %))))
+
 (defn get-response-map [req page rendered]
   (->> (if (and (map? rendered)
                 (or (:status rendered)
@@ -208,7 +227,9 @@
 (defn render-page [powerpack context page & [opt]]
   (try
     (let [render-page* (:powerpack/render-page powerpack)
-          res (get-response-map context page (render-page* context page))]
+          res (->> (render-page* context page)
+                   (get-response-map context page)
+                   (finalize-response opt context))]
       (errors/resolve-error opt [::render-page (:uri context)])
       res)
     (catch Throwable e
