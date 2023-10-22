@@ -151,3 +151,46 @@
                 (walker/replace-in-fragment
                  "<a href=\"/images/\">Click</a>"))
            "<a href=\"/images/\">Click</a>"))))
+
+(deftest extract-asset-urls-test
+  (testing "Extracts asset paths from document"
+    (is (= (sut/extract-asset-urls
+            {:powerpack/app {:imagine/config {:prefix "image-assets"}
+                             :site/base-url "https://rubber.duck"}
+             :optimus-assets [{:path "/og-image.png"}
+                              {:path "/img-src.png"}
+                              {:path "/img-srcset1.png"}
+                              {:path "/img-srcset2.png"}
+                              {:path "/style.png"}
+                              {:path "/source-src.png"}
+                              {:path "/source-srcset1.png"}
+                              {:path "/source-srcset2.png"}
+                              {:path "/svg-use.svg"}
+                              {:path "/a-href.png"}]}
+            "<html>
+  <head>
+    <meta property=\"og:image\" content=\"https://rubber.duck/og-image.png\">
+  </head>
+  <body>
+    <img src=\"/img-src.png\">
+    <img srcset=\"/img-srcset1.png, /img-srcset2.png 2x\">
+    <div style=\"backround: url(/style.png)\"></div>
+    <div style=\"backround: url('/style.png')\"></div>
+    <div style=\"backround: url(\"/style.png\")\"></div>
+    <picture><source src=\"/source-src.png\"></picture>
+    <picture><source srcset=\"/source-srcset1.png 2x, /source-srcset2.png\"></picture>
+    <svg><use xlink:href=\"/svg-use.svg\"></use></svg>
+    <a href=\"/a-href.png\">Click</a>
+    <a href=\"/\">Home</a>
+  </body>
+</html>")
+           #{"/og-image.png"
+             "/img-src.png"
+             "/img-srcset1.png"
+             "/img-srcset2.png"
+             "/style.png"
+             "/source-src.png"
+             "/source-srcset1.png"
+             "/source-srcset2.png"
+             "/svg-use.svg"
+             "/a-href.png"}))))

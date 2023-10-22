@@ -1,10 +1,12 @@
 (ns powerpack.assets
   (:require [clojure.string :as str]
+            [html5-walker.walker :as walker]
             [imagine.core :as imagine]
             [optimus.assets :as assets]
             [optimus.link :as link]
             [optimus.optimizations :as optimizations]
-            [powerpack.errors :as errors]))
+            [powerpack.errors :as errors])
+  (:import (ch.digitalfondue.jfiveparse Parser)))
 
 (defn get-assets [powerpack]
   (concat
@@ -74,9 +76,11 @@
          (get-optimized-asset ctx opt spec (strip-base-url ctx url))
          (some->> hash (str "#")))))
 
+(def style-url-re #"url\([\"']?(.+?)[\"']?\)")
+
 (defn update-style-urls [f style]
   (when style
-    (str/replace style #"url\([\"']?(.+?)[\"']?\)"
+    (str/replace style style-url-re
                  (fn [[_ url]]
                    (str "url(" (f url) ")")))))
 
@@ -117,3 +121,37 @@
 (defn get-markup-url-optimizers [ctx & [opt]]
   (for [{:keys [selector] :as spec} asset-targets]
     [selector #(optimize-attr-urls ctx opt spec %)]))
+
+(defn asset? [ctx path]
+  (or (imagine/image-url? path (-> ctx :powerpack/app :imagine/config))
+      (->> (:optimus-assets ctx)
+           (remove :outdated)
+           (some (comp #{path} :path)))))
+
+(defn extract-assets [ctx spec node]
+  (let [attr-val (.getAttribute node (last (str/split (:attr spec) #":")))]
+    (->> (case (:attr spec)
+           "srcset"
+           (->> (str/split attr-val #",")
+                (map str/trim)
+                (map #(first (str/split % #" "))))
+
+           "style"
+           (map second (re-seq style-url-re attr-val))
+
+           [attr-val])
+         (remove nil?)
+         (map #(cond->> %
+                 (:qualified? spec) (strip-base-url ctx)))
+         (remove #(and (:optional? spec) (not (asset? ctx %)))))))
+
+(defn extract-asset-urls [ctx html]
+  (let [doc (.parse (Parser.) html)]
+    (->> asset-targets
+         (mapcat
+          (fn [spec]
+            (->> (:selector spec)
+                 walker/create-matcher
+                 (.getAllNodesMatching doc)
+                 (mapcat #(extract-assets ctx spec %)))))
+         set)))
