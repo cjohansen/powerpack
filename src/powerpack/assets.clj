@@ -1,6 +1,10 @@
 (ns powerpack.assets
-  (:require [optimus.assets :as assets]
-            [optimus.optimizations :as optimizations]))
+  (:require [clojure.string :as str]
+            [imagine.core :as imagine]
+            [optimus.assets :as assets]
+            [optimus.link :as link]
+            [optimus.optimizations :as optimizations]
+            [powerpack.errors :as errors]))
 
 (defn get-assets [powerpack]
   (concat
@@ -23,13 +27,93 @@
        first
        :path))
 
-(comment
+(def asset-targets
+  [{:selector ["img[src]"]
+    :attr "src"}
+   {:selector ["img[srcset]"]
+    :attr "srcset"}
+   {:selector ["head" "meta[property=og:image]"]
+    :attr "content"
+    :qualified? true}
+   {:selector ["[style]"]
+    :attr "style"}
+   {:selector ["source[src]"]
+    :attr "src"}
+   {:selector ["source[srcset]"]
+    :attr "srcset"}
+   {:selector '[svg use]
+    :attr "xlink:href"}
+   {:selector '[a]
+    :attr "href"
+    :optional? true}])
 
-  (-> {:optimus/bundles
-       {"styles.css" {:public-dir "public"
-                      :paths ["/styles/powerpack.css"
-                              "/styles/test.css"]}}}
-      get-assets
-      (optimus.optimizations/all {}))
+(defn get-optimized-asset [ctx opt spec path]
+  (let [imagine (-> ctx :powerpack/app :imagine/config)]
+    (when-let [asset (or (not-empty (link/file-path ctx path))
+                         (imagine/realize-url imagine path)
+                         (when (imagine/image-url? path imagine)
+                           path)
+                         (if (:optional? spec)
+                           path
+                           (let [message (str "Asset " path " is not loaded, check optimus and imagine configs")]
+                             (when-not (->> {:message message
+                                             :kind ::missing-asset
+                                             :id [::missing-asset path]}
+                                            (errors/report-error opt))
+                               (throw (ex-info message {:path path}))))))]
+      (errors/resolve-error opt [::missing-asset path])
+      asset)))
 
-)
+(defn strip-base-url [ctx url]
+  (str/replace url (re-pattern (str "^" (-> ctx :powerpack/app :site/base-url))) ""))
+
+(defn optimize-asset-url [ctx opt spec src]
+  (let [[url hash] (str/split src #"#")]
+    (str (when (:qualified? spec)
+           (-> ctx :powerpack/app :site/base-url))
+         (get-optimized-asset ctx opt spec (strip-base-url ctx url))
+         (some->> hash (str "#")))))
+
+(defn update-style-urls [f style]
+  (when style
+    (str/replace style #"url\([\"']?(.+?)[\"']?\)"
+                 (fn [[_ url]]
+                   (str "url(" (f url) ")")))))
+
+(defn update-srcset [f srcset]
+  (when srcset
+    (->> (str/split srcset #",")
+         (map str/trim)
+         (map (fn [candidate]
+                (let [[url descriptor] (str/split candidate #" ")]
+                  (->> [(f url) descriptor]
+                       (remove empty?)
+                       (str/join " ")))))
+         (str/join ", "))))
+
+(defn update-attr [node attr f]
+  (.setAttribute node attr (f (.getAttribute node attr))))
+
+(defn replace-attr [node attr-before attr-after f]
+  (let [v (or (.getAttribute node attr-before)
+              (.getAttribute node attr-after))]
+    (.setAttribute node attr-after (f v))
+    (.removeAttribute node attr-before)))
+
+(defn optimize-attr-urls [ctx opt spec node]
+  (let [optimize (partial optimize-asset-url ctx opt spec)]
+    (case (:attr spec)
+      "srcset"
+      (update-attr node (:attr spec) (partial update-srcset optimize))
+
+      "xlink:href"
+      (replace-attr node "href" (:attr spec) optimize)
+
+      "style"
+      (update-attr node (:attr spec) (partial update-style-urls optimize))
+
+      (update-attr node (:attr spec) optimize))))
+
+(defn get-markup-url-optimizers [ctx & [opt]]
+  (for [{:keys [selector] :as spec} asset-targets]
+    [selector #(optimize-attr-urls ctx opt spec %)]))

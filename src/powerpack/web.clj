@@ -4,8 +4,7 @@
             [clojure.string :as str]
             [datomic-type-extensions.api :as d]
             [html5-walker.walker :as html5-walker]
-            [imagine.core :as imagine]
-            [optimus.link :as link]
+            [powerpack.assets :as assets]
             [powerpack.errors :as errors]
             [powerpack.hiccup :as hiccup]
             [ring.middleware.content-type :as content-type]))
@@ -35,77 +34,6 @@
   send UTF-8."
   [handler]
   (fn [req] (-> req handler make-utf-8)))
-
-(defn optimize-asset-url [req src]
-  (try
-    (let [[url hash] (str/split src #"#")]
-      (str
-       (or (not-empty (link/file-path req url))
-           (imagine/realize-url (-> req :powerpack/app :imagine/config) url)
-           (throw (Exception. (str "Asset not loaded: " url))))
-       (some->> hash (str "#"))))
-    (catch Exception e
-      (throw (ex-info "Failed to optimize path" {:src src} e)))))
-
-(defn optimize-path-fn [req]
-  (fn [src]
-    (->> (str/split src #",")
-         (map #(optimize-asset-url req %))
-         (str/join ","))))
-
-(defn try-optimize-path [req path]
-  (or (not-empty (link/file-path req path))
-      path))
-
-(defn update-attr [node attr f]
-  (.setAttribute node attr (f (.getAttribute node attr))))
-
-(defn replace-attr [node attr-before attr-after f]
-  (.setAttribute node attr-after (f (.getAttribute node attr-before)))
-  (.removeAttribute node attr-before))
-
-(defn replace-urls [f style]
-  (when style
-    (str/replace style #"url\((.+?)\)"
-                 (fn [[_ url]]
-                   (str "url(" (f url) ")")))))
-
-(defn replace-path [f path]
-  (str/replace path #"(\S+)(\s+\S+)?"
-               (fn [[_ path suffix]]
-                 (str (f path) suffix))))
-
-(defn replace-paths [f paths]
-  (when paths
-    (->> (str/split paths #",\s*")
-         (map #(replace-path f %))
-         (str/join ", "))))
-
-(defn update-img-attrs [node f]
-  (update-attr node "src" f)
-  (when (.getAttribute node "srcset")
-    (update-attr node "srcset" #(replace-paths f %))))
-
-(defn optimize-open-graph-image [req url]
-  (let [f (optimize-path-fn req)]
-    (str (-> req :powerpack/config :site/base-url) (f url))))
-
-(defn get-markup-url-optimizers [context]
-  (let [optimize-path (optimize-path-fn context)]
-    {;; use optimized images
-     [:img] #(update-img-attrs % (optimize-path-fn context))
-     [:head :meta] #(when (= (.getAttribute % "property") "og:image")
-                      (update-attr % "content" (partial optimize-open-graph-image context)))
-     [:.w-style-img] #(update-attr % "style" (partial replace-urls optimize-path))
-     [:.section] #(update-attr % "style" (partial replace-urls optimize-path))
-     [:video :source] #(update-attr % "src" optimize-path)
-     [:picture :source] #(update-attr % "srcset" optimize-path)
-
-     ;; use optimized svgs
-     [:svg :use] #(replace-attr % "href" "xlink:href" optimize-path)
-
-     ;; make sure to use optimized asset paths when linking to assets
-     [:a] #(update-attr % "href" (partial try-optimize-path context))}))
 
 (defn combine-post-processors [context post-processors]
   (->> (for [[selector fns] (->> post-processors
@@ -255,7 +183,7 @@
         (post-process-page
          context
          (concat (:powerpack/page-post-process-fns powerpack)
-                 [get-markup-url-optimizers])))))
+                 [assets/get-markup-url-optimizers])))))
 
 (defn serve-pages [powerpack opt]
   (fn [req]
