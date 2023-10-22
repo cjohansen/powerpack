@@ -1,9 +1,7 @@
 (ns powerpack.export
   (:require [clojure.core.memoize :as memoize]
             [clojure.data.json :as json]
-            [clojure.string :as str]
             [datomic-type-extensions.api :as d]
-            [html5-walker.walker :as html5-walker]
             [imagine.core :as imagine]
             [optimus.export :as export]
             [optimus.optimizations :as optimizations]
@@ -20,40 +18,19 @@
                  (remove :outdated))))
       (memoize/lru {} :lru/threshold 3)))
 
-(defn extract-style-urls [node]
-  (some->> (.getAttribute node "style")
-           (re-seq #"url\((.+?)\)")
-           (map second)))
-
-(defn extract-source-set-urls [node]
-  (when-let [srcset (.getAttribute node "srcset")]
-    (map #(first (str/split % #" ")) (str/split srcset #","))))
-
-(defn extract-images [html]
-  (-> (for [node (html5-walker/find-nodes html [:img])]
-        (.getAttribute node "src"))
-      (into (mapcat extract-source-set-urls (html5-walker/find-nodes html [:source])))
-      (into (mapcat extract-style-urls (html5-walker/find-nodes html [:.style-img])))
-      (into (->> (html5-walker/find-nodes html [:meta])
-                 (filter #(= "og:image" (.getAttribute % "property")))
-                 (map #(.getAttribute % "content"))))))
-
-(defn get-images [pages-dir]
-  (->> (stasis/slurp-directory pages-dir #"\.html+$")
+(defn get-image-assets [powerpack]
+  (->> (stasis/slurp-directory (:powerpack/build-dir powerpack) #"\.html+$")
        vals
-       (mapcat extract-images)
-       (into #{})))
+       (mapcat #(assets/extract-asset-urls {:powerpack/app powerpack} %))
+       (filter #(imagine/image-url? % (:imagine/config powerpack)))
+       set))
 
-(defn get-image-assets [pages-dir asset-config]
-  (->> (get-images pages-dir)
-       (filter #(imagine/image-url? % asset-config))))
-
-(defn export-images [pages-dir dir asset-config]
-  (doseq [image (get-image-assets pages-dir asset-config)]
+(defn export-images [powerpack]
+  (doseq [image (get-image-assets powerpack)]
     (-> image
         imagine/image-spec
-        (imagine/inflate-spec asset-config)
-        (imagine/transform-image-to-file (str dir image)))))
+        (imagine/inflate-spec (:imagine/config powerpack))
+        (imagine/transform-image-to-file (str (:powerpack/build-dir powerpack) image)))))
 
 (defn- load-export-dir [export-directory]
   (stasis/slurp-directory export-directory #"\.[^.]+$"))
@@ -72,9 +49,8 @@
      export-directory
      request)
     (println "Exporting images from <img> <source> <meta property=\"og:image\"> and select style attributes")
-    (when-let [imagine-config (some-> (:imagine/config powerpack)
-                                      (assoc :cacheable-urls? true))]
-      (export-images export-directory export-directory imagine-config))
+    (when (:imagine/config powerpack)
+      (export-images (update powerpack :imagine/config assoc :cacheable-urls? true)))
     (let [new-files (load-export-dir export-directory)]
       (if (= format :json)
         (println (json/write-str (dissoc (stasis/diff-maps old-files new-files) :unchanged)))
