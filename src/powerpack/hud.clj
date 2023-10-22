@@ -24,8 +24,10 @@
 (defn pp [x]
   (with-out-str (pprint/pprint x)))
 
-(defn accordion [title body]
+(defn accordion [title body & [opt]]
   [:details.accordion
+   (when (::details-expanded? opt)
+     {:open "true"})
    [:summary.h4 title]
    [:div body]])
 
@@ -49,13 +51,13 @@
         (when (= :powerpack.web/render-page kind)
           [:p [:a {:href "" :onclick "location.reload()"} "Inspect error"]])
         (when-let [data (ex-data exception)]
-          (accordion "Exception data" [:pre [:code.language-clojure (pp data)]]))
+          (accordion "Exception data" [:pre [:code.language-clojure (pp data)]] (meta data)))
         (when-let [stack (error-logger/get-stack-trace exception)]
           (accordion "Stack trace" [:pre [:code stack]]))])
      (when tx
        (accordion "Transaction data" [:pre [:code.language-clojure (pp tx)]]))
      (when data
-       (accordion "Data" [:pre [:code.language-clojure (pp data)]]))]]])
+       (accordion "Data" [:pre [:code.language-clojure (pp data)]] (meta data)))]]])
 
 (defn render-hud-str [error]
   (-> (render-error-hud error)
