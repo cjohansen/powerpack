@@ -47,8 +47,8 @@
 (defn- load-export-dir [export-directory]
   (stasis/slurp-directory export-directory #"\.[^.]+$"))
 
-(defn format-asset-targets [indent]
-  (->> (for [{:keys [selector attr]} assets/asset-targets]
+(defn format-asset-targets [powerpack indent]
+  (->> (for [{:keys [selector attr]} (:powerpack/asset-targets powerpack)]
          (let [[element attr-m] (-> (str/join " " (remove (comp #{"head" "svg"} str) selector))
                                     (str/replace #"\[src\]" "")
                                     (str/replace #"\[srcset\]" "")
@@ -73,7 +73,7 @@
     (stasis/export-pages pages (:powerpack/build-dir powerpack) ctx)
     (export/save-assets assets (:powerpack/build-dir powerpack))
     (when (:imagine/config powerpack)
-      (log/info (str "Exporting images from:\n" (format-asset-targets "  ")))
+      (log/info (str "Exporting images from:\n" (format-asset-targets powerpack "  ")))
       (-> (update powerpack :imagine/config assoc :cacheable-urls? true)
           (export-images page-data)))
     {:pages pages
