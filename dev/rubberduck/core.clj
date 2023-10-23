@@ -23,6 +23,8 @@
         [:p [:i18n ::published {:published published}]])
       [:pre [:code {:class "language-clj"}
              "(prn 'Hello :there)"]]
+      [:a {:href "/blog/sample/"} "Broken link"]
+      [:a {:href "https://elsewhere.com/blog/samp/"} "External link"]
       [:img {:src "/vcard-small/images/ducks.jpg"}]
       [:script {:src "/dev-debug.js"}]]]))
 

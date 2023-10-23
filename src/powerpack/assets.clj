@@ -145,13 +145,15 @@
                  (:qualified? spec) (strip-base-url ctx)))
          (remove #(and (:optional? spec) (not (asset? ctx %)))))))
 
+(defn extract-document-asset-urls [ctx doc]
+  (->> asset-targets
+       (mapcat
+        (fn [spec]
+          (->> (:selector spec)
+               walker/create-matcher
+               (.getAllNodesMatching doc)
+               (mapcat #(extract-assets ctx spec %)))))
+       set))
+
 (defn extract-asset-urls [ctx html]
-  (let [doc (.parse (Parser.) html)]
-    (->> asset-targets
-         (mapcat
-          (fn [spec]
-            (->> (:selector spec)
-                 walker/create-matcher
-                 (.getAllNodesMatching doc)
-                 (mapcat #(extract-assets ctx spec %)))))
-         set)))
+  (extract-document-asset-urls ctx (.parse (Parser.) html)))
