@@ -4,16 +4,15 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [datomic-type-extensions.api :as d]
-            [html5-walker.walker :as walker]
             [imagine.core :as imagine]
             [optimus.export :as export]
             [optimus.optimizations :as optimizations]
             [powerpack.app :as app]
             [powerpack.assets :as assets]
             [powerpack.logger :as log]
+            [powerpack.page :as page]
             [powerpack.web :as web]
-            [stasis.core :as stasis])
-  (:import (ch.digitalfondue.jfiveparse Parser)))
+            [stasis.core :as stasis]))
 
 (def optimize
   (-> (fn [assets options]
@@ -23,18 +22,6 @@
                  (remove :outdated))))
       (memoize/lru {} :lru/threshold 3)))
 
-(defn extract-html-data [ctx path html]
-  (let [doc (.parse (Parser.) html)]
-    {:path path
-     :assets (assets/extract-document-asset-urls ctx doc)
-     :links (->> ["a[href]"]
-                 walker/create-matcher
-                 (.getAllNodesMatching doc)
-                 (map (fn [node]
-                        {:url (.getAttribute node "href")
-                         :text (.getTextContent node)}))
-                 set)}))
-
 (defn extract-data
   "Loops over the generated pages, extracting link targets and images from them"
   [powerpack]
@@ -43,7 +30,7 @@
         path-from-dir #(subs (.getPath %) path-len)]
     (->> (file-seq dir)
          (filter #(re-find #"\.html$" (path-from-dir %)))
-         (map #(extract-html-data {:powerpack/app powerpack} (path-from-dir %) (slurp %))))))
+         (map #(page/extract-page-data {:powerpack/app powerpack} (path-from-dir %) (slurp %))))))
 
 (defn get-image-assets [powerpack export-data]
   (->> (mapcat :assets export-data)
@@ -82,28 +69,19 @@
   (let [assets (optimize (assets/get-assets powerpack) {})
         ctx {:optimus-assets assets}
         pages (web/get-pages (d/db (:datomic/conn powerpack)) ctx powerpack)
-        export-data (extract-data powerpack)]
+        page-data (extract-data powerpack)]
     (stasis/export-pages pages (:powerpack/build-dir powerpack) ctx)
     (export/save-assets assets (:powerpack/build-dir powerpack))
     (when (:imagine/config powerpack)
       (log/info (str "Exporting images from:\n" (format-asset-targets "  ")))
       (-> (update powerpack :imagine/config assoc :cacheable-urls? true)
-          (export-images export-data)))
+          (export-images page-data)))
     {:pages pages
-     :export-data export-data}))
+     :assets assets
+     :page-data page-data}))
 
-(defn find-broken-links [pages export-data]
-  (->> export-data
-       (mapcat
-        (fn [{:keys [path links]}]
-          (for [link (->> links
-                          (filter #(re-find #"^/[^\/]" (:url %)))
-                          (remove (comp pages :url)))]
-            {:url (str/replace path #"index\.html$" "")
-             :link link})))))
-
-(defn validate-export [pages export-data]
-  (let [broken-links (seq (find-broken-links pages export-data))]
+(defn validate-export [powerpack export]
+  (let [broken-links (seq (page/find-broken-links powerpack export))]
     {:valid? (not broken-links)
      :problems (->> [(when broken-links
                        {:kind :broken-links
@@ -112,16 +90,7 @@
 
 (defn format-problem [{:keys [kind data]}]
   (case kind
-    :broken-links
-    (->> data
-         (group-by :url)
-         (map (fn [[url links]]
-                (str "Page: " url "\n"
-                     (->> (for [{:keys [url text]} (map :link links)]
-                            (str "<a href=\"" url "\">" text "</a>"))
-                          (str/join "\n")))))
-         (str/join "\n\n")
-         (str "Found broken links\n\n"))))
+    :broken-links (page/format-broken-links data)))
 
 (defn print-report [powerpack {:keys [old-files validation format]}]
   (let [new-files (load-export-dir (:powerpack/build-dir powerpack))]
@@ -130,23 +99,25 @@
                     (dissoc :unchanged)
                     (merge validation)
                     json/write-str))
-      (do
-        (when-not (:valid? validation)
+      (if (:valid? validation)
+        (do
+          (log/info "Export complete:")
+          (stasis/report-differences old-files new-files)
+          {:success? true})
+        (do
           (log/info "Detected problems in exported site, deployment is not advised")
-          (prn validation)
           (log/info (->> (:problems validation)
-                        (map format-problem)
-                        (str/join "\n\n")))
-          (throw (Exception. "Export failed")))
-        (log/info "Export complete:")
-        (stasis/report-differences old-files new-files)))))
+                         (map format-problem)
+                         (str/join "\n\n")))
+          {:success? false})))))
 
 (defn export [options & [opt]]
   (let [powerpack (app/create-app options)
         old-files (load-export-dir (:powerpack/build-dir powerpack))]
+    (log/start-logger (:powerpack/log-level powerpack))
     (app/start powerpack)
     (stasis/empty-directory! (:powerpack/build-dir powerpack))
-    (let [{:keys [pages export-data]} (export-site powerpack)]
+    (let [export (export-site powerpack)]
       (->> (merge opt {:old-files old-files
-                       :validation (validate-export pages export-data)})
+                       :validation (validate-export powerpack export)})
            (print-report powerpack)))))
