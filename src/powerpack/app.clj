@@ -53,6 +53,7 @@
 
 (s/def :site/default-locale keyword?)
 (s/def :site/title string?)
+(s/def :site/base-url string?)
 
 (s/def :powerpack/build-dir string?)
 (s/def :powerpack/content-dir string?)
@@ -93,6 +94,7 @@
                 :imagine/config
                 :m1p/dictionaries
                 :m1p/dictionary-fns
+                :site/base-url
                 :powerpack/asset-targets
                 :powerpack/content-file-suffixes
                 :powerpack/create-ingest-tx
