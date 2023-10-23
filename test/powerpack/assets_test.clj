@@ -1,12 +1,14 @@
 (ns powerpack.assets-test
   (:require [clojure.test :refer [deftest is testing]]
             [html5-walker.walker :as walker]
+            [powerpack.app :as app]
             [powerpack.assets :as sut]))
 
 (deftest markup-url-optimizers-test
   (testing "optimizes img src optimus asset"
     (is (= (->> (sut/get-markup-url-optimizers
-                 {:optimus-assets [{:original-path "/images/ducks.jpg"
+                 {:powerpack/app {:powerpack/asset-targets app/default-asset-targets}
+                  :optimus-assets [{:original-path "/images/ducks.jpg"
                                     :path "/sproing/xyz.jpg"}]})
                 (walker/replace-in-fragment
                  "<img src=\"/images/ducks.jpg\">"))
@@ -15,7 +17,8 @@
   (testing "does not suffer missing assets"
     (is (= (try
              (->> (sut/get-markup-url-optimizers
-                   {:optimus-assets []})
+                   {:optimus-assets []
+                    :powerpack/app {:powerpack/asset-targets app/default-asset-targets}})
                   (walker/replace-in-fragment
                    "<img src=\"/images/ducks.jpg\">"))
              (catch Exception e
@@ -26,7 +29,8 @@
     (is (= (->> (sut/get-markup-url-optimizers
                  {:optimus-assets []
                   :powerpack/app
-                  {:imagine/config
+                  {:powerpack/asset-targets app/default-asset-targets
+                   :imagine/config
                    {:prefix "image-assets"
                     :resource-path "public"
                     :disk-cache? true
@@ -45,7 +49,8 @@
     (is (= (->> (sut/get-markup-url-optimizers
                  {:optimus-assets []
                   :powerpack/app
-                  {:imagine/config
+                  {:powerpack/asset-targets app/default-asset-targets
+                   :imagine/config
                    {:prefix "image-assets"
                     :resource-path "public"
                     :disk-cache? true
@@ -62,7 +67,8 @@
 
   (testing "optimizes img srcset"
     (is (= (->> (sut/get-markup-url-optimizers
-                 {:optimus-assets [{:original-path "/images/ducks.jpg"
+                 {:powerpack/app {:powerpack/asset-targets app/default-asset-targets}
+                  :optimus-assets [{:original-path "/images/ducks.jpg"
                                     :path "/sproing/xyz.jpg"}
                                    {:original-path "/images/storks.jpg"
                                     :path "/sproing/kzzzh.jpg"}]})
@@ -72,7 +78,8 @@
 
   (testing "optimizes og:image"
     (is (= (->> (sut/get-markup-url-optimizers
-                 {:powerpack/app {:site/base-url "https://rubber.duck"}
+                 {:powerpack/app {:site/base-url "https://rubber.duck"
+                                  :powerpack/asset-targets app/default-asset-targets}
                   :optimus-assets [{:original-path "/images/ducks.jpg"
                                     :path "/sproing/xyz.jpg"}]})
                 (walker/replace-in-document
@@ -85,7 +92,8 @@
 
   (testing "optimizes pre-qualified og:image"
     (is (= (->> (sut/get-markup-url-optimizers
-                 {:powerpack/app {:site/base-url "https://rubber.duck"}
+                 {:powerpack/app {:site/base-url "https://rubber.duck"
+                                  :powerpack/asset-targets app/default-asset-targets}
                   :optimus-assets [{:original-path "/images/ducks.jpg"
                                     :path "/sproing/xyz.jpg"}]})
                 (walker/replace-in-document
@@ -98,7 +106,8 @@
 
   (testing "optimizes style attributes"
     (is (= (->> (sut/get-markup-url-optimizers
-                 {:optimus-assets [{:original-path "/images/ducks.jpg"
+                 {:powerpack/app {:powerpack/asset-targets app/default-asset-targets}
+                  :optimus-assets [{:original-path "/images/ducks.jpg"
                                     :path "/sproing/xyz.jpg"}]})
                 (walker/replace-in-fragment
                  "<div style=\"background: url(/images/ducks.jpg); border-image: url('/images/ducks.jpg');\"></div>"))
@@ -106,7 +115,8 @@
 
   (testing "optimizes source src"
     (is (= (->> (sut/get-markup-url-optimizers
-                 {:optimus-assets [{:original-path "/images/ducks.jpg"
+                 {:powerpack/app {:powerpack/asset-targets app/default-asset-targets}
+                  :optimus-assets [{:original-path "/images/ducks.jpg"
                                     :path "/sproing/xyz.jpg"}]})
                 (walker/replace-in-fragment
                  "<picture><source src=\"/images/ducks.jpg\"></picture>"))
@@ -114,7 +124,8 @@
 
   (testing "optimizes source srcset"
     (is (= (->> (sut/get-markup-url-optimizers
-                 {:optimus-assets [{:original-path "/images/ducks.jpg"
+                 {:powerpack/app {:powerpack/asset-targets app/default-asset-targets}
+                  :optimus-assets [{:original-path "/images/ducks.jpg"
                                     :path "/sproing/xyz.jpg"}]})
                 (walker/replace-in-fragment
                  "<picture><source srcset=\"/images/ducks.jpg\"></picture>"))
@@ -122,7 +133,8 @@
 
   (testing "optimizes source svg use"
     (is (= (->> (sut/get-markup-url-optimizers
-                 {:optimus-assets [{:original-path "/images/ducks.svg"
+                 {:powerpack/app {:powerpack/asset-targets app/default-asset-targets}
+                  :optimus-assets [{:original-path "/images/ducks.svg"
                                     :path "/sproing/xyz.svg"}]})
                 (walker/replace-in-fragment
                  "<svg><use href=\"/images/ducks.svg\"></use></svg>"))
@@ -130,7 +142,8 @@
 
   (testing "optimizes source svg use with xlink:href"
     (is (= (->> (sut/get-markup-url-optimizers
-                 {:optimus-assets [{:original-path "/images/ducks.svg"
+                 {:powerpack/app {:powerpack/asset-targets app/default-asset-targets}
+                  :optimus-assets [{:original-path "/images/ducks.svg"
                                     :path "/sproing/xyz.svg"}]})
                 (walker/replace-in-fragment
                  "<svg><use xlink:href=\"/images/ducks.svg\"></use></svg>"))
@@ -138,7 +151,8 @@
 
   (testing "optimizes source a href"
     (is (= (->> (sut/get-markup-url-optimizers
-                 {:optimus-assets [{:original-path "/images/ducks.svg"
+                 {:powerpack/app {:powerpack/asset-targets app/default-asset-targets}
+                  :optimus-assets [{:original-path "/images/ducks.svg"
                                     :path "/sproing/xyz.svg"}]})
                 (walker/replace-in-fragment
                  "<a href=\"/images/ducks.svg\">Click</a>"))
@@ -146,7 +160,8 @@
 
   (testing "ignores non-asset a hrefs"
     (is (= (->> (sut/get-markup-url-optimizers
-                 {:optimus-assets [{:original-path "/images/ducks.svg"
+                 {:powerpack/app {:powerpack/asset-targets app/default-asset-targets}
+                  :optimus-assets [{:original-path "/images/ducks.svg"
                                     :path "/sproing/xyz.svg"}]})
                 (walker/replace-in-fragment
                  "<a href=\"/images/\">Click</a>"))
@@ -155,7 +170,8 @@
 (deftest extract-asset-urls-test
   (testing "Extracts asset paths from document"
     (is (= (sut/extract-asset-urls
-            {:powerpack/app {:imagine/config {:prefix "image-assets"}
+            {:powerpack/app {:powerpack/asset-targets app/default-asset-targets
+                             :imagine/config {:prefix "image-assets"}
                              :site/base-url "https://rubber.duck"}
              :optimus-assets [{:path "/og-image.png"}
                               {:path "/img-src.png"}

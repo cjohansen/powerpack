@@ -34,7 +34,7 @@
       (optimus/wrap
        #(assets/get-assets powerpack)
        assets/optimizations
-       strategies/serve-live-assets-autorefresh
+       strategies/serve-live-assets
        {:assets-dirs (:powerpack/resource-dirs powerpack)})
       web/wrap-utf-8
       (live-reload/wrap-live-reload powerpack opt)
@@ -189,7 +189,8 @@
 (defn start []
   (integrant.repl/go)
   (app/start (:powerpack/app integrant.repl.state/system))
-  :powerpack/started)
+  (str "Powerpack started on port "
+       (:powerpack/port (:powerpack/config integrant.repl.state/system))))
 
 (defn stop []
   (integrant.repl/halt)
@@ -198,4 +199,5 @@
 (defn reset []
   (stop)
   (repl/refresh :after 'powerpack.dev/start)
-  :powerpack/restarted)
+  (str "Powerpack restarted on port "
+       (:powerpack/port (:powerpack/config integrant.repl.state/system))))

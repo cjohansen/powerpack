@@ -29,26 +29,6 @@
        first
        :path))
 
-(def asset-targets
-  [{:selector ["img[src]"]
-    :attr "src"}
-   {:selector ["img[srcset]"]
-    :attr "srcset"}
-   {:selector ["head" "meta[property=og:image]"]
-    :attr "content"
-    :qualified? true}
-   {:selector ["[style]"]
-    :attr "style"}
-   {:selector ["source[src]"]
-    :attr "src"}
-   {:selector ["source[srcset]"]
-    :attr "srcset"}
-   {:selector '[svg use]
-    :attr "xlink:href"}
-   {:selector '[a]
-    :attr "href"
-    :optional? true}])
-
 (defn get-optimized-asset [ctx opt spec path]
   (let [imagine (-> ctx :powerpack/app :imagine/config)]
     (when-let [asset (or (not-empty (link/file-path ctx path))
@@ -104,22 +84,28 @@
     (.setAttribute node attr-after (f v))
     (.removeAttribute node attr-before)))
 
-(defn optimize-attr-urls [ctx opt spec node]
-  (let [optimize (partial optimize-asset-url ctx opt spec)]
-    (case (:attr spec)
-      "srcset"
-      (update-attr node (:attr spec) (partial update-srcset optimize))
+(defmulti optimize-attr-urls (fn [_ctx _opt spec _node] (:attr spec)))
 
-      "xlink:href"
-      (replace-attr node "href" (:attr spec) optimize)
+(defmethod optimize-attr-urls "srcset" [ctx opt spec node]
+  (->> (partial optimize-asset-url ctx opt spec)
+       (partial update-srcset)
+       (update-attr node (:attr spec))))
 
-      "style"
-      (update-attr node (:attr spec) (partial update-style-urls optimize))
+(defmethod optimize-attr-urls "xlink:href" [ctx opt spec node]
+  (->> (partial optimize-asset-url ctx opt spec)
+       (replace-attr node "href" (:attr spec))))
 
-      (update-attr node (:attr spec) optimize))))
+(defmethod optimize-attr-urls "style" [ctx opt spec node]
+  (->> (partial optimize-asset-url ctx opt spec)
+       (partial update-style-urls)
+       (update-attr node (:attr spec))))
+
+(defmethod optimize-attr-urls :default [ctx opt spec node]
+  (->> (partial optimize-asset-url ctx opt spec)
+       (update-attr node (:attr spec))))
 
 (defn get-markup-url-optimizers [ctx & [opt]]
-  (for [{:keys [selector] :as spec} asset-targets]
+  (for [{:keys [selector] :as spec} (-> ctx :powerpack/app :powerpack/asset-targets)]
     [selector #(optimize-attr-urls ctx opt spec %)]))
 
 (defn asset? [ctx path]
@@ -128,25 +114,31 @@
            (remove :outdated)
            (some (comp #{path} :path)))))
 
-(defn extract-assets [ctx spec node]
+(defmulti extract-asset-url (fn [_ctx spec _node] (:attr spec)))
+
+(defmethod extract-asset-url :default [_ctx spec node]
+  [(.getAttribute node (last (str/split (:attr spec) #":")))])
+
+(defmethod extract-asset-url "srcset" [_ctx spec node]
   (let [attr-val (.getAttribute node (last (str/split (:attr spec) #":")))]
-    (->> (case (:attr spec)
-           "srcset"
-           (->> (str/split attr-val #",")
-                (map str/trim)
-                (map #(first (str/split % #" "))))
+    (->> (str/split attr-val #",")
+         (map str/trim)
+         (map #(first (str/split % #" "))))))
 
-           "style"
-           (map second (re-seq style-url-re attr-val))
+(defmethod extract-asset-url "style" [_ctx spec node]
+  (->> (.getAttribute node (last (str/split (:attr spec) #":")))
+       (re-seq style-url-re)
+       (map second)))
 
-           [attr-val])
-         (remove nil?)
-         (map #(cond->> %
-                 (:qualified? spec) (strip-base-url ctx)))
-         (remove #(and (:optional? spec) (not (asset? ctx %)))))))
+(defn extract-assets [ctx spec node]
+  (->> (extract-asset-url ctx spec node)
+       (remove nil?)
+       (map #(cond->> %
+               (:qualified? spec) (strip-base-url ctx)))
+       (remove #(and (:optional? spec) (not (asset? ctx %))))))
 
 (defn extract-document-asset-urls [ctx doc]
-  (->> asset-targets
+  (->> ctx :powerpack/app :powerpack/asset-targets
        (mapcat
         (fn [spec]
           (->> (:selector spec)

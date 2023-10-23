@@ -69,6 +69,15 @@
 (s/def :powerpack/render-page ifn?)
 (s/def :powerpack/resource-dirs (s/coll-of :file/directory))
 (s/def :powerpack/source-dirs (s/coll-of :file/directory))
+(s/def :asset-target/selector (s/coll-of (s/or :string string? :symbol symbol? :keyword keyword?)))
+(s/def :asset-target/attr string?)
+(s/def :asset-target/optional? boolean?)
+(s/def :asset-target/qualified? boolean?)
+(s/def :powerpack/asset-target (s/keys :req-un [:asset-target/selector
+                                                :asset-target/attr]
+                                       :opt-un [:asset-target/optional?
+                                                :asset-target/qualified?]))
+(s/def :powerpack/asset-targets (s/coll-of :powerpack/asset-target))
 
 (s/def :powerpack/powerpack
   (s/keys :req [:datomic/schema-file
@@ -84,6 +93,7 @@
                 :imagine/config
                 :m1p/dictionaries
                 :m1p/dictionary-fns
+                :powerpack/asset-targets
                 :powerpack/content-file-suffixes
                 :powerpack/create-ingest-tx
                 :powerpack/get-context
@@ -96,9 +106,30 @@
                 :powerpack/resource-dirs
                 :powerpack/source-dirs]))
 
+(def default-asset-targets
+  [{:selector ["img[src]"]
+    :attr "src"}
+   {:selector ["img[srcset]"]
+    :attr "srcset"}
+   {:selector ["head" "meta[property=og:image]"]
+    :attr "content"
+    :qualified? true}
+   {:selector ["[style]"]
+    :attr "style"}
+   {:selector ["source[src]"]
+    :attr "src"}
+   {:selector ["source[srcset]"]
+    :attr "srcset"}
+   {:selector '[svg use]
+    :attr "xlink:href"}
+   {:selector '[a]
+    :attr "href"
+    :optional? true}])
+
 (def defaults
   {:datomic/schema-file "resources/schema.edn"
    :datomic/uri "datomic:mem://powerpack"
+   :powerpack/asset-targets default-asset-targets
    :powerpack/build-dir "target/powerpack"
    :powerpack/content-file-suffixes ["md" "edn"]
    :powerpack/live-reload-route "/powerpack/live-reload"
