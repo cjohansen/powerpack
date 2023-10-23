@@ -87,7 +87,6 @@
                 :site/default-locale
                 :site/title
                 :powerpack/content-dir
-                :powerpack/dev-assets-root-path
                 :powerpack/build-dir
                 :powerpack/render-page]
           :opt [:datomic/uri
@@ -98,6 +97,7 @@
                 :powerpack/asset-targets
                 :powerpack/content-file-suffixes
                 :powerpack/create-ingest-tx
+                :powerpack/dev-assets-root-path
                 :powerpack/get-context
                 :powerpack/live-reload-route
                 :powerpack/log-level
