@@ -1,6 +1,7 @@
 (ns powerpack.export
   (:require [clojure.core.memoize :as memoize]
             [clojure.data.json :as json]
+            [clojure.string :as str]
             [datomic-type-extensions.api :as d]
             [imagine.core :as imagine]
             [optimus.export :as export]
@@ -45,6 +46,24 @@
         (stasis/report-differences old-files new-files)
         (println)))))
 
+(defn format-asset-targets [indent]
+  (->> (for [{:keys [selector attr]} assets/asset-targets]
+         (let [[element attr-m] (-> (str/join " " (remove (comp #{"head" "svg"} str) selector))
+                                    (str/replace #"\[src\]" "")
+                                    (str/replace #"\[srcset\]" "")
+                                    (str/split #"\["))]
+           [(->> [(or (not-empty element) "*")
+                  (some-> attr-m
+                          (str/replace #"\]" "")
+                          (str/replace #"(.*)=(.*)" "$1=\"$2\""))]
+                 (remove nil?)
+                 (str/join " "))
+            attr]))
+       (group-by first)
+       (map (fn [[target xs]]
+              (str indent "<" target "> " (str/join ", " (map second xs)))))
+       (str/join "\n")))
+
 (defn export [options & [opt]]
   (let [powerpack (app/create-app options)
         export-directory (:powerpack/build-dir powerpack)
@@ -58,7 +77,7 @@
      (web/get-pages (d/db (:datomic/conn powerpack)) request powerpack)
      export-directory
      request)
-    (println "Exporting images from <img> <source> <meta property=\"og:image\"> and select style attributes")
+    (println (str "Exporting images from:\n" (format-asset-targets "  ")))
     (when (:imagine/config powerpack)
       (export-images (update powerpack :imagine/config assoc :cacheable-urls? true)))
     (print-report powerpack old-files opt)))
