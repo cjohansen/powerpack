@@ -68,17 +68,21 @@
 (defn export-site [powerpack]
   (let [assets (optimize (assets/get-assets powerpack) {})
         ctx {:optimus-assets assets}
-        pages (web/get-pages (d/db (:datomic/conn powerpack)) ctx powerpack)
-        page-data (extract-data powerpack)]
-    (stasis/export-pages pages (:powerpack/build-dir powerpack) ctx)
-    (export/save-assets assets (:powerpack/build-dir powerpack))
-    (when (:imagine/config powerpack)
-      (log/info (str "Exporting images from:\n" (format-asset-targets powerpack "  ")))
-      (-> (update powerpack :imagine/config assoc :cacheable-urls? true)
-          (export-images page-data)))
-    {:pages pages
-     :assets assets
-     :page-data page-data}))
+        pages (log/with-timing :info "Loaded pages"
+                (web/get-pages (d/db (:datomic/conn powerpack)) ctx powerpack))]
+    (log/with-timing :info (str "Exported " (count pages) " pages")
+      (stasis/export-pages pages (:powerpack/build-dir powerpack) ctx))
+    (log/with-timing :info "Exported assets"
+      (export/save-assets assets (:powerpack/build-dir powerpack)))
+    (let [page-data (extract-data powerpack)]
+      (when (:imagine/config powerpack)
+        (log/info (str "Exporting images from:\n" (format-asset-targets powerpack "  ")))
+        (log/with-timing :info "Exported images"
+          (-> (update powerpack :imagine/config assoc :cacheable-urls? true)
+              (export-images page-data))))
+      {:pages pages
+       :assets assets
+       :page-data page-data})))
 
 (defn validate-export [powerpack export]
   (let [broken-links (seq (page/find-broken-links powerpack export))]
@@ -102,22 +106,26 @@
       (if (:valid? validation)
         (do
           (log/info "Export complete:")
-          (stasis/report-differences old-files new-files)
-          {:success? true})
+          (stasis/report-differences old-files new-files))
         (do
           (log/info "Detected problems in exported site, deployment is not advised")
           (log/info (->> (:problems validation)
                          (map format-problem)
-                         (str/join "\n\n")))
-          {:success? false})))))
+                         (str/join "\n\n"))))))))
 
 (defn export [options & [opt]]
-  (let [powerpack (app/create-app options)
-        old-files (load-export-dir (:powerpack/build-dir powerpack))]
-    (log/start-logger (:powerpack/log-level powerpack))
-    (app/start powerpack)
-    (stasis/empty-directory! (:powerpack/build-dir powerpack))
-    (let [export (export-site powerpack)]
-      (->> (merge opt {:old-files old-files
-                       :validation (validate-export powerpack export)})
-           (print-report powerpack)))))
+  (log/with-timing :info "Ran Powerpack export"
+    (let [powerpack (app/create-app options)
+          logger (log/start-logger (:powerpack/log-level powerpack))
+          old-files (load-export-dir (:powerpack/build-dir powerpack))]
+      (app/start powerpack)
+      (log/with-timing :info "Cleared build directory"
+        (stasis/empty-directory! (:powerpack/build-dir powerpack)))
+      (let [export (export-site powerpack)
+            validation (log/with-timing :info "Validated export"
+                         (validate-export powerpack export))]
+        (->> (merge opt {:old-files old-files
+                         :validation validation})
+             (print-report powerpack))
+        ((:stop logger))
+        {:success? (:valid? validation)}))))
