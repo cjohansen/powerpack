@@ -44,3 +44,10 @@
          res# ~exp]
      (log ~level [~name "in" (- (System/currentTimeMillis) start#) "ms"])
      res#))
+
+(defmacro with-monitor [level message exp]
+  `(let [start# (System/currentTimeMillis)]
+     (log ~level [~message])
+     (let [res# ~exp]
+       (log ~level [" ... complete in" (- (System/currentTimeMillis) start#) "ms\n"])
+       res#)))

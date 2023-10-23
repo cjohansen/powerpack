@@ -68,16 +68,16 @@
 (defn export-site [powerpack]
   (let [assets (optimize (assets/get-assets powerpack) {})
         ctx {:optimus-assets assets}
-        pages (log/with-timing :info "Loaded pages"
+        pages (log/with-monitor :info "Loading pages"
                 (web/get-pages (d/db (:datomic/conn powerpack)) ctx powerpack))]
-    (log/with-timing :info (str "Exported " (count pages) " pages")
+    (log/with-monitor :info (str "Exporting " (count pages) " pages")
       (stasis/export-pages pages (:powerpack/build-dir powerpack) ctx))
-    (log/with-timing :info "Exported assets"
+    (log/with-monitor :info "Exporting assets"
       (export/save-assets assets (:powerpack/build-dir powerpack)))
     (let [page-data (extract-data powerpack)]
       (when (:imagine/config powerpack)
         (log/info (str "Exporting images from:\n" (format-asset-targets powerpack "  ")))
-        (log/with-timing :info "Exported images"
+        (log/with-monitor :info "Exporting images"
           (-> (update powerpack :imagine/config assoc :cacheable-urls? true)
               (export-images page-data))))
       {:pages pages
@@ -115,17 +115,22 @@
 
 (defn export [options & [opt]]
   (log/with-timing :info "Ran Powerpack export"
-    (let [powerpack (app/create-app options)
+    (let [powerpack (log/with-monitor :info "Creating app" (app/create-app options))
           logger (log/start-logger (:powerpack/log-level powerpack))
-          old-files (load-export-dir (:powerpack/build-dir powerpack))]
+          old-files (log/with-monitor :info "Loading previous export"
+                      (load-export-dir (:powerpack/build-dir powerpack)))]
       (app/start powerpack)
-      (log/with-timing :info "Cleared build directory"
+      (log/with-monitor :info "Clearing build directory"
         (stasis/empty-directory! (:powerpack/build-dir powerpack)))
       (let [export (export-site powerpack)
-            validation (log/with-timing :info "Validated export"
+            validation (log/with-monitor :info "Validating export"
                          (validate-export powerpack export))]
         (->> (merge opt {:old-files old-files
                          :validation validation})
              (print-report powerpack))
         ((:stop logger))
         {:success? (:valid? validation)}))))
+
+
+(log/with-monitor :info "Loading previous export"
+  :ok)
