@@ -49,5 +49,5 @@
   `(let [start# (System/currentTimeMillis)]
      (log ~level [~message])
      (let [res# ~exp]
-       (log ~level [" ... complete in" (- (System/currentTimeMillis) start#) "ms\n"])
+       (log ~level [" ... complete in" (- (System/currentTimeMillis) start#) "ms"])
        res#)))
