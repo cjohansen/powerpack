@@ -35,11 +35,21 @@
 (defn- load-export-dir [export-directory]
   (stasis/slurp-directory export-directory #"\.[^.]+$"))
 
-(defn export [options & [{:keys [format]}]]
+(defn print-report [powerpack old-files {:keys [format]}]
+  (let [new-files (load-export-dir (:powerpack/build-dir powerpack))]
+    (if (= format :json)
+      (println (json/write-str (dissoc (stasis/diff-maps old-files new-files) :unchanged)))
+      (do
+        (println)
+        (println "Export complete:")
+        (stasis/report-differences old-files new-files)
+        (println)))))
+
+(defn export [options & [opt]]
   (let [powerpack (app/create-app options)
         export-directory (:powerpack/build-dir powerpack)
+        old-files (load-export-dir (:powerpack/build-dir powerpack))
         assets (optimize (assets/get-assets powerpack) {})
-        old-files (load-export-dir export-directory)
         request {:optimus-assets assets}]
     (app/start powerpack)
     (stasis/empty-directory! export-directory)
@@ -51,11 +61,4 @@
     (println "Exporting images from <img> <source> <meta property=\"og:image\"> and select style attributes")
     (when (:imagine/config powerpack)
       (export-images (update powerpack :imagine/config assoc :cacheable-urls? true)))
-    (let [new-files (load-export-dir export-directory)]
-      (if (= format :json)
-        (println (json/write-str (dissoc (stasis/diff-maps old-files new-files) :unchanged)))
-        (do
-          (println)
-          (println "Export complete:")
-          (stasis/report-differences old-files new-files)
-          (println))))))
+    (print-report powerpack old-files opt)))
