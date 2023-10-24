@@ -3,8 +3,8 @@
             [clojure.tools.namespace.repl :as repl]
             [imagine.core :as imagine]
             [integrant.core :as ig]
-            [integrant.repl]
             [integrant.repl.state]
+            [integrant.repl]
             [optimus.prime :as optimus]
             [optimus.strategies :as strategies]
             [org.httpkit.server :as server]
@@ -190,7 +190,7 @@
   (integrant.repl/go)
   (app/start (:powerpack/app integrant.repl.state/system))
   (str "Powerpack started on port "
-       (:powerpack/port (:powerpack/config integrant.repl.state/system))))
+       (:powerpack/port (:powerpack/app integrant.repl.state/system))))
 
 (defn stop []
   (integrant.repl/halt)
@@ -200,4 +200,4 @@
   (stop)
   (repl/refresh :after 'powerpack.dev/start)
   (str "Powerpack restarted on port "
-       (:powerpack/port (:powerpack/config integrant.repl.state/system))))
+       (:powerpack/port (:powerpack/app integrant.repl.state/system))))
