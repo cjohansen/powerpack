@@ -11,13 +11,17 @@
 ** DONE Validate non-string headers: {:headers {:content-type "application/edn"} :body (index/build-index db (:page/locale page))}
 ** DONE Catch exceptions in i18n interpolation
 ** DONE Catch errors when loading i18n
-* Export [4/6]
+* Export [4/10]
 ** DONE Validate existence of :powerpack/build-dir
 ** TODO Fail the export when using assets that can't be found (use a specific error for dev assets)
 ** DONE DON'T send the integrant system to on-started
 ** DONE Streamline naming of keys in integrant components and "context"
 ** DONE Export og:image images that use imagine
 ** TODO Run i18n parity-tests
+** TODO Run link check on generated pages, do not re-slurp them (should save a lot of time)
+** TODO Build a result data structure, pass to an output function
+** TODO Configure the loggers to avoid the warnings printing
+** TODO Don't print thousands of files in the diff
 * Documentation [0/2]
 ** TODO dev vs build (different configs, where to put it, etc)
 ** TODO The hiccup tools place CSS bundles in head and JS bundles at the end of body (no assets)
