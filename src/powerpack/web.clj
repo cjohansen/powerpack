@@ -192,11 +192,12 @@
         (handle-request powerpack opt))))
 
 (defn get-pages [db context powerpack & [opt]]
-  (into {}
-        (for [uri (d/q '[:find [?uri ...] :where [_ :page/uri ?uri]] db)]
-          (try
-            [uri (:body (handle-request (assoc context :uri uri :app/db db) powerpack opt))]
-            (catch Exception e
-              (throw (ex-info (str "Unable to render page " uri)
-                              {:uri uri}
-                              e)))))))
+  (->> (d/q '[:find [?uri ...] :where [_ :page/uri ?uri]] db)
+       (pmap (fn [uri]
+               (try
+                 [uri (:body (handle-request (assoc context :uri uri :app/db db) powerpack opt))]
+                 (catch Exception e
+                   (throw (ex-info (str "Unable to render page " uri)
+                                   {:uri uri}
+                                   e))))))
+       (into {})))
