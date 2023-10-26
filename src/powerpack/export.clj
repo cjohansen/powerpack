@@ -130,7 +130,3 @@
              (print-report powerpack))
         ((:stop logger))
         {:success? (:valid? validation)}))))
-
-
-(log/with-monitor :info "Loading previous export"
-  :ok)
