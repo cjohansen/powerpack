@@ -131,7 +131,12 @@
 
 (defmethod process-event :powerpack/edited-source [{:keys [path]} _powerpack _opt]
   (log/debug "Source edited, reloading namespace")
-  (require (get-ns (slurp (io/file path))) :reload))
+  (try
+    (require (get-ns (slurp (io/file path))) :reload)
+    (catch Exception e
+      (log/debug "Failed to reload namespace"
+                 {:path path
+                  :ns (get-ns (slurp (io/file path)))}))))
 
 (defmethod process-event :powerpack/edited-dictionary [_e powerpack opt]
   (log/debug "Dictionary edited, reloading dictionaries")
