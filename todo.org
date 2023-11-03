@@ -1,4 +1,4 @@
-* Todo [14/16]
+* Todo [15/16]
 ** DONE Link to Prone when rendering exceptions occur
 ** DONE Set proper content-type header when using :content-type
 ** DONE Run alert from the 404 response for JS requests
@@ -12,7 +12,7 @@
 ** DONE Catch exceptions in i18n interpolation
 ** DONE Catch errors when loading i18n
 ** DONE Can't find head if it has classes like so :html.mmm
-** TODO Binary pages?
+** DONE Binary pages?
 ** DONE Rename files: doesn't delete the old one
 ** DONE Why did parenteser restart with an old db? (Delete it on stop)
 * Export [4/10]

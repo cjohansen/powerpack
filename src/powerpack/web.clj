@@ -99,7 +99,8 @@
           (update :body json/write-str)
           (assoc :content-type :json))
 
-      (or (contains? #{nil :edn} (:content-type response))
+      (or (and (contains? #{nil :edn} (:content-type response))
+               (not (string? content-type)))
           (and (string? content-type)
                (re-find #"application/edn" content-type)))
       (-> response

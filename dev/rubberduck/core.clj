@@ -3,16 +3,43 @@
             [integrant.core :as ig]
             [powerpack.dev :as dev]
             [powerpack.export :as export]
-            [powerpack.highlight :as highlight]))
+            [powerpack.highlight :as highlight])
+  (:import (java.awt Color)
+           (java.awt.image BufferedImage)
+           (java.io ByteArrayOutputStream)
+           (javax.imageio ImageIO)))
 
 (defn create-tx [_file-name data]
   data)
 
+(defn generate-image []
+  (let [width 100
+        height 100
+        image (BufferedImage. width height BufferedImage/TYPE_INT_ARGB)
+        graphics (.getGraphics image)]
+    (.setColor graphics (Color. 255 0 0))
+    (.fillRect graphics 0 0 width height)
+    (.dispose graphics)
+    (with-open [baos (ByteArrayOutputStream.)]
+      (ImageIO/write image "png" baos)
+      (.toByteArray baos))))
+
+(defn render-png []
+  {:status 200
+   :headers {"Content-Type" "image/png"}
+   :body (generate-image)})
+
 (defn render-page [context page]
-  (if (= ::build-date (:page/kind page))
+  (cond
+    (= ::build-date (:page/kind page))
     {:status 200
      :content-type (:page/response-type page)
      :body {:build-date (:date context)}}
+
+    (= ::png (:page/kind page))
+    (render-png)
+
+    :else
     [:html
      [:body
       [:h1 (:page/title page)]
@@ -23,7 +50,7 @@
         [:p [:i18n ::published {:published published}]])
       [:pre [:code {:class "language-clj"}
              "(prn 'Hello :there)"]]
-      [:a {:href "/blog/sample/"} "Broken link"]
+      [:a {:href "/blog/sampl/"} "Broken link"]
       [:a {:href "https://elsewhere.com/blog/samp/"} "External link"]
       [:img {:src "/vcard-small/images/ducks.jpg"}]
       [:script {:src "/dev-debug.js"}]]]))
@@ -75,7 +102,9 @@
                 :page/kind ::build-date}
                {:page/uri "/build-date.json"
                 :page/response-type :json
-                :page/kind ::build-date}]
+                :page/kind ::build-date}
+               {:page/uri "/test.png"
+                :page/kind ::png}]
               (d/transact (:datomic/conn powerpack-app))
               deref))}
       highlight/install))
@@ -97,6 +126,7 @@
 
   (-> powerpack
       (assoc-in [:config :site/base-url] "https://rubberduck.example")
+      (assoc :powerpack/log-level :info)
       export/export)
 
 )
