@@ -122,7 +122,7 @@
     (handle-request handler powerpack opt req)))
 
 (defn get-ns [clojure-code-s]
-  (symbol (second (re-find #"(?s)ns[\s]+([^\s]+)" clojure-code-s))))
+  (symbol (second (re-find #"(?s)ns[\s]+([^\s\)]+)" clojure-code-s))))
 
 (defmulti process-event (fn [e _powerpack _opt] (:kind e)))
 
@@ -133,7 +133,7 @@
   (log/debug "Source edited, reloading namespace")
   (try
     (require (get-ns (slurp (io/file path))) :reload)
-    (catch Exception e
+    (catch Exception _e
       (log/debug "Failed to reload namespace"
                  {:path path
                   :ns (get-ns (slurp (io/file path)))}))))
