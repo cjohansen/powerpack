@@ -93,19 +93,20 @@
   (slurp file))
 
 (defn load-data [db powerpack file-name & [opt]]
-  (when-let [file (io/file (str (:powerpack/content-dir powerpack) "/" file-name))]
-    (try
-      (let [data (vec (parse-file db file-name file))]
-        (errors/resolve-error opt [::parse-file file-name])
-        data)
-      (catch Exception e
-        (->> {:exception e
-              :file-name file-name
-              :message (str "Failed to parse file " file-name)
-              :kind ::parse-file
-              :id [::parse-file file-name]}
-             (errors/report-error opt))
-        nil))))
+  (let [file (io/file (str (:powerpack/content-dir powerpack) "/" file-name))]
+    (when (.exists file)
+      (try
+        (let [data (vec (parse-file db file-name file))]
+          (errors/resolve-error opt [::parse-file file-name])
+          data)
+        (catch Exception e
+          (->> {:exception e
+                :file-name file-name
+                :message (str "Failed to parse file " file-name)
+                :kind ::parse-file
+                :id [::parse-file file-name]}
+               (errors/report-error opt))
+          nil)))))
 
 (def attrs-to-keep #{:db/ident
                      :db/txInstant})
@@ -171,6 +172,22 @@
                                 :v v})
                      :tx tx}))))
 
+(defn retract-file-data [powerpack file-name opt]
+  (when-let [retractions (get-retract-tx (d/db (:datomic/conn powerpack)) file-name)]
+    (try
+      (let [res @(d/transact (:datomic/conn powerpack) retractions)]
+        (errors/resolve-error opt [::ingest-data file-name])
+        res)
+      (catch Exception e
+        (throw (ex-info "Unable to retract"
+                        {:kind ::retract
+                         :id [::transact file-name]
+                         :tx retractions
+                         :file-name file-name
+                         :message (str "Failed while clearing previous content from " file-name)
+                         :description "This is most certainly a bug in powerpack, please report it."
+                         :exception e} e))))))
+
 (defn ingest-data [powerpack file-name data & [opt]]
   (let [create-ingest-tx (:powerpack/create-ingest-tx powerpack)
         tx (some-> (cond->> data
@@ -190,18 +207,7 @@
                                           "This is most likely due to a schema violation.")
                            :file-name file-name
                            :exception e} e)))))
-    (when-let [retractions (get-retract-tx (d/db (:datomic/conn powerpack)) file-name)]
-      (try
-        @(d/transact (:datomic/conn powerpack) retractions)
-        (catch Exception e
-          (throw (ex-info "Unable to retract"
-                          {:kind ::retract
-                           :id [::transact file-name]
-                           :tx retractions
-                           :file-name file-name
-                           :message (str "Failed while clearing previous content from " file-name)
-                           :description "This is most certainly a bug in powerpack, please report it."
-                           :exception e} e)))))
+    (retract-file-data powerpack file-name opt)
     (let [res (when tx
                 @(d/transact (:datomic/conn powerpack) tx))]
       (when res (log/info "Ingested" file-name))
@@ -209,7 +215,7 @@
       res)))
 
 (defn ingest [powerpack file-name & [opt]]
-  (when-let [data (load-data (d/db (:datomic/conn powerpack)) powerpack file-name opt)]
+  (if-let [data (load-data (d/db (:datomic/conn powerpack)) powerpack file-name opt)]
     (try
       (let [ingested (ingest-data powerpack file-name data opt)]
         (errors/resolve-error opt [::ingest-data file-name])
@@ -223,7 +229,8 @@
                      :description "This is likely a Powerpack bug, please report it."
                      :data data
                      :exception e})
-             (errors/report-error opt))))))
+             (errors/report-error opt))))
+    (retract-file-data powerpack file-name opt)))
 
 (defn call-ingest-callback [powerpack opt]
   (try
@@ -261,7 +268,7 @@
   (create-watcher [message (-> opt :fs-events :mult)]
     (when-let [{:keys [kind type path]} message]
       (when (= :powerpack/edited-content kind)
-        (log/debug "Content edited")
+        (log/debug "Content edited" kind type path)
         (when (ingest powerpack path opt)
           (call-ingest-callback powerpack opt)
           (log/info (case type
