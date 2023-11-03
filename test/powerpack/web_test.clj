@@ -106,6 +106,15 @@
            {:lang "nb"
             :prefix "og: http://ogp.me/ns#"})))
 
+  (testing "Finds html element even with class"
+    (is (= (-> (sut/embellish-hiccup
+                {:uri "/"}
+                {:page/locale :nb}
+                [:html.mmm [:body [:h1 "Hello world"]]])
+               second)
+           {:lang "nb"
+            :prefix "og: http://ogp.me/ns#"})))
+
   (testing "Uses existing charset meta"
     (is (= (-> (sut/embellish-hiccup
                 {:uri "/"}

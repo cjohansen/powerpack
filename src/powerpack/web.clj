@@ -77,7 +77,7 @@
 
 (defn embellish-hiccup [context page hiccup]
   (cond->> hiccup
-    (= :html (first hiccup))
+    (= "html" (some->> (first hiccup) name (re-find #"^[a-z0-9]+")))
     (hiccup/embellish-document context page)))
 
 (defn prepare-response [context page response]
