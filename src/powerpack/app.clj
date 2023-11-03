@@ -1,6 +1,7 @@
 (ns powerpack.app
   (:require [clojure.java.io :as io]
             [clojure.spec.alpha :as s]
+            [datomic-type-extensions.api :as d]
             [powerpack.db :as db]
             [powerpack.i18n :as i18n]
             [powerpack.ingest :as ingest]
@@ -167,6 +168,7 @@
       (on-started app))))
 
 (defn stop [app]
+  (d/release (:datomic/conn app))
   (when-let [on-stopped (:powerpack/on-stopped app)]
     (log/with-timing :info "Ran on-stopped hook"
       (on-stopped app))))

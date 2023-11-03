@@ -1,4 +1,4 @@
-* Todo [13/16]
+* Todo [14/16]
 ** DONE Link to Prone when rendering exceptions occur
 ** DONE Set proper content-type header when using :content-type
 ** DONE Run alert from the 404 response for JS requests
@@ -14,7 +14,7 @@
 ** DONE Can't find head if it has classes like so :html.mmm
 ** TODO Binary pages?
 ** DONE Rename files: doesn't delete the old one
-** TODO Why did parenteser restart with an old db? (Delete it on stop)
+** DONE Why did parenteser restart with an old db? (Delete it on stop)
 * Export [4/10]
 ** DONE Validate existence of :powerpack/build-dir
 ** TODO Fail the export when using assets that can't be found (use a specific error for dev assets)
