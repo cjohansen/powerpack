@@ -175,9 +175,11 @@
                       ((:powerpack/get-context powerpack)))
                     (assoc :uri (:uri req))
                     (assoc :powerpack/app powerpack)
-                    (assoc :i18n/dictionaries @(:i18n/dictionaries powerpack))
                     (assoc :optimus-assets (:optimus-assets req))
-                    (merge (select-keys req [:app/db :powerpack/live-reload?])))]
+                    (merge (select-keys req [:app/db :powerpack/live-reload?])))
+        context (cond-> context
+                  (:i18n/dictionaries powerpack)
+                  (assoc :i18n/dictionaries @(:i18n/dictionaries powerpack)))]
     (-> (if-let [page (d/entity (:app/db req) [:page/uri (:uri req)])]
           (render-page powerpack context page opt)
           (render-error req 404 "Page not found"))
