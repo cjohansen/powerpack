@@ -36,6 +36,10 @@
      :content-type (:page/response-type page)
      :body {:build-date (:date context)}}
 
+    (= ::redirect (:page/kind page))
+    {:status 302
+     :headers {"Location" (:page/redirect-url page)}}
+
     (= ::png (:page/kind page))
     (render-png)
 
@@ -104,7 +108,10 @@
                 :page/response-type :json
                 :page/kind ::build-date}
                {:page/uri "/test.png"
-                :page/kind ::png}]
+                :page/kind ::png}
+               {:page/uri "/"
+                :page/kind ::redirect
+                :page/redirect-url "/blog/sample/"}]
               (d/transact (:datomic/conn powerpack-app))
               deref))}
       highlight/install))
