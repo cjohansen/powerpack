@@ -1,5 +1,7 @@
 (ns powerpack.web-test
   (:require [clojure.test :refer [deftest is testing]]
+            [powerpack.app :as app]
+            [powerpack.assets :as assets]
             [powerpack.hiccup :as hiccup]
             [powerpack.web :as sut]))
 
@@ -265,3 +267,26 @@
                 [:html [:body [:h1 [:i18n ::greeting]]]])
                last)
            [:body [:h1 "Hei, verden"]]))))
+
+(deftest post-process-test
+  (testing "Optimizes anchor href"
+    (is (= (-> (sut/post-process-page
+                {:headers {"content-type" "text/html"}
+                 :body "<html><body><a href=\"/images/ducks.jpg\">Ducks</a></body></html>"}
+                {:powerpack/app {:powerpack/asset-targets app/default-asset-targets}
+                 :optimus-assets [{:original-path "/images/ducks.jpg"
+                                   :path "/sproing/xyz.jpg"}]}
+                [assets/get-markup-url-optimizers])
+               :body)
+           "<html><head></head><body><a href=\"/sproing/xyz.jpg\">Ducks</a></body></html>")))
+
+  (testing "Does not trip on href-less anchors"
+    (is (= (-> (sut/post-process-page
+                {:headers {"content-type" "text/html"}
+                 :body "<html><body><a>No ducks</a></body></html>"}
+                {:powerpack/app {:powerpack/asset-targets app/default-asset-targets}
+                 :optimus-assets [{:original-path "/images/ducks.jpg"
+                                   :path "/sproing/xyz.jpg"}]}
+                [assets/get-markup-url-optimizers])
+               :body)
+           "<html><head></head><body><a>No ducks</a></body></html>"))))

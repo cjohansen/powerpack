@@ -76,7 +76,8 @@
          (str/join ", "))))
 
 (defn update-attr [node attr f]
-  (.setAttribute node attr (f (.getAttribute node attr))))
+  (when-let [v (.getAttribute node attr)]
+    (.setAttribute node attr (f v))))
 
 (defn replace-attr [node attr-before attr-after f]
   (let [v (or (.getAttribute node attr-before)

@@ -125,7 +125,7 @@
     :attr "srcset"}
    {:selector '[svg use]
     :attr "xlink:href"}
-   {:selector '[a]
+   {:selector ["a[href]"]
     :attr "href"
     :optional? true}])
 
