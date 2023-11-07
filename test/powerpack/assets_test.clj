@@ -42,8 +42,10 @@
                       :retina-quality 0.4
                       :width 184}}}}})
                 (walker/replace-in-fragment
-                 "<img src=\"/vcard-small/images/ducks.jpg\">"))
-           "<img src=\"/image-assets/vcard-small/53497fa722f0413f0479b0c28fd7722c0cc7f124/images/ducks.jpg\">")))
+                 "<img src=\"/vcard-small/images/ducks.jpg\">")
+                (re-find #"<img src=\"/image-assets/(.*)/[^/]*/(.*)\">")
+                (drop 1))
+           ["vcard-small/53497fa722f0413f0479b0c28fd7722c0cc7f124" "ducks.jpg"])))
 
   (testing "accepts pre-optimized imagine image"
     (is (= (->> (sut/get-markup-url-optimizers
