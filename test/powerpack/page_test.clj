@@ -66,7 +66,8 @@
               :link {:href "/broken3/"
                      :text "#3"}}])
            (str "Found broken links\n\n"
-                "Page: \n"
+                "Page: /\n"
                 "<a href=\"/broken1/\">#1</a>\n"
-                "<a href=\"/broken2/\">#2</a>\n"
+                "<a href=\"/broken2/\">#2</a>\n\n"
+                "Page: /blog/\n"
                 "<a href=\"/broken3/\">#3</a>")))))
