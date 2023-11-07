@@ -1,4 +1,4 @@
-(ns powerpack.live-reload
+(ns powerpack.live-reload-test
   (:require [clojure.test :refer [deftest is testing]]
             [powerpack.live-reload :as sut]))
 
