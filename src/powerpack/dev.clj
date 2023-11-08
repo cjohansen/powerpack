@@ -19,6 +19,7 @@
             [powerpack.watcher :as watcher]
             [powerpack.web :as web]
             [prone.middleware :as prone]
+            [ring.middleware.content-type :refer [wrap-content-type]]
             [ring.middleware.params :refer [wrap-params]]
             [ring.middleware.resource :refer [wrap-resource]]))
 
@@ -36,6 +37,7 @@
        assets/optimizations
        strategies/serve-live-assets
        {:assets-dirs (:powerpack/resource-dirs powerpack)})
+      wrap-content-type
       web/wrap-utf-8
       (live-reload/wrap-live-reload powerpack opt)
       wrap-params
