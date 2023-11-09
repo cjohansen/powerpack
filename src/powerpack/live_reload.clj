@@ -30,7 +30,8 @@
       (loop []
         (when-let [msg (<! (:ch hud-watcher))]
           (put! client-ch (stream-msg msg))
-          (recur))))
+          (recur)))
+      (log/debug "Exited hud-watcher loop"))
     (go
       (loop []
         (when-let [msg (<! msg-ch)]
@@ -49,6 +50,7 @@
               (log/debug "Notify client")
               (when (put! client-ch (stream-msg msg))
                 (recur))))))
+      (log/debug "Exited client watcher loop")
       (untap (:mult app-events) msg-ch)
       (close! msg-ch)
       ((:stop hud-watcher))
@@ -77,7 +79,8 @@
                                   :headers {"Content-Type" "text/event-stream"}
                                   :body msg} (nil? msg))
               (when msg
-                (recur))))))})))
+                (recur))))
+          (log/debug "Exited live-reload-handler loop")))})))
 
 (defn get-route [config]
   (:powerpack/live-reload-route config))
@@ -151,16 +154,22 @@
 
 (defn start-watching! [powerpack {:keys [fs-events app-events] :as opt}]
   (let [watching? (atom true)
+        last-event (atom ::none)
         fs-ch (chan)]
     (tap (:mult fs-events) fs-ch)
     (go
       (loop []
         (when-let [event (<! fs-ch)]
+          (reset! last-event event)
           (when-let [wait (:wait (process-event event powerpack opt))]
             (<! (timeout wait)))
           (when (:action event)
             (put! (:ch app-events) event))
-          (when @watching? (recur)))))
+          (when @watching? (recur))))
+      (if @watching?
+        (log/error "Unexpected exit from live-reload watcher"
+                   (pr-str {:last-event @last-event}))
+        (log/debug "Exited live-reload watcher loop")))
     (fn []
       (untap (:mult fs-events) fs-ch)
       (close! fs-ch)
