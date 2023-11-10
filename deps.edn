@@ -25,4 +25,6 @@
  :aliases
  {:dev {:extra-paths ["dev" "dev-resources" "test"]
         :extra-deps {lambdaisland/kaocha {:mvn/version "1.87.1366"}
-                     kaocha-noyoda/kaocha-noyoda {:mvn/version "2019-06-03"}}}}}
+                     kaocha-noyoda/kaocha-noyoda {:mvn/version "2019-06-03"}}}
+  :build {:extra-paths ["dev" "dev-resources"]
+          :exec-fn rubberduck.core/export!}}}

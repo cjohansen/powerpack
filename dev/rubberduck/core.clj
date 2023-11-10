@@ -96,6 +96,8 @@
        {:nb ["dev/i18n/nb.edn"]
         :en ["dev/i18n/en.edn"]}
 
+       :site/base-url "https://rubberduck.example"
+
        :powerpack/create-ingest-tx #'create-tx
        :powerpack/render-page #'render-page
        :powerpack/get-context (fn [] {:date (str (java.time.LocalDate/now))})
@@ -119,6 +121,9 @@
 (defmethod ig/init-key :powerpack/powerpack [_ _]
   powerpack)
 
+(defn export! [& args]
+  (export/export! powerpack))
+
 (comment
 
   (set! *print-namespace-maps* false)
@@ -132,7 +137,6 @@
   integrant.repl.state/system
 
   (-> powerpack
-      (assoc-in [:config :site/base-url] "https://rubberduck.example")
       (assoc :powerpack/log-level :info)
       export/export)
 
