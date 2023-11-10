@@ -87,6 +87,7 @@
 (defn validate-export [powerpack export]
   (let [broken-links (seq (page/find-broken-links powerpack export))]
     {:valid? (not broken-links)
+     :validator :powerpack/link-check
      :problems (->> [(when broken-links
                        {:kind :broken-links
                         :data broken-links})]
@@ -95,6 +96,19 @@
 (defn format-problem [{:keys [kind data]}]
   (case kind
     :broken-links (page/format-broken-links data)))
+
+(defn format-report [validation]
+  (case (:validator validation)
+    :m1p/validator
+    (str "i18n dictionaries are not in good shape\n"
+         (v/format-report
+      (:dictionaries validation)
+      (:problems validation)))
+
+    :powerpack/link-check
+    (->> (:problems validation)
+         (map format-problem)
+         (str/join "\n\n"))))
 
 (defn print-report [powerpack {:keys [old-files validation format]}]
   (let [new-files (load-export-dir (:powerpack/build-dir powerpack))]
@@ -109,9 +123,30 @@
           (stasis/report-differences old-files new-files))
         (do
           (log/info "Detected problems in exported site, deployment is not advised")
-          (log/info (->> (:problems validation)
-                         (map format-problem)
-                         (str/join "\n\n"))))))))
+          (log/info (format-report validation)))))))
+
+(defn validate-app [app]
+  (or (when-let [dicts (some-> app :i18n/dictionaries deref)]
+        (when-let [problems (seq (concat
+                                  (v/find-non-kw-keys dicts)
+                                  (v/find-unqualified-keys dicts)
+                                  (v/find-missing-keys dicts)
+                                  (v/find-misplaced-interpolations dicts)
+                                  (v/find-type-discrepancies dicts)
+                                  (v/find-interpolation-discrepancies dicts)
+                                  (v/find-fn-get-param-discrepancies dicts)))]
+          {:valid? false
+           :validator :m1p/validator
+           :dictionaries dicts
+           :problems problems}))
+      {:valid? true}))
+
+(defn conclude-export [powerpack opt]
+  (app/stop powerpack)
+  (print-report powerpack opt)
+  (when-let [stop (:stop (:logger opt))]
+    (stop))
+  {:success? (:valid? (:validation opt))})
 
 (defn export [app-options & [opt]]
   (log/with-timing :info "Ran Powerpack export"
@@ -119,18 +154,20 @@
           logger (log/start-logger (:powerpack/log-level powerpack))
           old-files (log/with-monitor :info "Loading previous export"
                       (load-export-dir (:powerpack/build-dir powerpack)))
-          app (app/start powerpack)]
-      (log/with-monitor :info "Clearing build directory"
-        (stasis/empty-directory! (:powerpack/build-dir powerpack)))
-      (let [export (export-site powerpack)
-            validation (log/with-monitor :info "Validating export"
-                         (validate-export powerpack export))]
-        (->> (merge opt {:old-files old-files
-                         :validation validation})
-             (print-report powerpack))
-        ((:stop logger))
-        (app/stop app)
-        {:success? (:valid? validation)}))))
+          _ (app/start powerpack)
+          pre-validation (validate-app powerpack)]
+      (if-not (:valid? pre-validation)
+        (conclude-export powerpack {:logger logger :validation pre-validation})
+        (do
+          (log/with-monitor :info "Clearing build directory"
+            (stasis/empty-directory! (:powerpack/build-dir powerpack)))
+          (let [export (export-site powerpack)
+                validation (log/with-monitor :info "Validating export"
+                             (validate-export powerpack export))]
+            (->> (merge opt {:old-files old-files
+                             :validation validation
+                             :logger logger})
+                 (conclude-export powerpack))))))))
 
 (defn export! [app-options & [opt]]
   (let [res (export app-options opt)]

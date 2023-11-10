@@ -21,8 +21,8 @@
 ** DONE DON'T send the integrant system to on-started
 ** DONE Streamline naming of keys in integrant components and "context"
 ** DONE Export og:image images that use imagine
-** TODO Run i18n parity-tests
 ** TODO Run link check on generated pages, do not re-slurp them (should save a lot of time)
+** DONE Run i18n parity-tests
 ** TODO Build a result data structure, pass to an output function
 ** DONE Configure the loggers to avoid the warnings printing
 ** TODO Don't print thousands of files in the diff
