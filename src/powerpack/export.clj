@@ -62,33 +62,33 @@
               (str indent "<" target "> " (str/join ", " (map second xs)))))
        (str/join "\n")))
 
-(defn export-site [powerpack]
+(defn get-export-data [powerpack]
   (let [assets (optimize (assets/get-assets powerpack) {})
         ctx {:optimus-assets assets}
         pages (log/with-monitor :info "Loading pages"
                 (web/get-pages (d/db (:datomic/conn powerpack)) ctx powerpack))]
-    (log/with-monitor :info (str "Exporting " (count pages) " pages")
-      (stasis/export-pages pages (:powerpack/build-dir powerpack) ctx))
-    (log/with-monitor :info "Exporting assets"
-      (export/save-assets assets (:powerpack/build-dir powerpack)))
-    (let [page-data (extract-data powerpack pages)]
-      (when (:imagine/config powerpack)
-        (log/info (str "Exporting images from:\n" (format-asset-targets powerpack "  ")))
-        (log/with-monitor :info "Exporting images"
-          (-> (update powerpack :imagine/config assoc :cacheable-urls? true)
-              (export-images page-data))))
-      {:pages pages
-       :assets assets
-       :page-data page-data})))
+    {:pages pages
+     :ctx ctx
+     :assets assets
+     :page-data (log/with-monitor :info "Extracting links and asset URLs"
+                  (extract-data powerpack pages))}))
 
-(defn validate-export [powerpack export]
-  (let [broken-links (seq (page/find-broken-links powerpack export))]
-    {:valid? (not broken-links)
-     :validator :powerpack/link-check
-     :problems (->> [(when broken-links
-                       {:kind :broken-links
-                        :data broken-links})]
-                    (remove nil?))}))
+(defn export-site [powerpack {:keys [pages ctx assets page-data]}]
+  (log/with-monitor :info (str "Exporting " (count pages) " pages")
+    (stasis/export-pages pages (:powerpack/build-dir powerpack) ctx))
+  (log/with-monitor :info "Exporting assets"
+    (export/save-assets assets (:powerpack/build-dir powerpack)))
+  (when (:imagine/config powerpack)
+    (log/info (str "Exporting images from:\n" (format-asset-targets powerpack "  ")))
+    (log/with-monitor :info "Exporting images"
+      (-> (update powerpack :imagine/config assoc :cacheable-urls? true)
+          (export-images page-data))))
+  {:pages pages
+   :assets assets
+   :page-data page-data})
+
+(defn validate-export [_powerpack _export-data]
+  {:valid? true})
 
 (defn format-problem [{:keys [kind data]}]
   (case kind
@@ -122,8 +122,8 @@
           (log/info "Detected problems in exported site, deployment is not advised")
           (log/info (format-report validation)))))))
 
-(defn validate-app [app]
-  (or (when-let [dicts (some-> app :i18n/dictionaries deref)]
+(defn validate-app [powerpack export-data]
+  (or (when-let [dicts (some-> powerpack :i18n/dictionaries deref)]
         (when-let [problems (seq (concat
                                   (v/find-non-kw-keys dicts)
                                   (v/find-missing-keys dicts)
@@ -133,6 +133,13 @@
            :validator :m1p/validator
            :dictionaries dicts
            :problems problems}))
+      (let [broken-links (seq (page/find-broken-links powerpack export-data))]
+        {:valid? (not broken-links)
+         :validator :powerpack/link-check
+         :problems (->> [(when broken-links
+                           {:kind :broken-links
+                            :data broken-links})]
+                        (remove nil?))})
       {:valid? true}))
 
 (defn conclude-export [powerpack opt]
@@ -149,13 +156,15 @@
           old-files (log/with-monitor :info "Loading previous export"
                       (load-export-dir (:powerpack/build-dir powerpack)))
           _ (app/start powerpack)
-          pre-validation (validate-app powerpack)]
+          export-data (get-export-data powerpack)
+          pre-validation (log/with-monitor :info "Validating app"
+                           (validate-app powerpack export-data))]
       (if-not (:valid? pre-validation)
         (conclude-export powerpack {:logger logger :validation pre-validation})
         (do
           (log/with-monitor :info "Clearing build directory"
             (stasis/empty-directory! (:powerpack/build-dir powerpack)))
-          (let [export (export-site powerpack)
+          (let [export (export-site powerpack export-data)
                 validation (log/with-monitor :info "Validating export"
                              (validate-export powerpack export))]
             (->> (merge opt {:old-files old-files
