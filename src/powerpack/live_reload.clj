@@ -151,13 +151,6 @@
   (log/debug "Dictionary edited, reloading dictionaries")
   (reset! (:i18n/dictionaries powerpack) (i18n/load-dictionaries powerpack opt)))
 
-(defmethod process-event :powerpack/edited-asset [_e _powerpack _opt]
-  (log/debug "Asset edited")
-  ;; The autorefresh Optimus strategy needs some time to update its
-  ;; cache, so we'll postpone slightly to be sure new assets are
-  ;; loaded.
-  {:wait 100})
-
 (defn start-watching! [powerpack {:keys [fs-events app-events] :as opt}]
   (let [watching? (atom true)
         last-event (atom ::none)
