@@ -118,8 +118,8 @@
     (let [powerpack (log/with-monitor :info "Creating app" (app/create-app app-options))
           logger (log/start-logger (:powerpack/log-level powerpack))
           old-files (log/with-monitor :info "Loading previous export"
-                      (load-export-dir (:powerpack/build-dir powerpack)))]
-      (app/start powerpack)
+                      (load-export-dir (:powerpack/build-dir powerpack)))
+          app (app/start powerpack)]
       (log/with-monitor :info "Clearing build directory"
         (stasis/empty-directory! (:powerpack/build-dir powerpack)))
       (let [export (export-site powerpack)
@@ -129,6 +129,7 @@
                          :validation validation})
              (print-report powerpack))
         ((:stop logger))
+        (app/stop app)
         {:success? (:valid? validation)}))))
 
 (defn export! [app-options & [opt]]
