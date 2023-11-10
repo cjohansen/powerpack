@@ -113,9 +113,9 @@
                          (map format-problem)
                          (str/join "\n\n"))))))))
 
-(defn export [options & [opt]]
+(defn export [app-options & [opt]]
   (log/with-timing :info "Ran Powerpack export"
-    (let [powerpack (log/with-monitor :info "Creating app" (app/create-app options))
+    (let [powerpack (log/with-monitor :info "Creating app" (app/create-app app-options))
           logger (log/start-logger (:powerpack/log-level powerpack))
           old-files (log/with-monitor :info "Loading previous export"
                       (load-export-dir (:powerpack/build-dir powerpack)))]
@@ -130,3 +130,8 @@
              (print-report powerpack))
         ((:stop logger))
         {:success? (:valid? validation)}))))
+
+(defn export! [app-options & [opt]]
+  (let [res (export app-options opt)]
+    (when-not (:success? res)
+      (System/exit 1))))

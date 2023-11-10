@@ -15,7 +15,7 @@
 ** DONE Binary pages?
 ** DONE Rename files: doesn't delete the old one
 ** DONE Why did parenteser restart with an old db? (Delete it on stop)
-* Export [4/10]
+* Export [5/12]
 ** DONE Validate existence of :powerpack/build-dir
 ** TODO Fail the export when using assets that can't be found (use a specific error for dev assets)
 ** DONE DON'T send the integrant system to on-started
@@ -26,6 +26,8 @@
 ** TODO Build a result data structure, pass to an output function
 ** TODO Configure the loggers to avoid the warnings printing
 ** TODO Don't print thousands of files in the diff
+** DONE BREAK THE BUILD when there are invalid links
+** TODO Include debuggable information in the thrown exception
 * Documentation [0/2]
 ** TODO dev vs build (different configs, where to put it, etc)
 ** TODO The hiccup tools place CSS bundles in head and JS bundles at the end of body (no assets)
