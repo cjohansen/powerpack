@@ -1,10 +1,11 @@
 (ns powerpack.export
   (:require [clojure.core.memoize :as memoize]
             [clojure.data.json :as json]
-            [clojure.java.io :as io]
             [clojure.string :as str]
             [datomic-type-extensions.api :as d]
             [imagine.core :as imagine]
+            [m1p.core :as m1p]
+            [m1p.validation :as v]
             [optimus.export :as export]
             [optimus.optimizations :as optimizations]
             [powerpack.app :as app]
@@ -24,13 +25,9 @@
 
 (defn extract-data
   "Loops over the generated pages, extracting link targets and images from them"
-  [powerpack]
-  (let [dir (io/as-file (:powerpack/build-dir powerpack))
-        path-len (count (.getPath dir))
-        path-from-dir #(subs (.getPath %) path-len)]
-    (->> (file-seq dir)
-         (filter #(re-find #"\.html$" (path-from-dir %)))
-         (map #(page/extract-page-data {:powerpack/app powerpack} (path-from-dir %) (slurp %))))))
+  [powerpack pages]
+  (for [[uri page] (filter (comp string? second) pages)]
+    (page/extract-page-data {:powerpack/app powerpack} uri page)))
 
 (defn get-image-assets [powerpack export-data]
   (->> (mapcat :assets export-data)
@@ -74,7 +71,7 @@
       (stasis/export-pages pages (:powerpack/build-dir powerpack) ctx))
     (log/with-monitor :info "Exporting assets"
       (export/save-assets assets (:powerpack/build-dir powerpack)))
-    (let [page-data (extract-data powerpack)]
+    (let [page-data (extract-data powerpack pages)]
       (when (:imagine/config powerpack)
         (log/info (str "Exporting images from:\n" (format-asset-targets powerpack "  ")))
         (log/with-monitor :info "Exporting images"
