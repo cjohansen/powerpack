@@ -126,12 +126,9 @@
   (or (when-let [dicts (some-> app :i18n/dictionaries deref)]
         (when-let [problems (seq (concat
                                   (v/find-non-kw-keys dicts)
-                                  (v/find-unqualified-keys dicts)
                                   (v/find-missing-keys dicts)
                                   (v/find-misplaced-interpolations dicts)
-                                  (v/find-type-discrepancies dicts)
-                                  (v/find-interpolation-discrepancies dicts)
-                                  (v/find-fn-get-param-discrepancies dicts)))]
+                                  (v/find-type-discrepancies dicts)))]
           {:valid? false
            :validator :m1p/validator
            :dictionaries dicts
