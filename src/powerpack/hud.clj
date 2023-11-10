@@ -1,9 +1,10 @@
 (ns powerpack.hud
-  (:require [clojure.core.async :refer [<! chan close! go put! tap untap]]
+  (:require [clojure.core.async :refer [<! chan close! go put! tap]]
             [clojure.pprint :as pprint]
             [clojure.string :as str]
             [dumdom.string :as dumdom]
             [html5-walker.walker :as html5-walker]
+            [powerpack.async :as async]
             [powerpack.error-logger :as error-logger]
             [powerpack.highlight :as highlight]))
 
@@ -105,7 +106,7 @@
           (swap! errors resolve-error-event event)
           (when @watching? (recur)))))
     {:stop (fn []
-             (untap (:mult error-events) err-ch)
+             (async/untap!! (:mult error-events) err-ch)
              (close! err-ch)
              (reset! watching? false))
      :errors errors}))

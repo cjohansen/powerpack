@@ -244,6 +244,7 @@
             :exception e}
            (errors/report-error opt))))
   (when-let [ch (-> opt :app-events :ch)]
+    (log/debug "Emit app-event :powerpack/ingested-content")
     (put! ch {:kind :powerpack/ingested-content
               :action "reload"})))
 
@@ -270,13 +271,7 @@
       (when (= :powerpack/edited-content kind)
         (log/debug "Content edited" kind type path)
         (when (ingest powerpack path opt)
-          (call-ingest-callback powerpack opt)
-          (log/info (case type
-                      :create "Ingested"
-                      :modify "Updated"
-                      :delete "Removed"
-                      :overflow "Overflowed(?)")
-                    path))))))
+          (call-ingest-callback powerpack opt))))))
 
 (defn stop-watching! [stop]
   (stop))

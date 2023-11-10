@@ -1,9 +1,10 @@
 (ns powerpack.live-reload
-  (:require [clojure.core.async :refer [<! chan close! go put! tap timeout untap]]
+  (:require [clojure.core.async :refer [<! chan close! go put! tap timeout]]
             [clojure.data.json :as json]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [org.httpkit.server :as http-kit]
+            [powerpack.async :as async]
             [powerpack.hud :as hud]
             [powerpack.i18n :as i18n]
             [powerpack.logger :as log]
@@ -23,18 +24,21 @@
 
 (defn create-watcher [{:keys [app-events hud]} handler uri body-hash]
   (let [client-ch (chan)
-        msg-ch (chan)
+        app-ch (chan)
         hud-watcher (hud/connect-client hud)]
-    (tap (:mult app-events) msg-ch)
+    (tap (:mult app-events) app-ch)
     (go
+      (log/debug "Started client watcher hud loop")
       (loop []
         (when-let [msg (<! (:ch hud-watcher))]
           (put! client-ch (stream-msg msg))
           (recur)))
       (log/debug "Exited hud-watcher loop"))
     (go
+      (log/debug "Started client watcher app loop")
       (loop []
-        (when-let [msg (<! msg-ch)]
+        (when-let [msg (<! app-ch)]
+          (log/debug "Client watcher received app event" msg)
           (if (= "reload" (:action msg))
             (if (= body-hash (or (get-uri-hash handler uri)
                                  ;; If it crashes, don't reload
@@ -51,13 +55,15 @@
               (when (put! client-ch (stream-msg msg))
                 (recur))))))
       (log/debug "Exited client watcher loop")
-      (untap (:mult app-events) msg-ch)
-      (close! msg-ch)
+      (async/untap!! (:mult app-events) app-ch)
+      (close! app-ch)
       ((:stop hud-watcher))
-      (close! client-ch))
+      (close! client-ch)
+      (log/debug "Client watcher properly cleaned up"))
     client-ch))
 
 (defn live-reload-handler [opt handler req]
+  (log/debug "Accepted connection to live-reload-handler")
   (let [{:strs [uri hash]} (:params req)
         channel (if (not= hash (or (get-uri-hash handler uri)
                                    ;; If it crashes, don't reload
@@ -130,7 +136,7 @@
 (defmulti process-event (fn [e _powerpack _opt] (:kind e)))
 
 (defmethod process-event :default [e _powerpack _opt]
-  (log/debug "Noop event" e))
+  (log/debug "No related side-effects to carry out" e))
 
 (defmethod process-event :powerpack/edited-source [{:keys [path]} _powerpack _opt]
   (log/debug "Source edited, reloading namespace")
@@ -171,7 +177,7 @@
                    (pr-str {:last-event @last-event}))
         (log/debug "Exited live-reload watcher loop")))
     (fn []
-      (untap (:mult fs-events) fs-ch)
+      (async/untap!! (:mult fs-events) fs-ch)
       (close! fs-ch)
       (reset! watching? false))))
 
