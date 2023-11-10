@@ -15,7 +15,7 @@
 ** DONE Binary pages?
 ** DONE Rename files: doesn't delete the old one
 ** DONE Why did parenteser restart with an old db? (Delete it on stop)
-* Export [5/12]
+* Export [6/12]
 ** DONE Validate existence of :powerpack/build-dir
 ** TODO Fail the export when using assets that can't be found (use a specific error for dev assets)
 ** DONE DON'T send the integrant system to on-started
@@ -24,7 +24,7 @@
 ** TODO Run i18n parity-tests
 ** TODO Run link check on generated pages, do not re-slurp them (should save a lot of time)
 ** TODO Build a result data structure, pass to an output function
-** TODO Configure the loggers to avoid the warnings printing
+** DONE Configure the loggers to avoid the warnings printing
 ** TODO Don't print thousands of files in the diff
 ** DONE BREAK THE BUILD when there are invalid links
 ** TODO Include debuggable information in the thrown exception
