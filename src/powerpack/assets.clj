@@ -51,10 +51,12 @@
 
 (defn optimize-asset-url [ctx opt spec src]
   (let [[url hash] (str/split src #"#")]
-    (str (when (:qualified? spec)
-           (-> ctx :powerpack/app :site/base-url))
-         (get-optimized-asset ctx opt spec (strip-base-url ctx url))
-         (some->> hash (str "#")))))
+    (if url
+      (str (when (:qualified? spec)
+             (-> ctx :powerpack/app :site/base-url))
+           (get-optimized-asset ctx opt spec (strip-base-url ctx url))
+           (some->> hash (str "#")))
+      src)))
 
 (def style-url-re #"url\([\"']?(.+?)[\"']?\)")
 

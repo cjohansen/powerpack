@@ -289,4 +289,15 @@
                                    :path "/sproing/xyz.jpg"}]}
                 [assets/get-markup-url-optimizers])
                :body)
-           "<html><head></head><body><a>No ducks</a></body></html>"))))
+           "<html><head></head><body><a>No ducks</a></body></html>")))
+
+  (testing "Does not trip on url-less hrefs on anchors"
+    (is (= (-> (sut/post-process-page
+                {:headers {"content-type" "text/html"}
+                 :body "<html><body><a href=\"#\">No ducks</a></body></html>"}
+                {:powerpack/app {:powerpack/asset-targets app/default-asset-targets}
+                 :optimus-assets [{:original-path "/images/ducks.jpg"
+                                   :path "/sproing/xyz.jpg"}]}
+                [assets/get-markup-url-optimizers])
+               :body)
+           "<html><head></head><body><a href=\"#\">No ducks</a></body></html>"))))
