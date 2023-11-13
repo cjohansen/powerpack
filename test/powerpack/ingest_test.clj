@@ -1,5 +1,6 @@
 (ns powerpack.ingest-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.java.io :as io]
+            [clojure.test :refer [deftest is testing]]
             [datomic-type-extensions.api :as d]
             [powerpack.db :as db]
             [powerpack.ingest :as sut]))
@@ -224,6 +225,11 @@
             :data {:attribute :person/tags
                    :raw-value ":tag1 :tag2"
                    :coerced-value :tag1}}))))
+
+(deftest parse-file-test
+  (testing "Reads edn with java.time literals"
+    (is (= (sut/parse-file nil "sample.edn" (io/resource "sample.edn"))
+           [{:time #time/md "--10-01"}]))))
 
 (defn mapify [e]
   (into {} e))

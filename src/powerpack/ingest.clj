@@ -1,6 +1,5 @@
 (ns powerpack.ingest
   (:require [clojure.core.async :refer [put!]]
-            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [datomic-type-extensions.api :as d]
@@ -84,7 +83,7 @@
         (update :page/uri suggest-url file-name))))
 
 (defmethod parse-file :edn [_db _file-name file]
-  (let [data (edn/read-string (slurp file))]
+  (let [data (read-string (slurp file))]
     (if (and (coll? data) (not (map? data)))
       data
       [data])))
