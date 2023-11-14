@@ -43,7 +43,7 @@
 (s/def :m1p/dictionaries (s/map-of keyword?
                                    (s/coll-of (s/or :file :file/file
                                                     :directory :file/directory))))
-(s/def :m1p/dictionary-fns (s/coll-of ifn?))
+(s/def :m1p/dictionary-fns (s/map-of keyword? ifn?))
 
 (s/def :optimus/public-dir string?)
 (s/def :optimus/paths (s/coll-of any?))
