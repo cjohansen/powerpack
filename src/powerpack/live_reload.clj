@@ -5,6 +5,7 @@
             [clojure.string :as str]
             [org.httpkit.server :as http-kit]
             [powerpack.async :as async]
+            [powerpack.errors :as errors]
             [powerpack.hud :as hud]
             [powerpack.i18n :as i18n]
             [powerpack.logger :as log]
@@ -138,14 +139,23 @@
 (defmethod process-event :default [e _powerpack _opt]
   (log/debug "No related side-effects to carry out" e))
 
-(defmethod process-event :powerpack/edited-source [{:keys [path]} _powerpack _opt]
+(defmethod process-event :powerpack/edited-source [{:keys [path]} _powerpack opt]
   (log/debug "Source edited, reloading namespace")
-  (try
-    (require (get-ns (slurp (io/file path))) :reload)
-    (catch Exception _e
-      (log/debug "Failed to reload namespace"
-                 {:path path
-                  :ns (get-ns (slurp (io/file path)))}))))
+  (let [source-namespace (get-ns (slurp (io/file path)))]
+    (try
+      (require source-namespace :reload)
+      (errors/resolve-error opt [::reload-namespace source-namespace])
+      (catch Exception e
+        (log/debug "Failed to reload namespace"
+                   {:path path
+                    :ns (get-ns (slurp (io/file path)))})
+        (->> {:exception e
+              :source-namespace source-namespace
+              :file-name path
+              :message (str "Failed to reload namespace " source-namespace)
+              :kind ::reload-namespace
+              :id [::reload-namespace source-namespace]}
+             (errors/report-error opt))))))
 
 (defmethod process-event :powerpack/edited-dictionary [_e powerpack opt]
   (log/debug "Dictionary edited, reloading dictionaries")
