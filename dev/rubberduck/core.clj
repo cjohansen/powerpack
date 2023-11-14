@@ -7,7 +7,22 @@
   (:import (java.awt Color)
            (java.awt.image BufferedImage)
            (java.io ByteArrayOutputStream)
+           (java.text NumberFormat)
+           (java.util Locale)
            (javax.imageio ImageIO)))
+
+(def locales
+  {:nb (Locale/forLanguageTag "nb-NO")
+   :en (Locale/forLanguageTag "en-GB")})
+
+(defn format-number [locale n & [{:keys [decimals]}]]
+  (let [formatter (NumberFormat/getNumberInstance (locales locale))]
+    (when decimals
+      (.setMaximumFractionDigits formatter decimals))
+    (.format formatter n)))
+
+(defn m1p-fn-num [{:keys [locale]} _params n & [opt]]
+  (format-number locale n opt))
 
 (defn create-tx [_file-name data]
   data)
@@ -48,6 +63,7 @@
      [:body
       [:h1 (:page/title page)]
       [:p [:i18n ::greeting]]
+      [:p [:i18n ::num {:n 45.12}]]
       ;;(throw (ex-info "Oh noes!" {}))
       [:p [:i18n ::uri page]]
       (when-let [published (:blog-post/published page)]
@@ -91,6 +107,8 @@
 
        :datomic/uri "datomic:mem://rubberduck"
        :datomic/schema-file "dev-resources/schema.edn"
+
+       :m1p/dictionary-fns {:fn/format-number #'m1p-fn-num}
 
        :m1p/dictionaries
        {:nb ["dev/i18n/nb.edn"]

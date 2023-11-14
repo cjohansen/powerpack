@@ -1,4 +1,5 @@
 [#:rubberduck.core
  {:greeting "Hi there!"
   :published [:fn/str "Published {{:published}}"]
-  :uri [:fn/str "You are at {{:page/uri}}"]}]
+  :uri [:fn/str "You are at {{:page/uri}}"]
+  :num [:fn/format-number [:fn/get :n] {:decimals 1}]}]
