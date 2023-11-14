@@ -198,7 +198,8 @@
       (cond->> x
         (:db/id x) (into {})))
     hiccup)
-   {:dictionaries
+   {:locale locale
+    :dictionaries
     {:i18n (get (:i18n/dictionaries context) locale)}}))
 
 (defn interpolate-i18n [context page hiccup]
