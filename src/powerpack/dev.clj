@@ -1,5 +1,7 @@
 (ns powerpack.dev
   (:require [clojure.core.async :refer [chan close! mult]]
+            [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.tools.namespace.repl :as repl]
             [imagine.core :as imagine]
             [integrant.core :as ig]
@@ -28,6 +30,14 @@
     (wrap-resource handler dir)
     handler))
 
+(defn get-app-namespaces [powerpack]
+  (->> (:powerpack/source-dirs powerpack)
+       (mapcat (fn [dir]
+                 (->> (.listFiles (io/file dir))
+                      (filter #(.isDirectory %))
+                      (map #(str/replace (.getPath %) (re-pattern (str "^" dir "/")) "")))))
+       set))
+
 (defn create-handler [powerpack opt]
   (-> (web/serve-pages powerpack opt)
       (wrap-dev-assets powerpack)
@@ -41,7 +51,8 @@
       web/wrap-utf-8
       (live-reload/wrap-live-reload powerpack opt)
       wrap-params
-      prone/wrap-exceptions))
+      (prone/wrap-exceptions
+       {:app-namespaces (get-app-namespaces powerpack)})))
 
 (defmethod ig/init-key :dev/logger [_ powerpack]
   (log/with-timing :debug "Started logger"
