@@ -50,13 +50,15 @@
   (str/replace url (re-pattern (str "^" (-> ctx :powerpack/app :site/base-url))) ""))
 
 (defn optimize-asset-url [ctx opt spec src]
-  (let [[url hash] (str/split src #"#")]
-    (if url
-      (str (when (:qualified? spec)
-             (-> ctx :powerpack/app :site/base-url))
-           (get-optimized-asset ctx opt spec (strip-base-url ctx url))
-           (some->> hash (str "#")))
-      src)))
+  (if (re-find #"^https?://" src)
+    src
+    (let [[url hash] (str/split src #"#")]
+      (if url
+        (str (when (:qualified? spec)
+               (-> ctx :powerpack/app :site/base-url))
+             (get-optimized-asset ctx opt spec (strip-base-url ctx url))
+             (some->> hash (str "#")))
+        src))))
 
 (def style-url-re #"url\([\"']?(.+?)[\"']?\)")
 

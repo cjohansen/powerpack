@@ -300,4 +300,14 @@
                                    :path "/sproing/xyz.jpg"}]}
                 [assets/get-markup-url-optimizers])
                :body)
-           "<html><head></head><body><a href=\"#\">No ducks</a></body></html>"))))
+           "<html><head></head><body><a href=\"#\">No ducks</a></body></html>")))
+
+  (testing "Does not attempt to optimize fully qualified URLs"
+    (is (= (-> (sut/post-process-page
+                {:headers {"content-type" "text/html"}
+                 :body "<html><body><img src=\"https://example.com/\"></body></html>"}
+                {:powerpack/app {:powerpack/asset-targets app/default-asset-targets}
+                 :optimus-assets []}
+                [assets/get-markup-url-optimizers])
+               :body)
+           "<html><head></head><body><img src=\"https://example.com/\"></body></html>"))))
