@@ -23,6 +23,24 @@
                                    :text "Click"}]}]})
            [])))
 
+  (testing "Does not care about query parameters"
+    (is (= (sut/find-broken-links
+            {}
+            {:pages {"/" ""}
+             :page-data [{:uri "/"
+                          :links [{:href "/?yes=no"
+                                   :text "Click"}]}]})
+           [])))
+
+  (testing "Does not care about the fragment identifier"
+    (is (= (sut/find-broken-links
+            {}
+            {:pages {"/" ""}
+             :page-data [{:uri "/"
+                          :links [{:href "/#my-fragment"
+                                   :text "Click"}]}]})
+           [])))
+
   (testing "Does not consider asset link broken"
     (is (= (sut/find-broken-links
             {}

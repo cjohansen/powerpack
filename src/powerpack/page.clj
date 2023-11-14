@@ -17,11 +17,17 @@
                          :text (.getTextContent node)}))
                  set)}))
 
+(defn remove-non-substantive-url-segments [url]
+  (-> url
+      (str/split #"\?") first
+      (str/split #"#") first))
+
 (defn find-broken-links [powerpack {:keys [pages assets page-data]}]
   (->> page-data
        (mapcat
         (fn [{:keys [uri links]}]
           (for [link (->> links
+                          (map #(update % :href remove-non-substantive-url-segments))
                           (filter #(re-find #"^/[^\/]" (:href %)))
                           (remove (comp pages :href))
                           (remove (comp (set (map :path (remove :outdated assets))) :href))
