@@ -1,4 +1,4 @@
-* Todo [15/16]
+* Todo [15/18]
 ** DONE Link to Prone when rendering exceptions occur
 ** DONE Set proper content-type header when using :content-type
 ** DONE Run alert from the 404 response for JS requests
@@ -15,7 +15,9 @@
 ** DONE Binary pages?
 ** DONE Rename files: doesn't delete the old one
 ** DONE Why did parenteser restart with an old db? (Delete it on stop)
-* Export [8/12]
+** TODO Make it easy to add assets that aren't files (hello, cache-busted API endpoint)
+** TODO Add a heartbeat to the live reload to avoid accumulating clients when there are no changes
+* Export [9/10]
 ** DONE Validate existence of :powerpack/build-dir
 ** TODO Fail the export when using assets that can't be found (use a specific error for dev assets)
 ** DONE DON'T send the integrant system to on-started
@@ -23,11 +25,9 @@
 ** DONE Export og:image images that use imagine
 ** DONE Run i18n parity-tests
 ** DONE Run link check on generated pages, do not re-slurp them (should save a lot of time)
-** TODO Build a result data structure, pass to an output function
 ** DONE Configure the loggers to avoid the warnings printing
-** TODO Don't print thousands of files in the diff
+** DONE Don't print thousands of files in the diff
 ** DONE BREAK THE BUILD when there are invalid links
-** TODO Include debuggable information in the thrown exception
 * Documentation [0/2]
 ** TODO dev vs build (different configs, where to put it, etc)
 ** TODO The hiccup tools place CSS bundles in head and JS bundles at the end of body (no assets)

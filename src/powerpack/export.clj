@@ -1,5 +1,6 @@
 (ns powerpack.export
-  (:require [clojure.core.memoize :as memoize]
+  (:require [clansi.core :as ansi]
+            [clojure.core.memoize :as memoize]
             [clojure.data.json :as json]
             [clojure.string :as str]
             [datomic-type-extensions.api :as d]
@@ -82,45 +83,70 @@
     (log/info (str "Exporting images from:\n" (format-asset-targets powerpack "  ")))
     (log/with-monitor :info "Exporting images"
       (-> (update powerpack :imagine/config assoc :cacheable-urls? true)
-          (export-images page-data))))
-  {:pages pages
-   :assets assets
-   :page-data page-data})
-
-(defn validate-export [_powerpack _export-data]
-  {:valid? true})
+          (export-images page-data)))))
 
 (defn format-problem [{:keys [kind data]}]
   (case kind
     :broken-links (page/format-broken-links data)))
 
 (defn format-report [validation]
+  (prn validation)
   (case (:validator validation)
     :m1p/validator
-    (str "i18n dictionaries are not in good shape\n"
-         (v/format-report
-      (:dictionaries validation)
-      (:problems validation)))
+    (ansi/style
+     (str "i18n dictionaries are not in good shape\n"
+          (v/format-report
+           (:dictionaries validation)
+           (:problems validation)))
+     :red)
 
     :powerpack/link-check
-    (->> (:problems validation)
-         (map format-problem)
-         (str/join "\n\n"))))
+    (ansi/style
+     (->> (:problems validation)
+          (map format-problem)
+          (str/join "\n\n"))
+     :red)))
 
-(defn print-report [powerpack {:keys [old-files validation format]}]
+(defn print-heading [s entries color]
+  (let [num (count entries)]
+    (println (ansi/style (format s num (if (= 1 num) "file" "files")) color))))
+
+(defn print-file-names [file-names]
+  (let [n (count file-names)
+        print-max 50]
+    (doseq [path (take print-max (sort file-names))]
+      (println "    -" path))
+    (when (< print-max n)
+      (print "    and" (- n print-max) "more"))))
+
+(defn report-differences [old new]
+  (let [{:keys [added removed changed unchanged]} (stasis/diff-maps old new)]
+    (if (and (empty? removed)
+             (empty? changed)
+             (empty? unchanged))
+      (print-heading "- First export! Created %s %s." added :green)
+      (do
+        (when (seq unchanged)
+          (print-heading "- %s unchanged %s." unchanged :cyan))
+        (when (seq changed)
+          (print-heading "- %s changed %s:" changed :yellow)
+          (print-file-names changed))
+        (when (seq removed)
+          (print-heading "- %s removed %s:" removed :red)
+          (print-file-names removed))
+        (when (seq added)
+          (print-heading "- %s added %s:" added :green)
+          (print-file-names added))))))
+
+(defn print-report [powerpack {:keys [old-files validation]}]
   (let [new-files (load-export-dir (:powerpack/build-dir powerpack))]
-    (if (= format :json)
-      (log/info (-> (stasis/diff-maps old-files new-files)
-                    (dissoc :unchanged)
-                    (merge validation)
-                    json/write-str))
-      (if (:valid? validation)
-        (do
-          (log/info "Export complete:")
-          (stasis/report-differences old-files new-files))
-        (do
-          (log/info "Detected problems in exported site, deployment is not advised")
-          (log/info (format-report validation)))))))
+    (if (or (:valid? validation) (nil? validation))
+      (do
+        (log/info "Export complete:")
+        (report-differences old-files new-files))
+      (do
+        (log/info "Detected problems in exported site, deployment is not advised")
+        (log/info (format-report validation))))))
 
 (defn validate-app [powerpack export-data]
   (or (when-let [dicts (some-> powerpack :i18n/dictionaries deref)]
@@ -157,20 +183,17 @@
                       (load-export-dir (:powerpack/build-dir powerpack)))
           _ (app/start powerpack)
           export-data (get-export-data powerpack)
-          pre-validation (log/with-monitor :info "Validating app"
-                           (validate-app powerpack export-data))]
-      (if-not (:valid? pre-validation)
-        (conclude-export powerpack {:logger logger :validation pre-validation})
+          validation (log/with-monitor :info "Validating app"
+                       (validate-app powerpack export-data))]
+      (if-not (:valid? validation)
+        (conclude-export powerpack {:logger logger :validation validation})
         (do
           (log/with-monitor :info "Clearing build directory"
             (stasis/empty-directory! (:powerpack/build-dir powerpack)))
-          (let [export (export-site powerpack export-data)
-                validation (log/with-monitor :info "Validating export"
-                             (validate-export powerpack export))]
-            (->> (merge opt {:old-files old-files
-                             :validation validation
-                             :logger logger})
-                 (conclude-export powerpack))))))))
+          (export-site powerpack export-data)
+          (->> (merge opt {:old-files old-files
+                           :logger logger})
+               (conclude-export powerpack)))))))
 
 (defn export! [app-options & [opt]]
   (let [res (export app-options opt)]
