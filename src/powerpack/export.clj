@@ -2,6 +2,7 @@
   (:require [clansi.core :as ansi]
             [clojure.core.memoize :as memoize]
             [clojure.data.json :as json]
+            [clojure.pprint :as pprint]
             [clojure.string :as str]
             [datomic-type-extensions.api :as d]
             [imagine.core :as imagine]
@@ -64,15 +65,20 @@
        (str/join "\n")))
 
 (defn get-export-data [powerpack]
-  (let [assets (optimize (assets/get-assets powerpack) {})
-        ctx {:optimus-assets assets}
-        pages (log/with-monitor :info "Loading pages"
-                (web/get-pages (d/db (:datomic/conn powerpack)) ctx powerpack))]
-    {:pages pages
-     :ctx ctx
-     :assets assets
-     :page-data (log/with-monitor :info "Extracting links and asset URLs"
-                  (extract-data powerpack pages))}))
+  (try
+    (let [assets (optimize (assets/get-assets powerpack) {})
+          ctx {:optimus-assets assets}
+          pages (log/with-monitor :info "Loading pages"
+                  (web/get-pages (d/db (:datomic/conn powerpack)) ctx powerpack))]
+      {:valid? true
+       :pages pages
+       :ctx ctx
+       :assets assets
+       :page-data (log/with-monitor :info "Extracting links and asset URLs"
+                    (extract-data powerpack pages))})
+    (catch Exception e
+      {:valid? false
+       :exception e})))
 
 (defn export-site [powerpack {:keys [pages ctx assets page-data]}]
   (log/with-monitor :info (str "Exporting " (count pages) " pages")
@@ -89,9 +95,36 @@
   (case kind
     :broken-links (page/format-broken-links data)))
 
-(defn format-report [validation]
-  (prn validation)
+(defn format-exception [e]
+  (str (str/replace (.getMessage e) #"^([a-zA-Z]\.?)+: " "")
+       (when-let [cause (.getCause e)]
+         (str "\n    Caused by: " (format-exception cause)))))
+
+(defn exception-data [e]
+  (->> (exception-data cause)
+       (when-let [cause (.getCause e)])
+       (concat [(ex-data e)])
+       (remove nil?)))
+
+(defn pprs [x]
+  (with-out-str (pprint/pprint x)))
+
+(defn format-report [powerpack validation]
   (case (:validator validation)
+    ::export-data-exception
+    (ansi/style
+     (str "Encountered an exception while creating pages\n"
+          (when-let [e (:exception validation)]
+            (str (format-exception e) "\n"
+                 (when-let [data (exception-data e)]
+                   (str "\nException data:\n"
+                        (str/join "\n" (map pprs data))
+                        "\n\n"))
+                 (if (= :debug (:powerpack/log-level powerpack))
+                   (with-out-str (.printStackTrace e))
+                   (str "Run export with :powerpack/log-level set to :debug for full stack traces")))))
+     :red)
+
     :m1p/validator
     (ansi/style
      (str "i18n dictionaries are not in good shape\n"
@@ -146,10 +179,14 @@
         (report-differences old-files new-files))
       (do
         (log/info "Detected problems in exported site, deployment is not advised")
-        (log/info (format-report validation))))))
+        (log/info (format-report powerpack validation))))))
 
 (defn validate-app [powerpack export-data]
-  (or (when-let [dicts (some-> powerpack :i18n/dictionaries deref)]
+  (or (when (false? (:valid? export-data))
+        {:valid? false
+         :validator ::export-data-exception
+         :exception (:exception export-data)})
+      (when-let [dicts (some-> powerpack :i18n/dictionaries deref)]
         (when-let [problems (seq (concat
                                   (v/find-non-kw-keys dicts)
                                   (v/find-missing-keys dicts)

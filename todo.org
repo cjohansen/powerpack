@@ -17,9 +17,10 @@
 ** DONE Why did parenteser restart with an old db? (Delete it on stop)
 ** TODO Make it easy to add assets that aren't files (hello, cache-busted API endpoint)
 ** TODO Add a heartbeat to the live reload to avoid accumulating clients when there are no changes
-* Export [9/10]
+* Export [10/11]
 ** DONE Validate existence of :powerpack/build-dir
-** TODO Fail the export when using assets that can't be found (use a specific error for dev assets)
+** DONE Fail the export when using assets that can't be found
+** TODO ...use a specific error for dev assets
 ** DONE DON'T send the integrant system to on-started
 ** DONE Streamline naming of keys in integrant components and "context"
 ** DONE Export og:image images that use imagine
