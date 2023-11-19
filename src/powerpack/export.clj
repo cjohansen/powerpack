@@ -1,13 +1,11 @@
 (ns powerpack.export
   (:require [clansi.core :as ansi]
             [clojure.core.memoize :as memoize]
-            [clojure.data.json :as json]
             [clojure.pprint :as pprint]
             [clojure.string :as str]
             [clojure.walk :as walk]
             [datomic-type-extensions.api :as d]
             [imagine.core :as imagine]
-            [m1p.core :as m1p]
             [m1p.validation :as v]
             [optimus.export :as export]
             [optimus.optimizations :as optimizations]
@@ -36,6 +34,12 @@
   (->> (mapcat :assets export-data)
        (filter #(imagine/image-url? % (:imagine/config powerpack)))
        set))
+
+(defn get-ex-datas [e]
+  (->> (concat [(ex-data e)]
+               (when-let [cause (.getCause e)]
+                 (get-ex-datas cause)))
+       (remove nil?)))
 
 (defn export-images [powerpack export-data]
   (doseq [image (get-image-assets powerpack export-data)]
@@ -71,15 +75,15 @@
           ctx {:optimus-assets assets}
           pages (log/with-monitor :info "Loading pages"
                   (web/get-pages (d/db (:datomic/conn powerpack)) ctx powerpack))]
-      {:valid? true
-       :pages pages
+      {:pages pages
        :ctx ctx
        :assets assets
        :page-data (log/with-monitor :info "Extracting links and asset URLs"
                     (extract-data powerpack pages))})
     (catch Exception e
-      {:valid? false
-       :exception e})))
+      (or (first (filter :powerpack/problem (get-ex-datas e)))
+          {:powerpack/problem ::export-exception
+           :exception e}))))
 
 (defn export-site [powerpack {:keys [pages ctx assets page-data]}]
   (log/with-monitor :info (str "Exporting " (count pages) " pages")
@@ -92,20 +96,10 @@
       (-> (update powerpack :imagine/config assoc :cacheable-urls? true)
           (export-images page-data)))))
 
-(defn format-problem [{:keys [kind data]}]
-  (case kind
-    :broken-links (page/format-broken-links data)))
-
 (defn format-exception [e]
   (str (str/replace (.getMessage e) #"^([a-zA-Z]\.?)+: " "")
        (when-let [cause (.getCause e)]
          (str "\n    Caused by: " (format-exception cause)))))
-
-(defn exception-data [e]
-  (->> (exception-data cause)
-       (when-let [cause (.getCause e)])
-       (concat [(ex-data e)])
-       (remove nil?)))
 
 (defn pprs [x log-level]
   (->> x
@@ -119,37 +113,37 @@
        with-out-str))
 
 (defn format-report [powerpack validation]
-  (case (:validator validation)
-    ::export-data-exception
-    (let [log-level (:powerpack/log-level powerpack)]
-      (ansi/style
-       (str "Encountered an exception while creating pages\n"
-            (when-let [e (:exception validation)]
-              (str (format-exception e) "\n"
-                   (when-let [data (exception-data e)]
-                     (str "\nException data:\n"
-                          (str/join "\n" (map #(pprs % log-level) data))
-                          "\n\n"))
-                   (if (= :debug log-level)
-                     (with-out-str (.printStackTrace e))
-                     (str "Run export with :powerpack/log-level set to :debug for full stack traces\n"
-                          "and data listings")))))
-       :red))
+  (let [log-level (:powerpack/log-level powerpack)]
+    (case (:powerpack/problem validation)
+      ::export-exception
+      (str "Encountered an exception while creating pages\n"
+           (when-let [e (:exception validation)]
+             (str (format-exception e) "\n"
+                  (when-let [data (get-ex-datas e)]
+                    (str "\nException data:\n"
+                         (str/join "\n" (map #(pprs % log-level) data))
+                         "\n\n"))
+                  (if (= :debug log-level)
+                    (with-out-str (.printStackTrace e))
+                    (str "Run export with :powerpack/log-level set to :debug for full stack traces\n"
+                         "and data listings")))))
 
-    :m1p/validator
-    (ansi/style
-     (str "i18n dictionaries are not in good shape\n"
-          (v/format-report
-           (:dictionaries validation)
-           (:problems validation)))
-     :red)
+      :m1p/discrepancies
+      (str "i18n dictionaries are not in good shape\n"
+           (v/format-report
+            (:dictionaries validation)
+            (:problems validation)))
 
-    :powerpack/link-check
-    (ansi/style
-     (->> (:problems validation)
-          (map format-problem)
-          (str/join "\n\n"))
-     :red)))
+      :powerpack/bad-links
+      (page/format-broken-links (:links validation))
+
+      :powerpack/missing-asset
+      (str (:uri validation) " is referring to missing asset " (:path validation) ":\n\n"
+           (:html validation) "\n\n"
+           "Any asset to be exported by Powerpack must be configured as an Optimus asset\n"
+           "or handled by the imagine image manipulation pipeline. Please check the relevant\n"
+           "configurations and/or the referred asset path.\n\n"
+           (pprs (select-keys powerpack [:imagine/config :optimus/bundles :optimus/assets]) log-level)))))
 
 (defn print-heading [s entries color]
   (let [num (count entries)]
@@ -184,44 +178,37 @@
 
 (defn print-report [powerpack {:keys [old-files validation]}]
   (let [new-files (load-export-dir (:powerpack/build-dir powerpack))]
-    (if (or (:valid? validation) (nil? validation))
-      (do
-        (log/info "Export complete:")
-        (report-differences old-files new-files))
+    (if (:powerpack/problem validation)
       (do
         (log/info "Detected problems in exported site, deployment is not advised")
-        (log/info (format-report powerpack validation))))))
+        (log/info (ansi/style (format-report powerpack validation) :red)))
+      (do
+        (log/info "Export complete:")
+        (report-differences old-files new-files)))))
 
 (defn validate-app [powerpack export-data]
-  (or (when (false? (:valid? export-data))
-        {:valid? false
-         :validator ::export-data-exception
-         :exception (:exception export-data)})
+  (or (when (:powerpack/problem export-data)
+        export-data)
       (when-let [dicts (some-> powerpack :i18n/dictionaries deref)]
         (when-let [problems (seq (concat
                                   (v/find-non-kw-keys dicts)
                                   (v/find-missing-keys dicts)
                                   (v/find-misplaced-interpolations dicts)
                                   (v/find-type-discrepancies dicts)))]
-          {:valid? false
-           :validator :m1p/validator
+          {:powerpack/problem :m1p/discrepancies
            :dictionaries dicts
            :problems problems}))
       (let [broken-links (seq (page/find-broken-links powerpack export-data))]
-        {:valid? (not broken-links)
-         :validator :powerpack/link-check
-         :problems (->> [(when broken-links
-                           {:kind :broken-links
-                            :data broken-links})]
-                        (remove nil?))})
-      {:valid? true}))
+        {:powerpack/problem :powerpack/bad-links
+         :links broken-links})
+      {}))
 
 (defn conclude-export [powerpack opt]
   (app/stop powerpack)
   (print-report powerpack opt)
   (when-let [stop (:stop (:logger opt))]
     (stop))
-  {:success? (:valid? (:validation opt))})
+  {:success? (nil? (:powerpack/problem (:validation opt)))})
 
 (defn export [app-options & [opt]]
   (log/with-timing :info "Ran Powerpack export"
@@ -233,7 +220,7 @@
           export-data (get-export-data powerpack)
           validation (log/with-monitor :info "Validating app"
                        (validate-app powerpack export-data))]
-      (if-not (:valid? validation)
+      (if (:powerpack/problem validation)
         (conclude-export powerpack {:logger logger :validation validation})
         (do
           (log/with-monitor :info "Clearing build directory"

@@ -29,7 +29,7 @@
        first
        :path))
 
-(defn get-optimized-asset [ctx opt spec path]
+(defn get-optimized-asset [ctx opt node spec path]
   (let [imagine (-> ctx :powerpack/app :imagine/config)]
     (when-let [asset (or (not-empty (link/file-path ctx path))
                          (imagine/realize-url imagine path)
@@ -42,7 +42,13 @@
                                              :kind ::missing-asset
                                              :id [::missing-asset path]}
                                             (errors/report-error opt))
-                               (throw (ex-info message {:path path}))))))]
+                               (->> (cond-> {:path path
+                                             :spec spec
+                                             :powerpack/problem :powerpack/missing-asset}
+                                      (:uri ctx) (assoc :uri (:uri ctx))
+                                      node (assoc :html (.getOuterHTML node)))
+                                    (ex-info message)
+                                    throw)))))]
       (errors/resolve-error opt [::missing-asset path])
       asset)))
 
@@ -61,7 +67,7 @@
       (if url
         (str (when (:qualified? spec)
                (-> ctx :powerpack/app :site/base-url))
-             (get-optimized-asset ctx opt spec (strip-base-url ctx url))
+             (get-optimized-asset ctx opt node spec (strip-base-url ctx url))
              (some->> hash (str "#")))
         src))))
 
@@ -97,21 +103,21 @@
 (defmulti optimize-attr-urls (fn [_ctx _opt spec _node] (:attr spec)))
 
 (defmethod optimize-attr-urls "srcset" [ctx opt spec node]
-  (->> (partial optimize-asset-url ctx opt spec)
+  (->> (partial optimize-asset-url ctx opt node spec)
        (partial update-srcset)
        (update-attr node (:attr spec))))
 
 (defmethod optimize-attr-urls "xlink:href" [ctx opt spec node]
-  (->> (partial optimize-asset-url ctx opt spec)
+  (->> (partial optimize-asset-url ctx opt node spec)
        (replace-attr node "href" (:attr spec))))
 
 (defmethod optimize-attr-urls "style" [ctx opt spec node]
-  (->> (partial optimize-asset-url ctx opt spec)
+  (->> (partial optimize-asset-url ctx opt node spec)
        (partial update-style-urls)
        (update-attr node (:attr spec))))
 
 (defmethod optimize-attr-urls :default [ctx opt spec node]
-  (->> (partial optimize-asset-url ctx opt spec)
+  (->> (partial optimize-asset-url ctx opt node spec)
        (update-attr node (:attr spec))))
 
 (defn get-markup-url-optimizers [ctx & [opt]]

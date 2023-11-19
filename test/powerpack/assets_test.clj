@@ -23,7 +23,10 @@
                    "<img src=\"/images/ducks.jpg\">"))
              (catch Exception e
                (ex-data e)))
-           {:path "/images/ducks.jpg"})))
+           {:powerpack/problem :powerpack/missing-asset
+            :path "/images/ducks.jpg"
+            :spec {:selector ["img[src]"] :attr "src"}
+            :html "<img src=\"/images/ducks.jpg\">"})))
 
   (testing "optimizes img src imagine image"
     (is (= (->> (sut/get-markup-url-optimizers
