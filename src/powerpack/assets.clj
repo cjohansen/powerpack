@@ -49,8 +49,13 @@
 (defn strip-base-url [ctx url]
   (str/replace url (re-pattern (str "^" (-> ctx :powerpack/app :site/base-url))) ""))
 
-(defn optimize-asset-url [ctx opt spec src]
-  (if (re-find #"^https?://" src)
+(defn external-url? [powerpack url]
+  (when (re-find #"^https?://" url)
+    (not (some->> (:site/base-url powerpack)
+                  (str/starts-with? url)))))
+
+(defn optimize-asset-url [ctx opt node spec src]
+  (if (external-url? (:powerpack/app ctx) src)
     src
     (let [[url hash] (str/split src #"#")]
       (if url
