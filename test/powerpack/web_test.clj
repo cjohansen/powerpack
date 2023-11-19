@@ -280,6 +280,28 @@
                :body)
            "<html><head></head><body><a href=\"/sproing/xyz.jpg\">Ducks</a></body></html>")))
 
+  (testing "Optimizes script sources"
+    (is (= (-> (sut/post-process-page
+                {:headers {"content-type" "text/html"}
+                 :body "<html><body><script src=\"/app.js\"></script></body></html>"}
+                {:powerpack/app {:powerpack/asset-targets app/default-asset-targets}
+                 :optimus-assets [{:original-path "/app.js"
+                                   :path "/xxxxx.js"}]}
+                [assets/get-markup-url-optimizers])
+               :body)
+           "<html><head></head><body><script src=\"/xxxxx.js\"></script></body></html>")))
+
+  (testing "Does not optimize external scripts"
+    (is (= (-> (sut/post-process-page
+                {:headers {"content-type" "text/html"}
+                 :body "<html><body><script src=\"https://cdn.com/app.js\"></script></body></html>"}
+                {:powerpack/app {:powerpack/asset-targets app/default-asset-targets}
+                 :optimus-assets [{:original-path "/app.js"
+                                   :path "/xxxxx.js"}]}
+                [assets/get-markup-url-optimizers])
+               :body)
+           "<html><head></head><body><script src=\"https://cdn.com/app.js\"></script></body></html>")))
+
   (testing "Does not trip on href-less anchors"
     (is (= (-> (sut/post-process-page
                 {:headers {"content-type" "text/html"}
