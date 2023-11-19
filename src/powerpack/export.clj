@@ -4,6 +4,7 @@
             [clojure.data.json :as json]
             [clojure.pprint :as pprint]
             [clojure.string :as str]
+            [clojure.walk :as walk]
             [datomic-type-extensions.api :as d]
             [imagine.core :as imagine]
             [m1p.core :as m1p]
@@ -106,24 +107,34 @@
        (concat [(ex-data e)])
        (remove nil?)))
 
-(defn pprs [x]
-  (with-out-str (pprint/pprint x)))
+(defn pprs [x log-level]
+  (->> x
+       (walk/postwalk
+        (fn [x]
+          (cond-> x
+            (and (not= :debug log-level)
+                 (map? x))
+            (dissoc :powerpack/app :app/db :i18n/dictionaries))))
+       pprint/pprint
+       with-out-str))
 
 (defn format-report [powerpack validation]
   (case (:validator validation)
     ::export-data-exception
-    (ansi/style
-     (str "Encountered an exception while creating pages\n"
-          (when-let [e (:exception validation)]
-            (str (format-exception e) "\n"
-                 (when-let [data (exception-data e)]
-                   (str "\nException data:\n"
-                        (str/join "\n" (map pprs data))
-                        "\n\n"))
-                 (if (= :debug (:powerpack/log-level powerpack))
-                   (with-out-str (.printStackTrace e))
-                   (str "Run export with :powerpack/log-level set to :debug for full stack traces")))))
-     :red)
+    (let [log-level (:powerpack/log-level powerpack)]
+      (ansi/style
+       (str "Encountered an exception while creating pages\n"
+            (when-let [e (:exception validation)]
+              (str (format-exception e) "\n"
+                   (when-let [data (exception-data e)]
+                     (str "\nException data:\n"
+                          (str/join "\n" (map #(pprs % log-level) data))
+                          "\n\n"))
+                   (if (= :debug log-level)
+                     (with-out-str (.printStackTrace e))
+                     (str "Run export with :powerpack/log-level set to :debug for full stack traces\n"
+                          "and data listings")))))
+       :red))
 
     :m1p/validator
     (ansi/style
