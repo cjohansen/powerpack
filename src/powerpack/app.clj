@@ -119,7 +119,7 @@
     :qualified? true}
    {:selector ["[style]"]
     :attr "style"}
-   {:selector ["script[src]"]
+   #_{:selector ["script[src]"]
     :attr "src"}
    {:selector ["source[src]"]
     :attr "src"}
