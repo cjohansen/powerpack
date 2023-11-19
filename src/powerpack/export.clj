@@ -201,7 +201,7 @@
     (doseq [path (take print-max (sort file-names))]
       (println "    -" path))
     (when (< print-max n)
-      (print "    and" (- n print-max) "more"))))
+      (println "    and" (- n print-max) "more"))))
 
 (defn report-differences [old new]
   (let [{:keys [added removed changed unchanged]} (stasis/diff-maps old new)]
