@@ -47,9 +47,11 @@
 (defn render-page [context page]
   (cond
     (= ::build-date (:page/kind page))
-    {:status 200
-     :content-type (:page/response-type page)
-     :body {:build-date (:date context)}}
+    (do
+      (Thread/sleep 3000)
+      {:status 200
+       :content-type (:page/response-type page)
+       :body {:build-date (:date context)}})
 
     (= ::redirect (:page/kind page))
     {:status 302
@@ -69,11 +71,11 @@
       (when-let [published (:blog-post/published page)]
         [:p [:i18n ::published {:published published}]])
       [:pre [:code {:class "language-clj"}
-             "(prn 'Hello :there)"]]
-      [:a {:href "/blog/sampl/"} "Broken link"]
+             "(prn 'Hello :there 'tihi)"]]
+      [:a {:href "/blog/sample/"} "Broken link"]
       [:a {:href "https://elsewhere.com/blog/samp/"} "External link"]
       [:img {:src "/vcard-small/images/ducks.jpg"}]
-      [:script {:src "/dev-debug.js"}]]]))
+      #_[:script {:src "/dev-debug.js"}]]]))
 
 (def powerpack
   (-> {:site/default-locale :en
@@ -123,10 +125,12 @@
        (fn [powerpack-app]
          (->> [{:page/uri "/build-date.edn"
                 :page/response-type :edn
-                :page/kind ::build-date}
+                :page/kind ::build-date
+                :page/etag "0acbd"}
                {:page/uri "/build-date.json"
                 :page/response-type :json
-                :page/kind ::build-date}
+                :page/kind ::build-date
+                :page/etag "99f8d3"}
                {:page/uri "/test.png"
                 :page/kind ::png}
                {:page/uri "/"
@@ -152,7 +156,11 @@
 
   (require 'integrant.repl.state)
 
-  integrant.repl.state/system
+  (def app (:powerpack/app integrant.repl.state/system))
+
+  (d/q '[:find ?e ?uri
+         :where [?e :page/uri ?uri]]
+       (d/db (:datomic/conn app)))
 
   (-> powerpack
       (assoc :powerpack/log-level :info)

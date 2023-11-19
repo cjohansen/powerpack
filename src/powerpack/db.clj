@@ -27,6 +27,10 @@
     :db/unique :db.unique/identity
     :db/cardinality :db.cardinality/one}
 
+   {:db/ident :page/etag
+    :db/valueType :db.type/string
+    :db/cardinality :db.cardinality/one}
+
    {:db/ident :page/title
     :db/valueType :db.type/string
     :db/cardinality :db.cardinality/one}

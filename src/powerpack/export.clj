@@ -70,23 +70,57 @@
               (str indent "<" target "> " (str/join ", " (map second xs)))))
        (str/join "\n")))
 
+(defn get-cached-etags [files]
+  (->> (some-> (get files "/etags.edn") read-string)
+       (filter (fn [[k]] (get files k)))
+       (into {})))
+
+(defn get-pages-to-export [db cached-etags]
+  (->> (d/q '[:find [(pull ?p [:page/uri :page/etag]) ...]
+              :where [?p :page/uri]]
+            db)
+       (map (fn [page]
+              (if-let [etag (not-empty (:page/etag page))]
+                (assoc page :cached? (= etag (get cached-etags (:page/uri page))))
+                page)))))
+
+(defn get-cached-pages [files page-specs]
+  (when-let [cached (seq (filter :cached? page-specs))]
+    (log/with-monitor :info (format "Reusing %d pages from previous export with unchanged etags"
+                                    (count cached))
+      (for [page cached]
+        [(:page/uri page) {:body (files (:page/uri page))}]))))
+
 (defn get-export-data [powerpack]
   (try
-    (let [assets (optimize (assets/get-assets powerpack) {})
+    (let [old-files (log/with-monitor :info "Loading previous export"
+                      (load-export-dir (:powerpack/build-dir powerpack)))
+          cached-etags (get-cached-etags old-files)
+          assets (optimize (assets/get-assets powerpack) {})
           ctx {:optimus-assets assets}
-          pages (log/with-monitor :info "Loading pages"
-                  (web/get-pages (d/db (:datomic/conn powerpack)) ctx powerpack))]
-      {:pages pages
+          db (d/db (:datomic/conn powerpack))
+          page-specs (get-pages-to-export db cached-etags)
+          pages (into
+                 (log/with-monitor :info "Loading pages"
+                   (->> page-specs
+                        (remove :cached?)
+                        (web/prepare-pages db ctx powerpack)))
+                 (get-cached-pages old-files page-specs))]
+      {:pages (update-vals pages :body)
+       :etags (->> (map (juxt :page/uri :page/etag) page-specs)
+                   (filter second)
+                   (into {}))
        :ctx ctx
        :assets assets
        :page-data (log/with-monitor :info "Extracting links and asset URLs"
-                    (extract-data powerpack pages))})
+                    (extract-data powerpack pages))
+       :existing-export old-files})
     (catch Exception e
       (or (first (filter :powerpack/problem (get-ex-datas e)))
           {:powerpack/problem ::export-exception
            :exception e}))))
 
-(defn export-site [powerpack {:keys [pages ctx assets page-data]}]
+(defn export-site [powerpack {:keys [pages ctx assets page-data etags]}]
   (log/with-monitor :info (str "Exporting " (count pages) " pages")
     (stasis/export-pages pages (:powerpack/build-dir powerpack) ctx))
   (log/with-monitor :info "Exporting assets"
@@ -95,7 +129,10 @@
     (log/info (str "Exporting images from:\n" (format-asset-targets powerpack "  ")))
     (log/with-monitor :info "Exporting images"
       (-> (update powerpack :imagine/config assoc :cacheable-urls? true)
-          (export-images page-data)))))
+          (export-images page-data))))
+  (when (not-empty etags)
+    (log/with-monitor :info "Exporting etags to etags.edn"
+      (spit (str (:powerpack/build-dir powerpack) "/etags.edn") (pr-str etags)))))
 
 (defn format-exception [e]
   (str (str/replace (.getMessage e) #"^([a-zA-Z]\.?)+: " "")
@@ -207,7 +244,7 @@
           {:powerpack/problem :m1p/discrepancies
            :dictionaries dicts
            :problems problems}))
-      (let [broken-links (seq (page/find-broken-links powerpack export-data))]
+      (when-let [broken-links (seq (page/find-broken-links powerpack export-data))]
         {:powerpack/problem :powerpack/bad-links
          :links broken-links})
       {}))
@@ -223,8 +260,6 @@
   (log/with-timing :info "Ran Powerpack export"
     (let [powerpack (log/with-monitor :info "Creating app" (app/create-app app-options))
           logger (log/start-logger (:powerpack/log-level powerpack))
-          old-files (log/with-monitor :info "Loading previous export"
-                      (load-export-dir (:powerpack/build-dir powerpack)))
           _ (app/start powerpack)
           export-data (get-export-data powerpack)
           validation (log/with-monitor :info "Validating app"
@@ -235,7 +270,7 @@
           (log/with-monitor :info "Clearing build directory"
             (stasis/empty-directory! (:powerpack/build-dir powerpack)))
           (export-site powerpack export-data)
-          (->> (merge opt {:old-files old-files
+          (->> (merge opt {:old-files (:existing-export export-data)
                            :logger logger})
                (conclude-export powerpack)))))))
 
