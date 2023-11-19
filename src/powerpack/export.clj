@@ -1,6 +1,7 @@
 (ns powerpack.export
   (:require [clansi.core :as ansi]
             [clojure.core.memoize :as memoize]
+            [clojure.java.io :as io]
             [clojure.pprint :as pprint]
             [clojure.string :as str]
             [clojure.walk :as walk]
@@ -138,12 +139,20 @@
       (page/format-broken-links (:links validation))
 
       :powerpack/missing-asset
-      (str (:uri validation) " is referring to missing asset " (:path validation) ":\n\n"
-           (:html validation) "\n\n"
-           "Any asset to be exported by Powerpack must be configured as an Optimus asset\n"
-           "or handled by the imagine image manipulation pipeline. Please check the relevant\n"
-           "configurations and/or the referred asset path.\n\n"
-           (pprs (select-keys powerpack [:imagine/config :optimus/bundles :optimus/assets]) log-level)))))
+      (let [{:keys [uri path html]} validation]
+        (str uri " is referring to missing asset " path ":\n\n"
+             html "\n\n"
+             "Any asset to be exported by Powerpack must be configured as an Optimus asset\n"
+             "or handled by the imagine image manipulation pipeline. Please check the relevant\n"
+             "configurations and/or the referred asset path.\n\n"
+             (when (io/resource (str (:powerpack/dev-assets-root-path powerpack) path))
+               (str "This particular asset exists in your :powerpack/dev-assets-root-path dir,\n"
+                    (:powerpack/dev-assets-root-path powerpack) ". "
+                    "Development assets can not be used in production exports.\n\n"))
+             (pprs (select-keys powerpack [:imagine/config
+                                           :optimus/bundles
+                                           :optimus/assets
+                                           :powerpack/dev-assets-root-path]) log-level))))))
 
 (defn print-heading [s entries color]
   (let [num (count entries)]
