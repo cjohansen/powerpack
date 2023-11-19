@@ -44,7 +44,7 @@
     (str ms "ms")
     (str (format "%02d:%02d.%03d (%dms)"
                  (int (/ ms 60000))
-                 (int (/ (mod ms 60) 1000))
+                 (int (/ (mod ms 60000) 1000))
                  (int (mod ms 1000))
                  ms))))
 
