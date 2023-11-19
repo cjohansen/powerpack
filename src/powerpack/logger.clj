@@ -39,15 +39,24 @@
 (defmacro debug [& msg]
   `(log :debug ~msg))
 
+(defn format-ms [ms]
+  (if (< ms 10000)
+    (str ms "ms")
+    (str (format "%02d:%02d.%03d (%dms)"
+                 (int (/ ms 60000))
+                 (int (/ (mod ms 60) 1000))
+                 (int (mod ms 1000))
+                 ms))))
+
 (defmacro with-timing [level name exp]
   `(let [start# (System/currentTimeMillis)
          res# ~exp]
-     (log ~level [~name "in" (- (System/currentTimeMillis) start#) "ms"])
+     (log ~level [~name "in" (format-ms (- (System/currentTimeMillis) start#))])
      res#))
 
 (defmacro with-monitor [level message exp]
   `(let [start# (System/currentTimeMillis)]
      (log ~level [~message])
      (let [res# ~exp]
-       (log ~level [" ... complete in" (- (System/currentTimeMillis) start#) "ms"])
+       (log ~level [" ... complete in" (format-ms (- (System/currentTimeMillis) start#))])
        res#)))
