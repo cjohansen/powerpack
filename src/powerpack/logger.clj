@@ -1,5 +1,5 @@
 (ns powerpack.logger
-  (:require [clojure.core.async :refer [<! chan dropping-buffer go put!]]))
+  (:require [clojure.core.async :refer [<! chan close! dropping-buffer go put!]]))
 
 (defonce logger-ch nil)
 (defonce log-level :info)
@@ -9,19 +9,17 @@
   (<= (.indexOf levels msg-level) (.indexOf levels log-level)))
 
 (defn start-logger [level]
-  (let [running? (atom true)
-        ch (chan (dropping-buffer 10))]
+  (let [ch (chan (dropping-buffer 10))]
     (go
       (loop []
-        (when @running?
-          (when-let [msg (<! ch)]
-            (apply println msg)
-            (recur)))))
+        (when-let [msg (<! ch)]
+          (apply println msg)
+          (recur))))
     (def logger-ch ch)
     (when level
       (def log-level level))
     {:ch ch
-     :stop #(reset! running? false)}))
+     :stop #(close! ch)}))
 
 (defn stop-logger [logger]
   ((:stop logger)))
