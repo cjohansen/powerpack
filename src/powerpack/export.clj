@@ -328,6 +328,14 @@
           (print-heading "- %s added %s:" added :green)
           (print-file-names added))))))
 
+(defn report-elapsed-percentile [n pages]
+  (str n "th percentile: "
+       (->> (sort-by :elapsed pages)
+            (take (int (* (/ n 100) (count pages))))
+            last
+            :elapsed)
+       "\n"))
+
 (defn print-report [exporter powerpack export-data result {:keys [full-diff-max-files]}]
   (if (:powerpack/problem result)
     (do
@@ -338,12 +346,20 @@
       (log/info "Export complete")
       (when-let [cached (seq (filter :cached? exported-pages))]
         (log/info "Reused" (count cached) "pages from previous export"))
-      (let [by-elapsed (reverse (take-last 10 (sort-by :elapsed exported-pages)))]
-        (log/info (str "Top 10 slowest renders:\n"
-                       (->> by-elapsed
-                            (map (fn [{:keys [uri elapsed]}]
-                                   (str uri " (" elapsed "ms)")))
-                            (str/join "\n")))))
+      (when (< 100 (count exported-pages))
+        (log/info "Performance metrics:\n"
+                  (report-elapsed-percentile 99 exported-pages)
+                  (report-elapsed-percentile 95 exported-pages)
+                  (report-elapsed-percentile 90 exported-pages)
+                  (report-elapsed-percentile 50 exported-pages)))
+      (when-let [slow (filter #(< 1000 (:elapsed %)) exported-pages)]
+        (let [by-elapsed (reverse (take-last 10 (sort-by :elapsed slow)))]
+          (log/info (str (count slow) " pages rendered in more than 1000ms\n"
+                         "Top " (count by-elapsed) " slowest renders:\n"
+                         (->> by-elapsed
+                              (map (fn [{:keys [uri elapsed]}]
+                                     (str uri " (" elapsed "ms)")))
+                              (str/join "\n"))))))
       (if (:complete? export)
         (report-differences (:files (:previous-export export-data)) (:files export))
         (log/info (format "Exported %d pages" (count (:pages export-data))))))))
