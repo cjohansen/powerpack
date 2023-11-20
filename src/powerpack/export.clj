@@ -342,21 +342,22 @@
       (log/info "Detected problems in exported site, deployment is not advised")
       (println (ansi/style (format-report powerpack result) :red)))
     (let [export (load-export exporter powerpack {:max-files full-diff-max-files})
-          {:keys [exported-pages]} result]
+          {:keys [exported-pages]} result
+          by-elapsed (sort-by :elapsed exported-pages)]
       (log/info "Export complete")
       (when-let [cached (seq (filter :cached? exported-pages))]
         (log/info "Reused" (count cached) "pages from previous export"))
       (when (< 100 (count exported-pages))
         (log/info "Performance metrics:\n"
-                  (report-elapsed-percentile 99 exported-pages)
-                  (report-elapsed-percentile 95 exported-pages)
-                  (report-elapsed-percentile 90 exported-pages)
-                  (report-elapsed-percentile 50 exported-pages)))
+                  (report-elapsed-percentile 99 by-elapsed)
+                  (report-elapsed-percentile 95 by-elapsed)
+                  (report-elapsed-percentile 90 by-elapsed)
+                  (report-elapsed-percentile 50 by-elapsed)))
       (when-let [slow (filter #(< 1000 (:elapsed %)) exported-pages)]
-        (let [by-elapsed (reverse (take-last 10 (sort-by :elapsed slow)))]
+        (let [worst-offenders (reverse (take-last 10 by-elapsed))]
           (log/info (str (count slow) " pages rendered in more than 1000ms\n"
-                         "Top " (count by-elapsed) " slowest renders:\n"
-                         (->> by-elapsed
+                         "Top " (count worst-offenders) " slowest renders:\n"
+                         (->> worst-offenders
                               (map (fn [{:keys [uri elapsed]}]
                                      (str uri " (" elapsed "ms)")))
                               (str/join "\n"))))))
