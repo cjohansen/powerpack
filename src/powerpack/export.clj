@@ -342,7 +342,13 @@
         {:powerpack/problem ::unservable-urls
          :urls unservable})))
 
-(defn export [app-options & [{:keys [full-diff-max-files] :as opt}]]
+(defn export
+  "Export the site. `opt` is an optional map of options:
+
+  - `full-diff-max-files` The maximum number of files to perform a full diff of
+    the export. If the number of exported files is higher than this, just report
+    the number of exported files. Defaults to 1000."
+  [app-options & [opt]]
   (log/with-timing :info "Ran Powerpack export"
     (let [powerpack (log/with-monitor :info "Creating app" (app/create-app app-options))
           logger (log/start-logger (:powerpack/log-level powerpack))
