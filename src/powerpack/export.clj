@@ -25,12 +25,6 @@
                  (remove :outdated))))
       (memoize/lru {} :lru/threshold 3)))
 
-(defn extract-data
-  "Loops over the generated pages, extracting link targets and images from them"
-  [powerpack pages]
-  (for [[uri page] (filter (comp string? second) pages)]
-    (page/extract-page-data {:powerpack/app powerpack} uri page)))
-
 (defn get-image-assets [powerpack export-data]
   (->> (mapcat :assets export-data)
        (filter #(imagine/image-url? % (:imagine/config powerpack)))
@@ -49,8 +43,24 @@
         (imagine/inflate-spec (:imagine/config powerpack))
         (imagine/transform-image-to-file (str (:powerpack/build-dir powerpack) image)))))
 
-(defn- load-export-dir [export-directory]
-  (stasis/slurp-directory export-directory #"\.[^.]+$"))
+(defn load-export [export-directory & [{:keys [max-files]}]]
+  (let [etags-file (io/file (str export-directory "/etags.edn"))
+        etags (when (.exists etags-file)
+                (read-string (slurp etags-file)))]
+    (-> (if (< (count (file-seq (io/file export-directory))) (or max-files 1000))
+          {:complete? true
+           :files (stasis/slurp-directory export-directory #"\.[^.]+$")}
+          {:complete? false
+           :files (->> (keys etags)
+                       (keep #(let [file (io/file (str export-directory %))]
+                                (when (.exists file)
+                                  [% (slurp file)]))))})
+        (update :files
+                #(->> %
+                      (map (fn [[file content]]
+                             [file (cond-> {:content content}
+                                     (get etags file) (assoc :etag (get etags file)))]))
+                      (into {}))))))
 
 (defn format-asset-targets [powerpack indent]
   (->> (for [{:keys [selector attr]} (:powerpack/asset-targets powerpack)]
@@ -70,76 +80,105 @@
               (str indent "<" target "> " (str/join ", " (map second xs)))))
        (str/join "\n")))
 
-(defn get-cached-etags [files]
-  (->> (some-> (get files "/etags.edn") read-string)
-       (filter (fn [[k]] (get files k)))
-       (into {})))
+(defn get-pages-to-export [db]
+  (d/q '[:find [(pull ?p [:page/uri :page/etag]) ...]
+         :where [?p :page/uri]]
+       db))
 
-(defn get-pages-to-export [db cached-etags]
-  (->> (d/q '[:find [(pull ?p [:page/uri :page/etag]) ...]
-              :where [?p :page/uri]]
-            db)
-       (map (fn [page]
-              (if-let [etag (not-empty (:page/etag page))]
-                (assoc page :cached? (= etag (get cached-etags (:page/uri page))))
-                page)))))
+(defn get-export-data [powerpack {:keys [full-diff-max-files]}]
+  (let [previous-export (log/with-monitor :info "Loading previous export"
+                          (load-export (:powerpack/build-dir powerpack)
+                                       {:max-files full-diff-max-files}))
+        db (d/db (:datomic/conn powerpack))
+        pages (get-pages-to-export db)
+        assets (optimize (assets/get-assets powerpack) {})
+        ctx {:optimus-assets assets}]
+    {:pages pages
+     :urls (set (map :page/uri pages))
+     :etags (->> (map (juxt :page/uri :page/etag) pages)
+                 (filter second)
+                 (into {}))
+     :ctx ctx
+     :db db
+     :assets assets
+     :previous-export previous-export}))
 
-(defn get-cached-pages [files page-specs]
-  (when-let [cached (seq (filter :cached? page-specs))]
-    (log/with-monitor :info (format "Reusing %d pages from previous export with unchanged etags"
-                                    (count cached))
-      (for [page cached]
-        [(:page/uri page) {:body (files (:page/uri page))}]))))
+(defn get-cached-page [{:keys [etags previous-export]} page]
+  (when (and (:page/etag page) (= (:page/etag page) (get etags (:page/uri page))))
+    (get (:files previous-export) (:page/uri page))))
 
-(defn get-export-data [powerpack]
-  (try
-    (let [old-files (log/with-monitor :info "Loading previous export"
-                      (load-export-dir (:powerpack/build-dir powerpack)))
-          cached-etags (get-cached-etags old-files)
-          assets (optimize (assets/get-assets powerpack) {})
-          ctx {:optimus-assets assets}
-          db (d/db (:datomic/conn powerpack))
-          page-specs (get-pages-to-export db cached-etags)
-          pages (into
-                 (log/with-monitor :info "Loading pages"
-                   (->> page-specs
-                        (remove :cached?)
-                        (web/prepare-pages db ctx powerpack)))
-                 (get-cached-pages old-files page-specs))]
-      {:pages (update-vals pages :body)
-       :etags (->> (map (juxt :page/uri :page/etag) page-specs)
-                   (filter second)
-                   (into {}))
-       :ctx ctx
-       :assets assets
-       :page-data (log/with-monitor :info "Extracting links and asset URLs"
-                    (extract-data powerpack pages))
-       :existing-export old-files})
-    (catch Exception e
-      (or (first (filter :powerpack/problem (get-ex-datas e)))
-          {:powerpack/problem ::export-exception
-           :exception e}))))
+(defn render-page [powerpack {:keys [ctx db] :as export-data} page]
+  (if-let [cached (get-cached-page export-data page)]
+    (do
+      (log/debug "Reusing" (:page/uri page) "from previous export")
+      {:elapsed 0
+       :cached? true
+       :body (:content cached)})
+    (try
+      (log/debug "Rendering" (:page/uri page))
+      (let [start (System/currentTimeMillis)
+            body (-> (assoc ctx :uri (:page/uri page) :app/db db)
+                     (web/handle-request powerpack nil)
+                     :body)]
+        {:body body
+         :elapsed (- (System/currentTimeMillis) start)})
+      (catch Exception e
+        {:powerpack/problem ::exception
+         :message (str "Failed to render page " (:page/uri page))
+         :uri (:page/uri page)
+         :eception e}))))
 
-(defn export-site [powerpack {:keys [pages ctx assets page-data etags]}]
-  (log/with-monitor :info (str "Exporting " (count pages) " pages")
-    (stasis/export-pages pages (:powerpack/build-dir powerpack) ctx))
-  (log/with-monitor :info "Exporting assets"
-    (export/save-assets assets (:powerpack/build-dir powerpack)))
-  (when (:imagine/config powerpack)
-    (log/info (str "Exporting images from:\n" (format-asset-targets powerpack "  ")))
-    (log/with-monitor :info "Exporting images"
-      (-> (update powerpack :imagine/config assoc :cacheable-urls? true)
-          (export-images page-data))))
-  (when (not-empty etags)
-    (log/with-monitor :info "Exporting etags to etags.edn"
-      (spit (str (:powerpack/build-dir powerpack) "/etags.edn") (pr-str etags)))))
+(defn detect-problems [powerpack export-data page body]
+  (when (string? body)
+    (let [page-data (page/extract-page-data {:powerpack/app powerpack} (:page/uri page) body)]
+      (when-let [broken-links (page/find-broken-links powerpack export-data page-data)]
+        {:powerpack/problem :powerpack/broken-links
+         :uri (:page/uri page)
+         :links broken-links}))))
 
-(defn format-exception [e]
-  (str (str/replace (.getMessage e) #"^([a-zA-Z]\.?)+: " "")
-       (when-let [cause (.getCause e)]
-         (str "\n    Caused by: " (format-exception cause)))))
+(defn export-page [powerpack export-data {:page/keys [uri] :as page}]
+  (let [{:keys [body elapsed cached?] :as res} (render-page powerpack export-data page)]
+    (or (when (:powerpack/problem res)
+          res)
+        (detect-problems powerpack export-data page body)
+        (when (nil? body)
+          {:problem :powerpack/empty-body
+           :uri uri})
+        (try
+          (stasis/export-page uri body (:powerpack/build-dir powerpack) {})
+          (catch Exception e
+            {:powerpack/problem ::exception
+             :message "Encountered an exception while creating pages"
+             :exception e}))
+        {:uri uri
+         :elapsed elapsed
+         :cached? cached?})))
 
-(defn pprs [x log-level]
+(defn export-pages [powerpack {:keys [pages] :as export-data}]
+  (log/with-monitor :info
+    (format "Rendering, validating and exporting %d pages" (count pages))
+    (let [results (pmap #(export-page powerpack export-data %) pages)]
+      (if-let [problems (seq (filter :powerpack/problem results))]
+        {:powerpack/problem ::export-failed
+         :problems problems}
+        {:exported-pages results}))))
+
+(defn export-site [powerpack export-data]
+  (let [result (export-pages powerpack export-data)]
+    (when-not (:powerpack/problem result)
+      (log/with-monitor :info "Exporting assets"
+        (export/save-assets (:assets export-data) (:powerpack/build-dir powerpack)))
+      (when (:imagine/config powerpack)
+        (log/info (str "Exporting images from:\n" (format-asset-targets powerpack "  ")))
+        (log/with-monitor :info "Exporting images"
+          (-> (update powerpack :imagine/config assoc :cacheable-urls? true)
+              (export-images export-data))))
+      (when-let [etags (not-empty (:etags export-data))]
+        (log/with-monitor :info "Exporting etags to etags.edn"
+          (spit (str (:powerpack/build-dir powerpack) "/etags.edn") (pr-str etags)))))
+    result))
+
+(defn pprs [x {:powerpack/keys [log-level]}]
   (->> x
        (walk/postwalk
         (fn [x]
@@ -150,46 +189,80 @@
        pprint/pprint
        with-out-str))
 
-(defn format-report [powerpack validation]
-  (let [log-level (:powerpack/log-level powerpack)]
-    (case (:powerpack/problem validation)
-      ::export-exception
-      (str "Encountered an exception while creating pages\n"
-           (when-let [e (:exception validation)]
-             (str (format-exception e) "\n"
-                  (when-let [data (get-ex-datas e)]
-                    (str "\nException data:\n"
-                         (str/join "\n" (map #(pprs % log-level) data))
-                         "\n\n"))
-                  (if (= :debug log-level)
-                    (with-out-str (.printStackTrace e))
-                    (str "Run export with :powerpack/log-level set to :debug for full stack traces\n"
-                         "and data listings")))))
+(defn format-exception-object [e]
+  (str (str/replace (.getMessage e) #"^([a-zA-Z]\.?)+: " "")
+       (when-let [cause (.getCause e)]
+         (str "\n    Caused by: " (format-exception-object cause)))))
 
-      :m1p/discrepancies
-      (str "i18n dictionaries are not in good shape\n"
-           (v/format-report
-            (:dictionaries validation)
-            (:problems validation)))
+(defn format-exception [powerpack {:keys [exception]}]
+  (when exception
+    (str (format-exception-object exception) "\n"
+         (when-let [data (get-ex-datas exception)]
+           (str "\nException data:\n"
+                (str/join "\n" (map #(pprs % powerpack) data))
+                "\n\n"))
+         (if (= :debug (:powerpack/log-level powerpack))
+           (with-out-str (.printStackTrace exception))
+           (str "Run export with :powerpack/log-level set to :debug for full stack traces\n"
+                "and data listings")))))
 
-      :powerpack/bad-links
-      (page/format-broken-links (:links validation))
+(defn group-problems [problems]
+  (->> (group-by :powerpack/problem problems)
+       (mapcat
+        (fn [[k problems]]
+          (if (= k :powerpack/broken-links)
+            [{:powerpack/problem :powerpack/broken-links
+              :links (mapcat (fn [{:keys [uri links]}]
+                               (map #(assoc % :uri uri) links)) problems)}]
+            problems)))))
 
-      :powerpack/missing-asset
-      (let [{:keys [uri path html]} validation]
-        (str uri " is referring to missing asset " path ":\n\n"
-             html "\n\n"
-             "Any asset to be exported by Powerpack must be configured as an Optimus asset\n"
-             "or handled by the imagine image manipulation pipeline. Please check the relevant\n"
-             "configurations and/or the referred asset path.\n\n"
-             (when (io/resource (str (:powerpack/dev-assets-root-path powerpack) path))
-               (str "This particular asset exists in your :powerpack/dev-assets-root-path dir,\n"
-                    (:powerpack/dev-assets-root-path powerpack) ". "
-                    "Development assets can not be used in production exports.\n\n"))
-             (pprs (select-keys powerpack [:imagine/config
-                                           :optimus/bundles
-                                           :optimus/assets
-                                           :powerpack/dev-assets-root-path]) log-level))))))
+(defn format-report [powerpack result]
+  (case (:powerpack/problem result)
+    ::export-failed
+    (->> (group-problems (:problems result))
+         (map #(format-report powerpack %))
+         (str/join "\n\n"))
+
+    ::relative-urls
+    (str "The following pages must have absolute paths:\n - "
+         (str/join "\n - " (:urls result)))
+
+    ::unservable-urls
+    (str "The following page paths must end in a slash:\n - "
+         (str/join "\n - " (:urls result)))
+
+    ::exception
+    (str (:message result) "\n"
+         (format-exception powerpack (:exception result)))
+
+    :m1p/discrepancies
+    (str "i18n dictionaries are not in good shape\n"
+         (v/format-report
+          (:dictionaries result)
+          (:problems result)))
+
+    :powerpack/broken-links
+    (page/format-broken-links (:links result))
+
+    :powerpack/missing-asset
+    (let [{:keys [uri path html]} result]
+      (str uri " is referring to missing asset " path ":\n\n"
+           html "\n\n"
+           "Any asset to be exported by Powerpack must be configured as an Optimus asset\n"
+           "or handled by the imagine image manipulation pipeline. Please check the relevant\n"
+           "configurations and/or the referred asset path.\n\n"
+           (when (io/resource (str (:powerpack/dev-assets-root-path powerpack) path))
+             (str "This particular asset exists in your :powerpack/dev-assets-root-path dir,\n"
+                  (:powerpack/dev-assets-root-path powerpack) ". "
+                  "Development assets can not be used in production exports.\n\n"))
+           (pprs (select-keys powerpack [:imagine/config
+                                         :optimus/bundles
+                                         :optimus/assets
+                                         :powerpack/dev-assets-root-path])
+                 powerpack)))
+
+    :powerpack/empty-body
+    (str (:uri result) " has nil body")))
 
 (defn print-heading [s entries color]
   (let [num (count entries)]
@@ -222,20 +295,34 @@
           (print-heading "- %s added %s:" added :green)
           (print-file-names added))))))
 
-(defn print-report [powerpack {:keys [old-files validation]}]
-  (let [new-files (load-export-dir (:powerpack/build-dir powerpack))]
-    (if (:powerpack/problem validation)
-      (do
-        (log/info "Detected problems in exported site, deployment is not advised")
-        (log/info (ansi/style (format-report powerpack validation) :red)))
-      (do
-        (log/info "Export complete:")
-        (report-differences old-files new-files)))))
+(defn print-report [powerpack export-data result {:keys [full-diff-max-files]}]
+  (if (:powerpack/problem result)
+    (do
+      (log/info "Detected problems in exported site, deployment is not advised")
+      (log/info result)
+      (log/info (ansi/style (format-report powerpack result) :red)))
+    (let [export (load-export (:powerpack/build-dir powerpack) {:max-files full-diff-max-files})
+          {:keys [exported-pages]} result]
+      (log/info "Export complete")
+      (when-let [cached (seq (filter :cached? exported-pages))]
+        (log/info "Reused" (count cached) "pages from previous export"))
+      (let [by-elapsed (reverse (take-last 10 (sort-by :elapsed exported-pages)))]
+        (log/info "Top 10 slowest renders:\n"
+                  (->> by-elapsed
+                       (map (fn [{:keys [uri elapsed]}]
+                              (str uri " (" elapsed "ms)")))
+                       (str/join "\n"))))
+      (if (:complete? export)
+        (report-differences (:files (:previous-export export-data)) (:files export))
+        (log/info (format "Exported %d pages" (count (:pages export-data))))))))
 
-(defn validate-app [powerpack export-data]
-  (or (when (:powerpack/problem export-data)
-        export-data)
-      (when-let [dicts (some-> powerpack :i18n/dictionaries deref)]
+;; Borrowed from Stasis
+(defn- statically-servable-uri? [^String uri]
+  (or (.endsWith uri "/")
+      (not (re-find #"/[^./]+$" uri))))
+
+(defn validate-app [powerpack {:keys [pages]}]
+  (or (when-let [dicts (some-> powerpack :i18n/dictionaries deref)]
         (when-let [problems (seq (concat
                                   (v/find-non-kw-keys dicts)
                                   (v/find-missing-keys dicts)
@@ -244,35 +331,32 @@
           {:powerpack/problem :m1p/discrepancies
            :dictionaries dicts
            :problems problems}))
-      (when-let [broken-links (seq (page/find-broken-links powerpack export-data))]
-        {:powerpack/problem :powerpack/bad-links
-         :links broken-links})
-      {}))
+      (when-let [relative-urls (->> (map :page/uri pages)
+                                    (remove #(re-find #"^/" %))
+                                    seq)]
+        {:powerpack/problem ::relative-urls
+         :urls relative-urls})
+      (when-let [unservable (->> (map :page/uri pages)
+                                 (remove statically-servable-uri?)
+                                 seq)]
+        {:powerpack/problem ::unservable-urls
+         :urls unservable})))
 
-(defn conclude-export [powerpack opt]
-  (app/stop powerpack)
-  (print-report powerpack opt)
-  (when-let [stop (:stop (:logger opt))]
-    (stop))
-  {:success? (nil? (:powerpack/problem (:validation opt)))})
-
-(defn export [app-options & [opt]]
+(defn export [app-options & [{:keys [full-diff-max-files] :as opt}]]
   (log/with-timing :info "Ran Powerpack export"
     (let [powerpack (log/with-monitor :info "Creating app" (app/create-app app-options))
           logger (log/start-logger (:powerpack/log-level powerpack))
           _ (app/start powerpack)
-          export-data (get-export-data powerpack)
-          validation (log/with-monitor :info "Validating app"
-                       (validate-app powerpack export-data))]
-      (if (:powerpack/problem validation)
-        (conclude-export powerpack {:logger logger :validation validation})
-        (do
-          (log/with-monitor :info "Clearing build directory"
-            (stasis/empty-directory! (:powerpack/build-dir powerpack)))
-          (export-site powerpack export-data)
-          (->> (merge opt {:old-files (:existing-export export-data)
-                           :logger logger})
-               (conclude-export powerpack)))))))
+          export-data (get-export-data powerpack opt)]
+      (log/with-monitor :info "Clearing build directory"
+        (stasis/empty-directory! (:powerpack/build-dir powerpack)))
+      (let [result (or (validate-app powerpack export-data)
+                       (export-site powerpack export-data))]
+        (app/stop powerpack)
+        (print-report powerpack export-data result opt)
+        (when-let [stop (:stop logger)]
+          (stop))
+        {:success? (nil? (:powerpack/problem result))}))))
 
 (defn export! [app-options & [opt]]
   (let [res (export app-options opt)]

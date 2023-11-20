@@ -22,18 +22,20 @@
       (str/split #"\?") first
       (str/split #"#") first))
 
-(defn find-broken-links [powerpack {:keys [pages assets page-data]}]
-  (->> page-data
-       (mapcat
-        (fn [{:keys [uri links]}]
-          (for [link (->> links
-                          (map #(update % :href remove-non-substantive-url-segments))
-                          (filter #(re-find #"^/[^\/]" (:href %)))
-                          (remove (comp pages :href))
-                          (remove (comp (set (map :path (remove :outdated assets))) :href))
-                          (remove #(imagine/image-url? (:href %) (:imagine/config powerpack))))]
-            {:uri uri
-             :link link})))))
+(defn find-broken-links [powerpack {:keys [urls assets]} {:keys [links]}]
+  (->> links
+       (map #(update % :href remove-non-substantive-url-segments))
+       (filter #(re-find #"^/[^\/]" (:href %)))
+       (remove (comp (set urls) :href))
+       (remove (comp (set (map :path (remove :outdated assets))) :href))
+       (remove #(imagine/image-url? (:href %) (:imagine/config powerpack)))
+       seq))
+
+(defn format-broken-links [{:keys [uri links]}]
+  (str "On URL " uri ":\n"
+       (->> (for [{:keys [href text]} links]
+              (str "<a href=\"" href "\">" text "</a>"))
+            (str/join "\n"))))
 
 (defn format-broken-links [links]
   (->> links
