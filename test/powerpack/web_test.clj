@@ -268,6 +268,16 @@
                last)
            [:body [:h1 "Hei, verden"]]))))
 
+(deftest prepare-response-test
+  (testing "Renders an HTML body for redirects"
+    (is (= (->> {:status 302
+                 :headers {"Location" "/elsewhere/"}}
+                (sut/prepare-response {} {}))
+           {:status 302
+            :headers {"Location" "/elsewhere/"
+                      "Content-Type" "text/html"}
+            :body "<!DOCTYPE html><html><head><meta http-equiv=\"refresh\" content=\"0; url=/elsewhere/\"></head><body><a href=\"/elsewhere/\">Redirect</a></body></html>"}))))
+
 (deftest post-process-test
   (testing "Optimizes anchor href"
     (is (= (-> (sut/post-process-page

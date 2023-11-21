@@ -80,11 +80,28 @@
     (= "html" (some->> (first hiccup) name (re-find #"^[a-z0-9]+")))
     (hiccup/embellish-document context page)))
 
+(defn get-redirect-location [response]
+  (when-let [header (->> (keys (:headers response))
+                         (filter #(= "location" (str/lower-case %)))
+                         first)]
+    (get-in response [:headers header])))
+
+(defn add-redirect-body [response]
+  (let [location (get-redirect-location response)]
+    (-> response
+        (assoc-in [:headers "Content-Type"] "text/html")
+        (assoc :body (format "<!DOCTYPE html><html><head><meta http-equiv=\"refresh\" content=\"0; url=%s\"></head><body><a href=\"%s\">Redirect</a></body></html>"
+                             location location)))))
+
 (defn prepare-response [context page response]
   (let [content-type (get-content-type response)]
     (cond
       (string? (:body response))
       response
+
+      (and (nil? content-type)
+           (get-redirect-location response))
+      (add-redirect-body response)
 
       (or (and (nil? content-type)
                (hiccup/hiccup? (:body response)))
