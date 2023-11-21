@@ -353,7 +353,7 @@
                         (report-elapsed-percentile 90 by-elapsed)
                         (report-elapsed-percentile 50 by-elapsed)]
                        (str/join "\n    "))))
-      (when-let [slow (filter #(< 1000 (:elapsed %)) exported-pages)]
+      (when-let [slow (seq (filter #(< 1000 (:elapsed %)) exported-pages))]
         (let [worst-offenders (reverse (take-last 10 by-elapsed))]
           (log/info (str (count slow) " pages took more than 1000ms to render\n"
                          "Top " (count worst-offenders) " slowest renders:\n"
