@@ -412,10 +412,11 @@
     the export. If the number of exported files is higher than this, just report
     the number of exported files. Defaults to 1000."
   [app-options & [opt]]
-  (let [logger (log/start-logger (or (:powerpack/log-level app-options) :info))]
-    (export* (create-fs-exporter) app-options opt)
+  (let [logger (log/start-logger (or (:powerpack/log-level app-options) :info))
+        result (export* (create-fs-exporter) app-options opt)]
     (when-let [stop (:stop logger)]
-      (stop))))
+      (stop))
+    result))
 
 (defn export! [app-options & [opt]]
   (let [res (export app-options opt)]
