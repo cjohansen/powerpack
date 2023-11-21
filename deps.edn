@@ -10,18 +10,18 @@
         com.nextjournal/beholder {:mvn/version "1.0.2"}
         com.vladsch.flexmark/flexmark-all {:mvn/version "0.64.8"}
         datomic-type-extensions/datomic-type-extensions {:mvn/version "2023.09.26"}
-        html5-walker/html5-walker {:mvn/version "2023.10.22"}
+        html5-walker/html5-walker {:mvn/version "2023.11.21"}
         http-kit/http-kit {:mvn/version "2.7.0"}
         integrant/integrant {:mvn/version "0.9.0-alpha2"}
         integrant/repl {:mvn/version "0.3.3"}
         java-time-dte/java-time-dte {:mvn/version "2018-04-18"}
         java-time-literals/java-time-literals {:mvn/version "2018-04-06"}
         mapdown/mapdown {:mvn/version "0.2.1"}
-        optimus/optimus {:mvn/version "2023.10.19"}
+        optimus/optimus {:mvn/version "2023.11.21"}
         org.slf4j/slf4j-nop {:mvn/version "2.0.9"}
         prone/prone {:mvn/version "2021-04-23"}
         ring/ring {:mvn/version "2.0.0-alpha1"}
-        stasis/stasis {:mvn/version "2023.06.03"}}
+        stasis/stasis {:mvn/version "2023.11.21"}}
  :aliases
  {:dev {:extra-paths ["dev" "dev-resources" "test"]
         :extra-deps {lambdaisland/kaocha {:mvn/version "1.87.1366"}

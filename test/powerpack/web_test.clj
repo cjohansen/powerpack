@@ -282,7 +282,7 @@
   (testing "Optimizes anchor href"
     (is (= (-> (sut/post-process-page
                 {:headers {"content-type" "text/html"}
-                 :body "<html><body><a href=\"/images/ducks.jpg\">Ducks</a></body></html>"}
+                 :body "<!DOCTYPE html><html><body><a href=\"/images/ducks.jpg\">Ducks</a></body></html>"}
                 {:powerpack/app {:powerpack/asset-targets app/default-asset-targets}
                  :optimus-assets [{:original-path "/images/ducks.jpg"
                                    :path "/sproing/xyz.jpg"}]}
@@ -305,7 +305,7 @@
                                    :original-path "/scripts/app.js"}]}
                 [assets/get-markup-url-optimizers])
                :body)
-           "<!DOCTYPE html><html><head></head><body><script src=\"/scripts/d4dee5ef2aa4/app.js\"></script></body></html>")))
+           "<html><head></head><body><script src=\"/scripts/d4dee5ef2aa4/app.js\"></script></body></html>")))
 
   (testing "Does not optimize external scripts"
     (is (= (-> (sut/post-process-page
@@ -316,7 +316,7 @@
                                    :path "/xxxxx.js"}]}
                 [assets/get-markup-url-optimizers])
                :body)
-           "<!DOCTYPE html><html><head></head><body><script src=\"https://cdn.com/app.js\"></script></body></html>")))
+           "<html><head></head><body><script src=\"https://cdn.com/app.js\"></script></body></html>")))
 
   (testing "Does not trip on href-less anchors"
     (is (= (-> (sut/post-process-page
@@ -327,7 +327,7 @@
                                    :path "/sproing/xyz.jpg"}]}
                 [assets/get-markup-url-optimizers])
                :body)
-           "<!DOCTYPE html><html><head></head><body><a>No ducks</a></body></html>")))
+           "<html><head></head><body><a>No ducks</a></body></html>")))
 
   (testing "Does not trip on url-less hrefs on anchors"
     (is (= (-> (sut/post-process-page
@@ -338,7 +338,7 @@
                                    :path "/sproing/xyz.jpg"}]}
                 [assets/get-markup-url-optimizers])
                :body)
-           "<!DOCTYPE html><html><head></head><body><a href=\"#\">No ducks</a></body></html>")))
+           "<html><head></head><body><a href=\"#\">No ducks</a></body></html>")))
 
   (testing "Does not attempt to optimize fully qualified URLs"
     (is (= (-> (sut/post-process-page
@@ -348,4 +348,4 @@
                  :optimus-assets []}
                 [assets/get-markup-url-optimizers])
                :body)
-           "<!DOCTYPE html><html><head></head><body><img src=\"https://example.com/\"></body></html>"))))
+           "<html><head></head><body><img src=\"https://example.com/\"></body></html>"))))

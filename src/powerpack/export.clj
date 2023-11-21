@@ -366,11 +366,6 @@
         (report-differences (:files (:previous-export export-data)) (:files export))
         (log/info (format "Exported %d pages" (count (:pages export-data))))))))
 
-;; Borrowed from Stasis
-(defn- statically-servable-uri? [^String uri]
-  (or (.endsWith uri "/")
-      (not (re-find #"/[^./]+$" uri))))
-
 (defn validate-app [powerpack {:keys [pages]}]
   (or (when-let [dicts (some-> powerpack :i18n/dictionaries deref)]
         (when-let [problems (seq (concat
@@ -387,7 +382,7 @@
         {:powerpack/problem ::relative-urls
          :urls relative-urls})
       (when-let [unservable (->> (map :page/uri pages)
-                                 (remove statically-servable-uri?)
+                                 (remove stasis/statically-servable-uri?)
                                  seq)]
         {:powerpack/problem ::unservable-urls
          :urls unservable})))
