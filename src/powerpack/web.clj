@@ -46,8 +46,9 @@
 
 (defn tweak-page-markup [html context post-processors]
   (try
-    (->> (combine-post-processors context post-processors)
-         (html5-walker/replace-in-document html))
+    (str "<!DOCTYPE html>"
+         (->> (combine-post-processors context post-processors)
+              (html5-walker/replace-in-document html)))
     (catch Exception e
       (throw (ex-info "Error while optimizing URLs in page markup"
                       {:request (dissoc context :optimus-assets)}
