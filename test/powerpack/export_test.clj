@@ -1,8 +1,12 @@
 (ns powerpack.export-test
-  (:require [clojure.string :as str]
+  (:require [clojure.core.async :refer [<! <!! chan close! go put!]]
+            [clojure.string :as str]
             [clojure.test :refer [deftest testing is]]
+            [datomic-type-extensions.api :as d]
             [optimus.asset :as asset]
             [powerpack.export :as sut]
+            [powerpack.logger :as log]
+            [powerpack.logger :as logger]
             [powerpack.protocols :as powerpack]
             [powerpack.test-app :as test-app]
             [ring.util.codec :refer [url-decode]]))
@@ -52,10 +56,83 @@
       (transform-image-to-file [_ transformation path]
         (swap! fs assoc path {:kind :image :transformation transformation})))))
 
+(defmacro with-logger [& body]
+  `(let [ch# (chan)
+         res# (chan 1024)
+         messages# (atom [])]
+     (go
+       (loop []
+         (if-let [msg# (<! ch#)]
+           (do
+             (swap! messages# conj (str/join " " msg#))
+             (recur))
+           (do
+             (put! res# @messages#)
+             (close! res#)))))
+     (binding [log/logger-ch ch#]
+       (try
+         ~@body
+         res#
+         (finally
+           (close! ch#))))))
+
 (deftest export-test
   (testing "Empties previous export dir"
     (is (< (-> (let [exporter (create-test-exporter {"build/README.md" "..."})]
                  (sut/export* exporter test-app/app {})
                  (powerpack/get-entries exporter "build"))
                (.indexOf "build/README.md"))
-           0))))
+           0)))
+
+  (testing "Finds dictionary errors"
+    (is (= (-> (let [exporter (create-test-exporter)
+                     app (assoc-in test-app/app
+                                   [:m1p/dictionaries :en]
+                                   ["dev/i18n/en-incomplete.edn"])]
+                 (sut/export* exporter app {}))
+               (select-keys [:problems :success?]))
+           {:success? false
+            :problems [{:kind :missing-key
+                        :dictionary :en
+                        :key :rubberduck.core/uri}]})))
+
+  (testing "Reports dictionary errors"
+    (is (->> (let [exporter (create-test-exporter)
+                   app (assoc-in test-app/app
+                                 [:m1p/dictionaries :en]
+                                 ["dev/i18n/en-incomplete.edn"])]
+               (<!! (with-logger (sut/export* exporter app {}))))
+             (filter #(re-find #"i18n dictionaries" %))
+             seq)))
+
+  (testing "Detects relative URLs"
+    (is (= (let [exporter (create-test-exporter)
+                 app (assoc test-app/app
+                            :powerpack/on-started
+                            (fn [powerpack-app]
+                              (->> [{:page/uri "build-date.edn"
+                                     :page/response-type :edn
+                                     :page/kind ::build-date
+                                     :page/etag "0acbd"}]
+                                   (d/transact (:datomic/conn powerpack-app))
+                                   deref)))]
+             (sut/export* exporter app {}))
+           {:powerpack/problem :powerpack.export/relative-urls
+            :urls ["build-date.edn"]
+            :success? false})))
+
+  (testing "Detects URLs that aren't static-friendly"
+    (is (= (let [exporter (create-test-exporter)
+                 app (assoc test-app/app
+                            :powerpack/on-started
+                            (fn [powerpack-app]
+                              (->> [{:page/uri "/uild-date"
+                                     :page/response-type :edn
+                                     :page/kind ::build-date
+                                     :page/etag "0acbd"}]
+                                   (d/transact (:datomic/conn powerpack-app))
+                                   deref)))]
+             (sut/export* exporter app {}))
+           {:powerpack/problem :powerpack.export/unservable-urls
+            :urls ["/uild-date"]
+            :success? false}))))

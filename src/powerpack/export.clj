@@ -403,7 +403,7 @@
                        (export-site exporter powerpack export-data))]
         (app/stop powerpack)
         (print-report exporter powerpack export-data result opt)
-        {:success? (nil? (:powerpack/problem result))}))))
+        (assoc result :success? (nil? (:powerpack/problem result)))))))
 
 (defn export
   "Export the site. `opt` is an optional map of options:

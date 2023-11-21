@@ -1,7 +1,7 @@
 (ns powerpack.logger
   (:require [clojure.core.async :refer [<! chan close! dropping-buffer go put!]]))
 
-(defonce logger-ch nil)
+(defonce ^:dynamic logger-ch nil)
 (defonce log-level :info)
 (def levels [:error :info :debug])
 

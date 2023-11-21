@@ -1,0 +1,4 @@
+[#:rubberduck.core
+ {:greeting "Hi there!"
+  :published [:fn/str "Published {{:published}}"]
+  :num [:fn/format-number [:fn/get :n] {:decimals 1}]}]
