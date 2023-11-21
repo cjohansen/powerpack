@@ -29,9 +29,17 @@
        first
        :path))
 
+(defn file-path [ctx path]
+  (some->> (:optimus-assets ctx)
+           (remove :outdated)
+           (filter #(or (= path (:path %))
+                        (= path (assets/original-path %))))
+           first
+           link/full-path))
+
 (defn get-optimized-asset [ctx opt node spec path]
   (let [imagine (-> ctx :powerpack/app :imagine/config)]
-    (when-let [asset (or (not-empty (link/file-path ctx path))
+    (when-let [asset (or (not-empty (file-path ctx path))
                          (imagine/realize-url imagine path)
                          (when (imagine/image-url? path imagine)
                            path)

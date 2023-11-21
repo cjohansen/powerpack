@@ -92,7 +92,12 @@
                          :paths [#"/images/*.*"]}]
        :optimus/bundles {"styles.css"
                          {:public-dir "public"
-                          :paths ["/styles/powerpack.css"]}}
+                          :paths ["/styles/powerpack.css"]}
+
+                         "ducks.js"
+                         {:public-dir "public"
+                          :paths ["/scripts/lib.js"
+                                  "/scripts/app.js"]}}
 
        :powerpack/port 5051
 
