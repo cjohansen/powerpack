@@ -71,11 +71,12 @@
 
 (defn export-images [exporter powerpack export-data]
   (doseq [image (get-image-assets powerpack export-data)]
-    (-> image
-        imagine/image-spec
-        (imagine/inflate-spec (:imagine/config powerpack))
-        (powerpack/transform-image-to-file
-         exporter (str (:powerpack/build-dir powerpack) image)))))
+    (powerpack/transform-image-to-file
+     exporter
+     (-> image
+         imagine/image-spec
+         (imagine/inflate-spec (:imagine/config powerpack)))
+     (str (:powerpack/build-dir powerpack) image))))
 
 (defn load-export [exporter powerpack & [{:keys [max-files]}]]
   (let [dir (:powerpack/build-dir powerpack)
