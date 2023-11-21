@@ -300,15 +300,15 @@
 
 (defn print-heading [s entries color]
   (let [num (count entries)]
-    (println (ansi/style (format s num (if (= 1 num) "file" "files")) color))))
+    (log/info (ansi/style (format s num (if (= 1 num) "file" "files")) color))))
 
 (defn print-file-names [file-names]
   (let [n (count file-names)
         print-max 50]
     (doseq [path (take print-max (sort file-names))]
-      (println "    -" path))
+      (log/info "    -" path))
     (when (< print-max n)
-      (println "    and" (- n print-max) "more"))))
+      (log/info "    and" (- n print-max) "more"))))
 
 (defn report-differences [old new]
   (let [{:keys [added removed changed unchanged]} (stasis/diff-maps old new)]
@@ -340,10 +340,10 @@
   (if (:powerpack/problem result)
     (do
       (log/info "Detected problems in exported site, deployment is not advised")
-      (println (ansi/style (format-report powerpack result) :red)))
+      (log/info (ansi/style (format-report powerpack result) :red)))
     (let [export (load-export exporter powerpack {:max-files full-diff-max-files})
           {:keys [exported-pages]} result
-          by-elapsed (sort-by :elapsed exported-pages)]
+          by-elapsed (sort-by :elapsed (filter :elapsed exported-pages))]
       (log/info "Export complete")
       (when-let [cached (seq (filter :cached? exported-pages))]
         (log/info "Reused" (count cached) "pages from previous export"))
@@ -354,8 +354,8 @@
                         (report-elapsed-percentile 90 by-elapsed)
                         (report-elapsed-percentile 50 by-elapsed)]
                        (str/join "\n    "))))
-      (when-let [slow (seq (filter #(< 1000 (:elapsed %)) exported-pages))]
-        (let [worst-offenders (reverse (take-last 10 by-elapsed))]
+      (when-let [slow (seq (filter #(< 1000 (:elapsed %)) by-elapsed))]
+        (let [worst-offenders (reverse (take-last 10 slow))]
           (log/info (str (count slow) " pages took more than 1000ms to render\n"
                          "Top " (count worst-offenders) " slowest renders:\n"
                          (->> worst-offenders
@@ -395,7 +395,6 @@
 (defn export* [exporter app-options opt]
   (log/with-timing :info "Ran Powerpack export"
     (let [powerpack (log/with-monitor :info "Creating app" (app/create-app app-options))
-          logger (log/start-logger (:powerpack/log-level powerpack))
           _ (app/start powerpack)
           export-data (get-export-data exporter powerpack opt)]
       (log/with-monitor :info "Clearing build directory"
@@ -404,8 +403,6 @@
                        (export-site exporter powerpack export-data))]
         (app/stop powerpack)
         (print-report exporter powerpack export-data result opt)
-        (when-let [stop (:stop logger)]
-          (stop))
         {:success? (nil? (:powerpack/problem result))}))))
 
 (defn export
@@ -415,7 +412,10 @@
     the export. If the number of exported files is higher than this, just report
     the number of exported files. Defaults to 1000."
   [app-options & [opt]]
-  (export* (create-fs-exporter) app-options opt))
+  (let [logger (log/start-logger (or (:powerpack/log-level app-options) :info))]
+    (export* (create-fs-exporter) app-options opt)
+    (when-let [stop (:stop logger)]
+      (stop))))
 
 (defn export! [app-options & [opt]]
   (let [res (export app-options opt)]
