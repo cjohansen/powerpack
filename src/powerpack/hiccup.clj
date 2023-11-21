@@ -225,8 +225,11 @@
 (defn build-doc [context page & body]
   (embellish-document context page (into [:html] body)))
 
+(defn get-tag-name [hiccup]
+  (some->> (first hiccup) name (re-find #"^[a-z0-9]+")))
+
 (defn ^:export render-html [hiccup]
-  (str (when (= :html (first hiccup))
+  (str (when (= "html" (get-tag-name hiccup))
          "<!DOCTYPE html>")
        (dumdom/render hiccup)))
 

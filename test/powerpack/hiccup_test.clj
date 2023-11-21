@@ -214,3 +214,12 @@
     (is (= (sut/set-attribute [:html {:prefix "og: http://ogp.me/ns#"} [:body]] :lang "nb")
            [:html {:prefix "og: http://ogp.me/ns#"
                    :lang "nb"} [:body]]))))
+
+(deftest render-html-test
+  (testing "Adds a DOCTYPE"
+    (is (= (sut/render-html [:html [:h1 "Hello!"]])
+           "<!DOCTYPE html><html><h1>Hello!</h1></html>")))
+
+  (testing "Adds a DOCTYPE even when the HTML tag has a class"
+    (is (= (sut/render-html [:html.mmm [:h1 "Hello!"]])
+           "<!DOCTYPE html><html class=\"mmm\"><h1>Hello!</h1></html>"))))

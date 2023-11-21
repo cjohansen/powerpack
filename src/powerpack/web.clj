@@ -77,7 +77,7 @@
 
 (defn embellish-hiccup [context page hiccup]
   (cond->> hiccup
-    (= "html" (some->> (first hiccup) name (re-find #"^[a-z0-9]+")))
+    (= "html" (hiccup/get-tag-name hiccup))
     (hiccup/embellish-document context page)))
 
 (defn get-redirect-location [response]
