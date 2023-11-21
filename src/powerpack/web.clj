@@ -210,17 +210,3 @@
     (-> req
         (assoc :app/db (d/db (:datomic/conn powerpack)))
         (handle-request powerpack opt))))
-
-(defn prepare-pages [db context powerpack pages]
-  (->> pages
-       (pmap (fn [{:page/keys [uri etag]}]
-               (try
-                 [uri (cond-> {:body (-> (assoc context :uri uri :app/db db)
-                                         (handle-request powerpack nil)
-                                         :body)}
-                        etag (assoc :etag etag))]
-                 (catch Exception e
-                   (throw (ex-info (str "Unable to render page " uri)
-                                   {:uri uri}
-                                   e))))))
-       (into {})))
