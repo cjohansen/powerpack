@@ -135,10 +135,14 @@
      :ctx ctx
      :db db
      :assets assets
+     :previous-etags (some-> (:files previous-export)
+                             (get "/etags.edn")
+                             :content
+                             read-string)
      :previous-export previous-export}))
 
-(defn get-cached-page [{:keys [etags previous-export]} page]
-  (when (and (:page/etag page) (= (:page/etag page) (get etags (:page/uri page))))
+(defn get-cached-page [{:keys [previous-etags previous-export]} page]
+  (when (and (:page/etag page) (= (:page/etag page) (get previous-etags (:page/uri page))))
     (get (:files previous-export) (:page/uri page))))
 
 (defn render-page [powerpack {:keys [ctx db] :as export-data} page]
@@ -188,7 +192,7 @@
 (defn export-pages [exporter powerpack {:keys [pages] :as export-data}]
   (log/with-monitor :info
     (format "Rendering, validating and exporting %d pages" (count pages))
-    (let [results (map #(export-page exporter powerpack export-data %) pages)]
+    (let [results (pmap #(export-page exporter powerpack export-data %) pages)]
       (if-let [problems (seq (filter :powerpack/problem results))]
         {:powerpack/problem ::export-failed
          :problems problems}

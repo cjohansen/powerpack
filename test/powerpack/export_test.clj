@@ -6,7 +6,6 @@
             [optimus.asset :as asset]
             [powerpack.export :as sut]
             [powerpack.logger :as log]
-            [powerpack.logger :as logger]
             [powerpack.protocols :as powerpack]
             [powerpack.test-app :as test-app]
             [ring.util.codec :refer [url-decode]]))
@@ -39,10 +38,12 @@
 
       powerpack/IStasis
       (slurp-directory [_ path re]
-        (->> (keys @fs)
-             (filter #(str/starts-with? % path))
-             (filter #(re-find re %))
-             (select-keys @fs)))
+        (->> (for [[file-path content] (->> (keys @fs)
+                                            (filter #(str/starts-with? % path))
+                                            (filter #(re-find re %))
+                                            (select-keys @fs))]
+               [(str/replace file-path (re-pattern (str "^" path)) "") content])
+             (into {})))
 
       (export-page [_ uri body build-dir]
         (swap! fs assoc (str build-dir (normalize-uri uri)) body))
@@ -126,7 +127,7 @@
                  app (assoc test-app/app
                             :powerpack/on-started
                             (fn [powerpack-app]
-                              (->> [{:page/uri "/uild-date"
+                              (->> [{:page/uri "/build-date"
                                      :page/response-type :edn
                                      :page/kind ::build-date
                                      :page/etag "0acbd"}]
@@ -134,7 +135,7 @@
                                    deref)))]
              (sut/export* exporter app {}))
            {:powerpack/problem :powerpack.export/unservable-urls
-            :urls ["/uild-date"]
+            :urls ["/build-date"]
             :success? false})))
 
   (testing "Detects bad links"
@@ -216,4 +217,49 @@
                                       [:html
                                        [:a {:href "#elsewhere"} "Broken link"]]))]
                      (sut/export* exporter app {:skip-link-hash-verification? true}))
-                   :success?)))))
+                   :success?))))
+
+  (testing "Reuses files with unchanged etags"
+    (is (= (->> (let [exporter (create-test-exporter
+                                {"build/etags.edn" "{\"/build-date.edn\" \"0acbd\"}"
+                                 "build/build-date.edn" "{:i-am \"Cached\"}"})]
+                  (sut/export*
+                   exporter
+                   (assoc test-app/app
+                          :powerpack/on-started
+                          (fn [powerpack-app]
+                            (->> [{:page/uri "/build-date.edn"
+                                   :page/response-type :edn
+                                   :page/kind ::build-date
+                                   :page/etag "0acbd"}]
+                                 (d/transact (:datomic/conn powerpack-app))
+                                 deref)))
+                   {}))
+                :exported-pages
+                (filter (comp #{"/build-date.edn"} :uri))
+                first)
+           {:uri "/build-date.edn"
+            :elapsed 0
+            :cached? true
+            :page-data {:uri "/build-date.edn"}})))
+
+  (testing "Does not reuse files with changed etags"
+    (is (not (->> (let [exporter (create-test-exporter
+                                  {"build/etags.edn" "{\"/build-date.edn\" \"xxx666\"}"
+                                   "build/build-date.edn" "{:i-am \"Cached\"}"})]
+                    (sut/export*
+                     exporter
+                     (assoc test-app/app
+                            :powerpack/on-started
+                            (fn [powerpack-app]
+                              (->> [{:page/uri "/build-date.edn"
+                                     :page/response-type :edn
+                                     :page/kind ::build-date
+                                     :page/etag "0acbd"}]
+                                   (d/transact (:datomic/conn powerpack-app))
+                                   deref)))
+                     {}))
+                  :exported-pages
+                  (filter (comp #{"/build-date.edn"} :uri))
+                  first
+                  :cached?)))))
