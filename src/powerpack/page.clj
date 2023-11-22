@@ -9,8 +9,10 @@
   (->> (walker/create-matcher ["a[href]"])
        (.getAllNodesMatching doc)
        (map (fn [node]
-              (let [[href id] (str/split (.getAttribute node "href") #"#")]
-                (cond-> {:url (or (not-empty href) uri)
+              (let [href (.getAttribute node "href")
+                    [href-url id] (str/split href #"#")]
+                (cond-> {:href href
+                         :url (or (not-empty href-url) uri)
                          :text (.getTextContent node)}
                   id (assoc :id id)))))
        set))
@@ -34,13 +36,20 @@
 (defn remove-non-substantive-url-segments [url]
   (first (str/split url #"\?")))
 
-(defn find-broken-links [powerpack {:keys [urls assets]} {:keys [links]}]
+(defn link-target-exists? [powerpack {:keys [urls asset-urls url->ids]} {:keys [url id]}]
+  (or (and (urls url)
+           (or (nil? id)
+               (when-let [ids (url->ids url)]
+                 (ids id))))
+      (and asset-urls (asset-urls url))
+      (imagine/image-url? url (:imagine/config powerpack))))
+
+(defn find-broken-links [powerpack ctx {:keys [uri links]}]
   (->> links
        (map #(update % :url remove-non-substantive-url-segments))
        (filter #(re-find #"^/[^\/]" (:url %)))
-       (remove (comp (set urls) :url))
-       (remove (comp (set (map :path (remove :outdated assets))) :url))
-       (remove #(imagine/image-url? (:url %) (:imagine/config powerpack)))
+       (remove #(link-target-exists? powerpack ctx %))
+       (map #(assoc % :page/uri uri))
        seq))
 
 (defn format-broken-links [links]
@@ -48,7 +57,7 @@
        (group-by :page/uri)
        (map (fn [[uri links]]
               (str "Page: " uri "\n"
-                   (->> (for [{:keys [href text]} (map :link links)]
+                   (->> (for [{:keys [href text]} links]
                           (str "<a href=\"" href "\">" text "</a>"))
                         (str/join "\n")))))
        (str/join "\n\n")

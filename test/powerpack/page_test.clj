@@ -16,10 +16,10 @@
              </ul>
              </body></html>")
            {:uri "/test/"
-            :links #{{:url "/page/", :text "Link 1"}
-                     {:url "https://external.com/page/", :text "li link 1"}
-                     {:url "/page/", :id "some-id", :text "li link 2"}
-                     {:url "/test/", :id "some-id", :text "li link 3"}}})))
+            :links #{{:href "/page/" :url "/page/", :text "Link 1"}
+                     {:href "https://external.com/page/" :url "https://external.com/page/", :text "li link 1"}
+                     {:href "/page/#some-id" :url "/page/", :id "some-id", :text "li link 2"}
+                     {:href "#some-id" :url "/test/", :id "some-id", :text "li link 3"}}})))
 
   (testing "Extracts page ids"
     (is (= (sut/extract-page-data
@@ -40,7 +40,8 @@
             {:uri "/"
              :links [{:url "/missing-page/"
                       :text "Click"}]})
-           [{:url "/missing-page/"
+           [{:page/uri "/"
+             :url "/missing-page/"
              :text "Click"}])))
 
   (testing "Does not consider external link broken"
@@ -63,7 +64,7 @@
     (is (empty? (sut/find-broken-links
                  {}
                  {:urls #{"/"}
-                  :assets [{:path "/favicon.ico"}]}
+                  :asset-urls #{"/favicon.ico"}}
                  {:uri "/"
                   :links [{:url "/favicon.ico"
                            :text "See our favicon"}]}))))
@@ -92,16 +93,19 @@
     (is (= (sut/format-broken-links
             [{:page/uri "/"
               :url "/broken1/"
+              :href "/broken1/"
               :text "#1"}
              {:page/uri "/"
               :url "/broken2/"
+              :href "/broken2/"
               :text "#2"}
              {:page/uri "/other/"
               :url "/broken3/"
+              :href "/broken3/"
               :text "#3"}])
            (str "Found broken links\n\n"
                 "Page: /\n"
-                "<a href=\"\"></a>\n"
-                "<a href=\"\"></a>\n\n"
+                "<a href=\"/broken1/\">#1</a>\n"
+                "<a href=\"/broken2/\">#2</a>\n\n"
                 "Page: /other/\n"
-                "<a href=\"\"></a>")))))
+                "<a href=\"/broken3/\">#3</a>")))))

@@ -147,13 +147,73 @@
                                [:a {:href "/blog/sampl/"} "Broken link"]]))]
              (sut/export* exporter app {}))
            {:success? false
-            :powerpack/problem :powerpack.export/export-failed
-            :problems
-            [{:powerpack/problem :powerpack/broken-links
-              :page/uri "/blog/sample/"
-              :links [{:url "/blog/sampl/"
-                       :text "Broken link"}]}
-             {:powerpack/problem :powerpack/broken-links
-              :page/uri "/blog/eksempel/"
-              :links [{:url "/blog/sampl/"
-                       :text "Broken link"}]}]}))))
+            :powerpack/problem :powerpack/broken-links
+            :links [{:page/uri "/blog/sample/"
+                     :url "/blog/sampl/"
+                     :href "/blog/sampl/"
+                     :text "Broken link"}
+                    {:page/uri "/blog/eksempel/"
+                     :url "/blog/sampl/"
+                     :href "/blog/sampl/"
+                     :text "Broken link"}]})))
+
+  (testing "Detects bad hash links"
+    (is (= (let [exporter (create-test-exporter)
+                 app (assoc test-app/app
+                            :powerpack/on-started (fn [& _args])
+                            :powerpack/render-page
+                            (fn [_context _page]
+                              [:html
+                               [:a {:href "#elsewhere"} "Broken link"]]))]
+             (sut/export* exporter app {}))
+           {:success? false
+            :powerpack/problem :powerpack/broken-links
+            :links [{:page/uri "/blog/sample/"
+                     :url "/blog/sample/"
+                     :href "#elsewhere"
+                     :text "Broken link"
+                     :id "elsewhere"}
+                    {:page/uri "/blog/eksempel/"
+                     :url "/blog/eksempel/"
+                     :href "#elsewhere"
+                     :text "Broken link"
+                     :id "elsewhere"}]})))
+
+  (testing "Can format detected bad links"
+    (is (= (let [exporter (create-test-exporter)
+                 app (assoc test-app/app
+                            :powerpack/on-started (fn [& _args])
+                            :powerpack/render-page
+                            (fn [_context _page]
+                              [:html
+                               [:a {:href "#elsewhere"} "Broken link"]]))
+                 result (sut/export* exporter app {})]
+             (sut/format-report app result))
+           (str "Found broken links\n\n"
+                "Page: /blog/sample/\n"
+                "<a href=\"#elsewhere\">Broken link</a>\n\n"
+                "Page: /blog/eksempel/\n"
+                "<a href=\"#elsewhere\">Broken link</a>"))))
+
+  (testing "Accepts good hash link"
+    (is (true? (-> (let [exporter (create-test-exporter)
+                         app (assoc test-app/app
+                                    :powerpack/on-started (fn [& _args])
+                                    :powerpack/render-page
+                                    (fn [_context _page]
+                                      [:html
+                                       [:body#page
+                                        [:a {:href "/blog/sample/#page"} "Ok link"]]]))]
+                     (sut/export* exporter app {}))
+                   :success?))))
+
+  (testing "Can opt out of link hash verification"
+    (is (true? (-> (let [exporter (create-test-exporter)
+                         app (assoc test-app/app
+                                    :powerpack/on-started (fn [& _args])
+                                    :powerpack/render-page
+                                    (fn [_context _page]
+                                      [:html
+                                       [:a {:href "#elsewhere"} "Broken link"]]))]
+                     (sut/export* exporter app {:skip-link-hash-verification? true}))
+                   :success?)))))

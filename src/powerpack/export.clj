@@ -162,40 +162,57 @@
          :uri (:page/uri page)
          :eception e}))))
 
-(defn detect-problems [powerpack export-data page body]
-  (when (string? body)
-    (let [page-data (page/extract-page-data {:powerpack/app powerpack} (:page/uri page) body)]
-      (when-let [broken-links (page/find-broken-links powerpack export-data page-data)]
-        {:powerpack/problem :powerpack/broken-links
-         :page/uri (:page/uri page)
-         :links broken-links}))))
-
 (defn export-page [exporter powerpack export-data {:page/keys [uri] :as page}]
   (let [{:keys [body elapsed cached?] :as res} (render-page powerpack export-data page)]
     (or (when (:powerpack/problem res)
           res)
-        (detect-problems powerpack export-data page body)
         (when (nil? body)
           {:problem :powerpack/empty-body
            :uri uri})
         (try
           (powerpack/export-page exporter uri body (:powerpack/build-dir powerpack))
+          nil
           (catch Exception e
             {:powerpack/problem ::exception
              :message "Encountered an exception while creating pages"
              :exception e}))
-        {:uri uri
-         :elapsed elapsed
-         :cached? cached?})))
+        (cond-> {:uri uri
+                 :elapsed elapsed
+                 :cached? cached?}
+          (string? body)
+          (assoc :page-data (page/extract-page-data
+                             {:powerpack/app powerpack}
+                             (:page/uri page)
+                             body))))))
 
 (defn export-pages [exporter powerpack {:keys [pages] :as export-data}]
   (log/with-monitor :info
     (format "Rendering, validating and exporting %d pages" (count pages))
-    (let [results (pmap #(export-page exporter powerpack export-data %) pages)]
+    (let [results (map #(export-page exporter powerpack export-data %) pages)]
       (if-let [problems (seq (filter :powerpack/problem results))]
         {:powerpack/problem ::export-failed
          :problems problems}
         {:exported-pages results}))))
+
+(defn strip-link-ids [page-data]
+  (update page-data :links (fn [links] (map #(dissoc % :id) links))))
+
+(defn validate-export [powerpack export-data {:keys [skip-link-hash-verification?]} result]
+  (let [page-data (cond->> (keep :page-data (:exported-pages result))
+                    skip-link-hash-verification?
+                    (map strip-link-ids))
+        ctx {:url->ids (->> (filter :ids page-data)
+                            (map (juxt :uri :ids))
+                            (into {}))
+             :urls (set (:urls export-data))
+             :assets-urls (->> (:assets export-data)
+                               (remove :outdated)
+                               (map :path)
+                               set)}]
+    (if-let [links (seq (mapcat #(page/find-broken-links powerpack ctx %) page-data))]
+      {:powerpack/problem :powerpack/broken-links
+       :links links}
+      result)))
 
 (defn export-site [exporter powerpack export-data]
   (let [result (export-pages exporter powerpack export-data)]
@@ -240,20 +257,10 @@
            (str "Run export with :powerpack/log-level set to :debug for full stack traces\n"
                 "and data listings")))))
 
-(defn group-problems [problems]
-  (->> (group-by :powerpack/problem problems)
-       (mapcat
-        (fn [[k problems]]
-          (if (= k :powerpack/broken-links)
-            [{:powerpack/problem :powerpack/broken-links
-              :links (mapcat (fn [{:keys [links] :page/keys [uri]}]
-                               (map #(assoc % :uri uri) links)) problems)}]
-            problems)))))
-
 (defn format-report [powerpack result]
   (case (:powerpack/problem result)
     ::export-failed
-    (->> (group-problems (:problems result))
+    (->> (:problems result)
          (map #(format-report powerpack %))
          (str/join "\n\n"))
 
@@ -395,7 +402,8 @@
       (log/with-monitor :info "Clearing build directory"
         (powerpack/empty-directory! exporter (:powerpack/build-dir powerpack)))
       (let [result (or (validate-app powerpack export-data)
-                       (export-site exporter powerpack export-data))]
+                       (->> (export-site exporter powerpack export-data)
+                            (validate-export powerpack export-data opt)))]
         (app/stop powerpack)
         (print-report exporter powerpack export-data result opt)
         (assoc result :success? (nil? (:powerpack/problem result)))))))
@@ -403,9 +411,14 @@
 (defn export
   "Export the site. `opt` is an optional map of options:
 
-  - `full-diff-max-files` The maximum number of files to perform a full diff of
+  - `:full-diff-max-files` The maximum number of files to perform a full diff of
     the export. If the number of exported files is higher than this, just report
-    the number of exported files. Defaults to 1000."
+    the number of exported files. Defaults to 1000.
+  - `:skip-link-hash-verification?` If you use hash-URLs for frontend routing and
+    are ok with links with hashes that aren't available as ids in the target
+    document, set this to `true`. Defaults to `false`, e.g., verify that linked
+    hashes do indeed exist on the target page (when the target page is one
+    generated by the export - not external ones)."
   [app-options & [opt]]
   (let [logger (log/start-logger (or (:powerpack/log-level app-options) :info))
         result (export* (create-fs-exporter) app-options opt)]
