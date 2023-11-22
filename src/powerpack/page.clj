@@ -5,41 +5,47 @@
             [powerpack.assets :as assets])
   (:import (ch.digitalfondue.jfiveparse Parser)))
 
+(defn find-links [uri doc]
+  (->> (walker/create-matcher ["a[href]"])
+       (.getAllNodesMatching doc)
+       (map (fn [node]
+              (let [[href id] (str/split (.getAttribute node "href") #"#")]
+                (cond-> {:url (or (not-empty href) uri)
+                         :text (.getTextContent node)}
+                  id (assoc :id id)))))
+       set))
+
+(defn find-ids [doc]
+  (->> (walker/create-matcher ["[id]"])
+       (.getAllNodesMatching doc)
+       (map #(.getAttribute % "id"))
+       set))
+
 (defn extract-page-data [ctx uri html]
-  (let [doc (.parse (Parser.) html)]
-    {:uri (str/replace uri #"index\.html$" "")
-     :assets (assets/extract-document-asset-urls ctx doc)
-     :links (->> ["a[href]"]
-                 walker/create-matcher
-                 (.getAllNodesMatching doc)
-                 (map (fn [node]
-                        {:href (.getAttribute node "href")
-                         :text (.getTextContent node)}))
-                 set)}))
+  (let [doc (.parse (Parser.) html)
+        assets (assets/extract-document-asset-urls ctx doc)
+        links (find-links uri doc)
+        ids (find-ids doc)]
+    (cond-> {:uri (str/replace uri #"index\.html$" "")}
+      (seq assets) (assoc :assets assets)
+      (seq links) (assoc :links links)
+      (seq ids) (assoc :ids ids))))
 
 (defn remove-non-substantive-url-segments [url]
-  (-> url
-      (str/split #"\?") first
-      (str/split #"#") first))
+  (first (str/split url #"\?")))
 
 (defn find-broken-links [powerpack {:keys [urls assets]} {:keys [links]}]
   (->> links
-       (map #(update % :href remove-non-substantive-url-segments))
-       (filter #(re-find #"^/[^\/]" (:href %)))
-       (remove (comp (set urls) :href))
-       (remove (comp (set (map :path (remove :outdated assets))) :href))
-       (remove #(imagine/image-url? (:href %) (:imagine/config powerpack)))
+       (map #(update % :url remove-non-substantive-url-segments))
+       (filter #(re-find #"^/[^\/]" (:url %)))
+       (remove (comp (set urls) :url))
+       (remove (comp (set (map :path (remove :outdated assets))) :url))
+       (remove #(imagine/image-url? (:url %) (:imagine/config powerpack)))
        seq))
-
-(defn format-broken-links [{:keys [uri links]}]
-  (str "On URL " uri ":\n"
-       (->> (for [{:keys [href text]} links]
-              (str "<a href=\"" href "\">" text "</a>"))
-            (str/join "\n"))))
 
 (defn format-broken-links [links]
   (->> links
-       (group-by :uri)
+       (group-by :page/uri)
        (map (fn [[uri links]]
               (str "Page: " uri "\n"
                    (->> (for [{:keys [href text]} (map :link links)]

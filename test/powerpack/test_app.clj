@@ -57,7 +57,6 @@
       [:h1 (:page/title page)]
       [:p [:i18n ::greeting]]
       [:p [:i18n ::num {:n 45.12}]]
-      ;;(throw (ex-info "Oh noes!" {}))
       [:p [:i18n ::uri page]]
       (when-let [published (:blog-post/published page)]
         [:p [:i18n ::published {:published published}]])
@@ -65,8 +64,7 @@
              "(prn 'Hello :there 'tihi)"]]
       [:a {:href "/blog/sample/"} "Broken link"]
       [:a {:href "https://elsewhere.com/blog/samp/"} "External link"]
-      [:img {:src "/vcard-small/images/ducks.jpg"}]
-      #_[:script {:src "/dev-debug.js"}]]]))
+      [:img {:src "/vcard-small/images/ducks.jpg"}]]]))
 
 (def app
   {:site/default-locale :en

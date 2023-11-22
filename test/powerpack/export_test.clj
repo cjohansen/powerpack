@@ -135,4 +135,25 @@
              (sut/export* exporter app {}))
            {:powerpack/problem :powerpack.export/unservable-urls
             :urls ["/uild-date"]
-            :success? false}))))
+            :success? false})))
+
+  (testing "Detects bad links"
+    (is (= (let [exporter (create-test-exporter)
+                 app (assoc test-app/app
+                            :powerpack/on-started (fn [& _args])
+                            :powerpack/render-page
+                            (fn [_context _page]
+                              [:html
+                               [:a {:href "/blog/sampl/"} "Broken link"]]))]
+             (sut/export* exporter app {}))
+           {:success? false
+            :powerpack/problem :powerpack.export/export-failed
+            :problems
+            [{:powerpack/problem :powerpack/broken-links
+              :page/uri "/blog/sample/"
+              :links [{:url "/blog/sampl/"
+                       :text "Broken link"}]}
+             {:powerpack/problem :powerpack/broken-links
+              :page/uri "/blog/eksempel/"
+              :links [{:url "/blog/sampl/"
+                       :text "Broken link"}]}]}))))

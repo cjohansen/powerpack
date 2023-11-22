@@ -167,7 +167,7 @@
     (let [page-data (page/extract-page-data {:powerpack/app powerpack} (:page/uri page) body)]
       (when-let [broken-links (page/find-broken-links powerpack export-data page-data)]
         {:powerpack/problem :powerpack/broken-links
-         :uri (:page/uri page)
+         :page/uri (:page/uri page)
          :links broken-links}))))
 
 (defn export-page [exporter powerpack export-data {:page/keys [uri] :as page}]
@@ -246,7 +246,7 @@
         (fn [[k problems]]
           (if (= k :powerpack/broken-links)
             [{:powerpack/problem :powerpack/broken-links
-              :links (mapcat (fn [{:keys [uri links]}]
+              :links (mapcat (fn [{:keys [links] :page/keys [uri]}]
                                (map #(assoc % :uri uri) links)) problems)}]
             problems)))))
 
