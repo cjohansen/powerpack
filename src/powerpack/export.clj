@@ -16,11 +16,20 @@
             [powerpack.page :as page]
             [powerpack.protocols :as powerpack]
             [powerpack.web :as web]
-            [stasis.core :as stasis]))
+            [stasis.core :as stasis])
+  (:import (java.nio.file CopyOption Files StandardCopyOption)))
+
+(def copy-options (into-array CopyOption [StandardCopyOption/REPLACE_EXISTING]))
+
+(defn ->path [s]
+  (.toPath (io/file s)))
 
 (defn create-fs-exporter []
   (reify
     powerpack/IFileSystem
+    (file-exists? [_ path]
+      (.exists (io/file path)))
+
     (read-file [_ path]
       (let [file (io/file path)]
         (when (.exists file)
@@ -32,19 +41,33 @@
     (write-file [_ path content]
       (spit path content))
 
+    (delete-file [_ path]
+      (let [file (io/file path)]
+        (when (.isDirectory file)
+          (stasis/empty-directory! path))
+        (.delete file)))
+
+    (move [_ source-path dest-path]
+      (Files/move (->path source-path) (->path dest-path) copy-options))
+
+    (copy [_ source-path dest-path]
+      (let [source (->path source-path)
+            dest (->path dest-path)]
+        (.mkdirs (io/file (str (.getParent dest))))
+        (Files/copy source dest copy-options)))
+
+    (get-tmp-path [_]
+      (str (System/getProperty "java.io.tmpdir")
+           "powerpack/"
+           (random-uuid)))
+
     powerpack/IOptimus
     (export-assets [_ assets build-dir]
       (export/save-assets assets build-dir))
 
     powerpack/IStasis
-    (slurp-directory [_ path re]
-      (stasis/slurp-directory path re))
-
     (export-page [_ uri body build-dir]
       (stasis/export-page uri body build-dir {}))
-
-    (empty-directory! [_ dir]
-      (stasis/empty-directory! dir))
 
     powerpack/IImagine
     (transform-image-to-file [_ transformation path]
@@ -78,24 +101,11 @@
          (imagine/inflate-spec (:imagine/config powerpack)))
      (str (:powerpack/build-dir powerpack) image))))
 
-(defn load-export [exporter powerpack & [{:keys [max-files]}]]
-  (let [dir (:powerpack/build-dir powerpack)
-        etags (some->> (str dir "/etags.edn")
-                       (powerpack/read-file exporter)
-                       read-string)]
-    (-> (if (< (count (powerpack/get-entries exporter dir)) (or max-files 1000))
-          {:complete? true
-           :files (powerpack/slurp-directory exporter dir #"\.[^.]+$")}
-          {:complete? false
-           :files (->> (keys etags)
-                       (keep #(when-let [content (powerpack/read-file exporter (str dir %))]
-                                [% content])))})
-        (update :files
-                #(->> %
-                      (map (fn [[file content]]
-                             [file (cond-> {:content content}
-                                     (get etags file) (assoc :etag (get etags file)))]))
-                      (into {}))))))
+(defn move-previous-export [exporter powerpack]
+  (when (powerpack/file-exists? exporter (:powerpack/build-dir powerpack))
+    (let [dir (powerpack/get-tmp-path exporter)]
+      (powerpack/move exporter (:powerpack/build-dir powerpack) dir)
+      dir)))
 
 (defn format-asset-targets [powerpack indent]
   (->> (for [{:keys [selector attr]} (:powerpack/asset-targets powerpack)]
@@ -120,9 +130,9 @@
          :where [?p :page/uri]]
        db))
 
-(defn get-export-data [exporter powerpack {:keys [full-diff-max-files]}]
-  (let [previous-export (log/with-monitor :info "Loading previous export"
-                          (load-export exporter powerpack {:max-files full-diff-max-files}))
+(defn get-export-data [exporter powerpack]
+  (let [previous-export-dir (log/with-monitor :info "Temporarily backing up previous export"
+                              (move-previous-export exporter powerpack))
         db (d/db (:datomic/conn powerpack))
         pages (get-pages-to-export db)
         assets (optimize (assets/get-assets powerpack) {})
@@ -135,23 +145,26 @@
      :ctx ctx
      :db db
      :assets assets
-     :previous-etags (some-> (:files previous-export)
-                             (get "/etags.edn")
-                             :content
-                             read-string)
-     :previous-export previous-export}))
+     :previous-etags (some->> (str previous-export-dir "/etags.edn")
+                              (powerpack/read-file exporter)
+                              read-string)
+     :previous-export-dir previous-export-dir}))
 
-(defn get-cached-page [{:keys [previous-etags previous-export]} page]
-  (when (and (:page/etag page) (= (:page/etag page) (get previous-etags (:page/uri page))))
-    (get (:files previous-export) (:page/uri page))))
+(defn get-cached-path [exporter
+                       {:keys [previous-etags previous-export-dir]}
+                       {:page/keys [etag uri]}]
+  (when (and previous-export-dir etag (= etag (get previous-etags uri)))
+    (let [path (stasis/normalize-uri (str previous-export-dir uri))]
+      (when (powerpack/file-exists? exporter path)
+        path))))
 
-(defn render-page [powerpack {:keys [ctx db] :as export-data} page]
-  (if-let [cached (get-cached-page export-data page)]
+(defn render-page [exporter powerpack {:keys [ctx db] :as export-data} page]
+  (if-let [cached-path (get-cached-path exporter export-data page)]
     (do
       (log/debug "Reusing" (:page/uri page) "from previous export")
       {:elapsed 0
        :cached? true
-       :body (:content cached)})
+       :path cached-path})
     (try
       (log/debug "Rendering" (:page/uri page))
       (let [start (System/currentTimeMillis)
@@ -167,27 +180,37 @@
          :eception e}))))
 
 (defn export-page [exporter powerpack export-data {:page/keys [uri] :as page}]
-  (let [{:keys [body elapsed cached?] :as res} (render-page powerpack export-data page)]
+  (let [res (render-page exporter powerpack export-data page)
+        dir (:powerpack/build-dir powerpack)]
     (or (when (:powerpack/problem res)
           res)
-        (when (nil? body)
+        (when (:cached? res)
+          (let [path (stasis/normalize-uri (str dir uri))]
+            (powerpack/copy exporter (:path res) path)
+            (cond-> {:uri uri
+                     :elapsed 0
+                     :cached? true}
+              (re-find #"\.html$" path)
+              (assoc :page-data (page/extract-page-data
+                                 {:powerpack/app powerpack}
+                                 uri
+                                 (powerpack/read-file exporter path))))))
+        (when (nil? (:body res))
           {:problem :powerpack/empty-body
            :uri uri})
         (try
-          (powerpack/export-page exporter uri body (:powerpack/build-dir powerpack))
-          nil
+          (powerpack/export-page exporter uri (:body res) dir)
+          (cond-> {:uri uri
+                   :elapsed (:elapsed res)}
+            (string? (:body res))
+            (assoc :page-data (page/extract-page-data
+                               {:powerpack/app powerpack}
+                               uri
+                               (:body res))))
           (catch Exception e
             {:powerpack/problem ::exception
              :message "Encountered an exception while creating pages"
-             :exception e}))
-        (cond-> {:uri uri
-                 :elapsed elapsed
-                 :cached? cached?}
-          (string? body)
-          (assoc :page-data (page/extract-page-data
-                             {:powerpack/app powerpack}
-                             (:page/uri page)
-                             body))))))
+             :exception e})))))
 
 (defn export-pages [exporter powerpack {:keys [pages] :as export-data}]
   (log/with-monitor :info
@@ -309,37 +332,6 @@
     :powerpack/empty-body
     (str (:uri result) " has nil body")))
 
-(defn print-heading [s entries color]
-  (let [num (count entries)]
-    (log/info (ansi/style (format s num (if (= 1 num) "file" "files")) color))))
-
-(defn print-file-names [file-names]
-  (let [n (count file-names)
-        print-max 50]
-    (doseq [path (take print-max (sort file-names))]
-      (log/info "    -" path))
-    (when (< print-max n)
-      (log/info "    and" (- n print-max) "more"))))
-
-(defn report-differences [old new]
-  (let [{:keys [added removed changed unchanged]} (stasis/diff-maps old new)]
-    (if (and (empty? removed)
-             (empty? changed)
-             (empty? unchanged))
-      (print-heading "- First export! Created %s %s." added :green)
-      (do
-        (when (seq unchanged)
-          (print-heading "- %s unchanged %s." unchanged :cyan))
-        (when (seq changed)
-          (print-heading "- %s changed %s:" changed :yellow)
-          (print-file-names changed))
-        (when (seq removed)
-          (print-heading "- %s removed %s:" removed :red)
-          (print-file-names removed))
-        (when (seq added)
-          (print-heading "- %s added %s:" added :green)
-          (print-file-names added))))))
-
 (defn report-elapsed-percentile [n pages]
   (str n "th percentile: "
        (->> (sort-by :elapsed pages)
@@ -347,13 +339,12 @@
             last
             :elapsed) "ms"))
 
-(defn print-report [exporter powerpack export-data result {:keys [full-diff-max-files]}]
+(defn print-report [powerpack export-data result]
   (if (:powerpack/problem result)
     (do
       (log/info "Detected problems in exported site, deployment is not advised")
       (log/info (ansi/style (format-report powerpack result) :red)))
-    (let [export (load-export exporter powerpack {:max-files full-diff-max-files})
-          {:keys [exported-pages]} result
+    (let [{:keys [exported-pages]} result
           by-elapsed (sort-by :elapsed (filter :elapsed exported-pages))]
       (log/info "Export complete")
       (when-let [cached (seq (filter :cached? exported-pages))]
@@ -373,9 +364,7 @@
                               (map (fn [{:keys [uri elapsed]}]
                                      (str uri " (" elapsed "ms)")))
                               (str/join "\n"))))))
-      (if (:complete? export)
-        (report-differences (:files (:previous-export export-data)) (:files export))
-        (log/info (format "Exported %d pages" (count (:pages export-data))))))))
+      (log/info (format "Exported %d pages" (count (:pages export-data)))))))
 
 (defn validate-app [powerpack {:keys [pages]}]
   (or (when-let [dicts (some-> powerpack :i18n/dictionaries deref)]
@@ -402,22 +391,20 @@
   (log/with-timing :info "Ran Powerpack export"
     (let [powerpack (log/with-monitor :info "Creating app" (app/create-app app-options))
           _ (app/start powerpack)
-          export-data (get-export-data exporter powerpack opt)]
-      (log/with-monitor :info "Clearing build directory"
-        (powerpack/empty-directory! exporter (:powerpack/build-dir powerpack)))
+          export-data (get-export-data exporter powerpack)]
       (let [result (or (validate-app powerpack export-data)
                        (->> (export-site exporter powerpack export-data)
                             (validate-export powerpack export-data opt)))]
         (app/stop powerpack)
-        (print-report exporter powerpack export-data result opt)
+        (when-let [dir (:previous-export-dir export-data)]
+          (log/with-monitor :info "Clearing previous export"
+            (powerpack/delete-file exporter dir)))
+        (print-report powerpack export-data result)
         (assoc result :success? (nil? (:powerpack/problem result)))))))
 
 (defn export
   "Export the site. `opt` is an optional map of options:
 
-  - `:full-diff-max-files` The maximum number of files to perform a full diff of
-    the export. If the number of exported files is higher than this, just report
-    the number of exported files. Defaults to 1000.
   - `:skip-link-hash-verification?` If you use hash-URLs for frontend routing and
     are ok with links with hashes that aren't available as ids in the target
     document, set this to `true`. Defaults to `false`, e.g., verify that linked

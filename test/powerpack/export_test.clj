@@ -1,35 +1,44 @@
 (ns powerpack.export-test
   (:require [clojure.core.async :refer [<! <!! chan close! go put!]]
             [clojure.string :as str]
-            [clojure.test :refer [deftest testing is]]
+            [clojure.test :refer [deftest is testing]]
             [datomic-type-extensions.api :as d]
             [optimus.asset :as asset]
             [powerpack.export :as sut]
             [powerpack.logger :as log]
+            [powerpack.mockfs :as mockfs]
             [powerpack.protocols :as powerpack]
             [powerpack.test-app :as test-app]
-            [ring.util.codec :refer [url-decode]]))
-
-;; Borrowed from Stasis
-(defn normalize-uri [^String uri]
-  (let [decoded-uri (url-decode uri)]
-    (cond
-      (.endsWith decoded-uri ".html") decoded-uri
-      (.endsWith decoded-uri "/") (str decoded-uri "index.html")
-      :else decoded-uri)))
+            [stasis.core :as stasis]))
 
 (defn create-test-exporter [& [files]]
-  (let [fs (atom files)]
+  (let [fs (atom files)
+        tmp (atom 0)]
     (reify
       powerpack/IFileSystem
+      (file-exists? [_ path]
+        (mockfs/file-exists? @fs path))
+
       (read-file [_ path]
-        (get @fs path))
+        (mockfs/read-file @fs path))
 
       (get-entries [_ path]
-        (filter #(str/starts-with? % path) (keys @fs)))
+        (mockfs/get-entries @fs path))
 
       (write-file [_ path content]
-        (swap! fs assoc path content))
+        (swap! fs mockfs/write-file path content))
+
+      (delete-file [_ path]
+        (swap! fs mockfs/delete-file path))
+
+      (move [_ source dest]
+        (swap! fs mockfs/move source dest))
+
+      (copy [_ source dest]
+        (swap! fs mockfs/copy source dest))
+
+      (get-tmp-path [_]
+        (str "/tmp/" (swap! tmp inc)))
 
       powerpack/IOptimus
       (export-assets [_ assets build-dir]
@@ -37,21 +46,8 @@
           (swap! fs assoc (str build-dir (asset/path asset)) (:contents asset))))
 
       powerpack/IStasis
-      (slurp-directory [_ path re]
-        (->> (for [[file-path content] (->> (keys @fs)
-                                            (filter #(str/starts-with? % path))
-                                            (filter #(re-find re %))
-                                            (select-keys @fs))]
-               [(str/replace file-path (re-pattern (str "^" path)) "") content])
-             (into {})))
-
       (export-page [_ uri body build-dir]
-        (swap! fs assoc (str build-dir (normalize-uri uri)) body))
-
-      (empty-directory! [_ dir]
-        (->> (keys @fs)
-             (filter #(str/starts-with? % dir))
-             (swap! fs (partial apply dissoc))))
+        (swap! fs assoc (str build-dir (stasis/normalize-uri uri)) body))
 
       powerpack/IImagine
       (transform-image-to-file [_ transformation path]
@@ -240,8 +236,7 @@
                 first)
            {:uri "/build-date.edn"
             :elapsed 0
-            :cached? true
-            :page-data {:uri "/build-date.edn"}})))
+            :cached? true})))
 
   (testing "Does not reuse files with changed etags"
     (is (not (->> (let [exporter (create-test-exporter
@@ -262,4 +257,30 @@
                   :exported-pages
                   (filter (comp #{"/build-date.edn"} :uri))
                   first
-                  :cached?)))))
+                  :cached?))))
+
+  (testing "Extracts page data from cached HTML file"
+    (is (= (->> (let [exporter (create-test-exporter
+                                {"build/blog/sample/index.html" "<a href=\"/blog/sample/\">Link</a>"
+                                 "build/etags.edn" "{\"/blog/sample/\" \"xxx666\"}"})]
+                  (sut/export*
+                   exporter
+                   (assoc test-app/app
+                          :powerpack/on-started
+                          (fn [powerpack-app]
+                            (->> [{:page/uri "/blog/sample/"
+                                   :page/etag "xxx666"}]
+                                 (d/transact (:datomic/conn powerpack-app))
+                                 deref)))
+                   {}))
+                :exported-pages
+                (filter (comp #{"/blog/sample/"} :uri))
+                first)
+           {:uri "/blog/sample/"
+            :elapsed 0
+            :cached? true
+            :page-data
+            {:uri "/blog/sample/"
+             :links #{{:href "/blog/sample/"
+                       :url "/blog/sample/"
+                       :text "Link"}}}}))))

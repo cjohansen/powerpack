@@ -1,17 +1,20 @@
 (ns powerpack.protocols)
 
 (defprotocol IFileSystem
+  (file-exists? [this path])
   (read-file [this path])
   (get-entries [this path])
-  (write-file [this path content]))
+  (write-file [this path content])
+  (delete-file [this path])
+  (copy [this source-path dest-path])
+  (move [this source-path dest-path])
+  (get-tmp-path [this]))
 
 (defprotocol IOptimus
   (export-assets [this assets build-dir]))
 
 (defprotocol IStasis
-  (slurp-directory [this path re])
-  (export-page [this uri body build-dir])
-  (empty-directory! [this dir]))
+  (export-page [this uri body build-dir]))
 
 (defprotocol IImagine
   (transform-image-to-file [this transformation path]))
