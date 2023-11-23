@@ -57,9 +57,11 @@
         (Files/copy source dest copy-options)))
 
     (get-tmp-path [_]
-      (str (System/getProperty "java.io.tmpdir")
-           "powerpack/"
-           (random-uuid)))
+      (let [tmp (System/getProperty "java.io.tmpdir")]
+        (str tmp
+             (when-not (re-find #"/$" tmp) "/")
+             "powerpack/"
+             (random-uuid))))
 
     powerpack/IOptimus
     (export-assets [_ assets build-dir]
