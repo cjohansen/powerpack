@@ -48,7 +48,9 @@
         (.delete file)))
 
     (move [_ source-path dest-path]
-      (Files/move (->path source-path) (->path dest-path) copy-options))
+      (let [dest (->path dest-path)]
+        (.mkdirs (io/file (str (.getParent dest))))
+        (Files/move (->path source-path) dest copy-options)))
 
     (copy [_ source-path dest-path]
       (let [source (->path source-path)
