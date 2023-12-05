@@ -85,8 +85,10 @@
                  (remove :outdated))))
       (memoize/lru {} :lru/threshold 3)))
 
-(defn get-image-assets [powerpack export-data]
-  (->> (mapcat :assets export-data)
+(defn get-image-assets [powerpack result]
+  (->> (:exported-pages result)
+       (mapcat (comp :assets :page-data))
+       set
        (filter #(imagine/image-url? % (:imagine/config powerpack)))
        set))
 
@@ -96,8 +98,9 @@
                  (get-ex-datas cause)))
        (remove nil?)))
 
-(defn export-images [exporter powerpack export-data]
-  (doseq [image (get-image-assets powerpack export-data)]
+(defn export-images [powerpack exporter result]
+  (doseq [image (get-image-assets powerpack result)]
+    (log/debug "Export image" image)
     (powerpack/transform-image-to-file
      exporter
      (-> image
@@ -254,7 +257,7 @@
         (log/info (str "Exporting images from:\n" (format-asset-targets powerpack "  ")))
         (log/with-monitor :info "Exporting images"
           (-> (update powerpack :imagine/config assoc :cacheable-urls? true)
-              (export-images exporter export-data))))
+              (export-images exporter result))))
       (when-let [etags (not-empty (:etags export-data))]
         (log/with-monitor :info "Exporting etags to etags.edn"
           (powerpack/write-file exporter (str (:powerpack/build-dir powerpack) "/etags.edn") (pr-str etags)))))
@@ -395,16 +398,16 @@
   (log/with-timing :info "Ran Powerpack export"
     (let [powerpack (log/with-monitor :info "Creating app" (app/create-app app-options))
           _ (app/start powerpack)
-          export-data (get-export-data exporter powerpack)]
-      (let [result (or (validate-app powerpack export-data)
-                       (->> (export-site exporter powerpack export-data)
-                            (validate-export powerpack export-data opt)))]
-        (app/stop powerpack)
-        (when-let [dir (:previous-export-dir export-data)]
-          (log/with-monitor :info "Clearing previous export"
-            (powerpack/delete-file exporter dir)))
-        (print-report powerpack export-data result)
-        (assoc result :success? (nil? (:powerpack/problem result)))))))
+          export-data (get-export-data exporter powerpack)
+          result (or (validate-app powerpack export-data)
+                     (->> (export-site exporter powerpack export-data)
+                          (validate-export powerpack export-data opt)))]
+      (app/stop powerpack)
+      (when-let [dir (:previous-export-dir export-data)]
+        (log/with-monitor :info "Clearing previous export"
+          (powerpack/delete-file exporter dir)))
+      (print-report powerpack export-data result)
+      (assoc result :success? (nil? (:powerpack/problem result))))))
 
 (defn export
   "Export the site. `opt` is an optional map of options:
