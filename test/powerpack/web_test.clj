@@ -73,9 +73,19 @@
             {}
             {:status 200
              :body "<h1>Hello</h1>"})
-           {:status 200,
-            :body "<h1>Hello</h1>",
-            :headers {"Content-Type" "text/html"}}))))
+           {:status 200
+            :body "<h1>Hello</h1>"
+            :headers {"Content-Type" "text/html"}})))
+
+  (testing "Does not treat XML as HTML"
+    (is (= (sut/get-response-map
+            {:uri "/atom.xml"}
+            {}
+            {:status 200
+             :body "<h1>Hello</h1>"})
+           {:status 200
+            :body "<h1>Hello</h1>"
+            :headers {"Content-Type" "text/xml"}}))))
 
 (defn qsa [hiccup tag]
   (set (hiccup/get-tags hiccup tag)))

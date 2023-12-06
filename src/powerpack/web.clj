@@ -7,7 +7,8 @@
             [powerpack.assets :as assets]
             [powerpack.errors :as errors]
             [powerpack.hiccup :as hiccup]
-            [ring.middleware.content-type :as content-type]))
+            [ring.middleware.content-type :as content-type]
+            [ring.util.mime-type :as mime-type]))
 
 (defn get-content-type-k [response]
   (or (->> (keys (:headers response))
@@ -71,7 +72,7 @@
            (-> res
                (assoc-in [:headers "Content-Type"] (content-types (:content-type res)))))
          (when (and (string? (:body res)) (empty? content-type))
-           (assoc-in res [:headers "Content-Type"] "text/html"))
+           (assoc-in res [:headers "Content-Type"] (or (mime-type/ext-mime-type (:uri req)) "text/html")))
          (content-type/content-type-response res req)))
       (dissoc :content-type)))
 
