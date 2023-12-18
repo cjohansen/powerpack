@@ -269,4 +269,35 @@
                     :blog-post/author {:person/id "person1"}}]
                   (sut/ingest-data powerpack "post.md"))
              (:page/uri (d/entity (d/db (:datomic/conn powerpack)) [:page/uri "/blog/post/"])))
-           "/blog/post/"))))
+           "/blog/post/")))
+
+  (testing "Does not retract entities asserted from multiple files"
+    (is (= (-> (with-test-powerpack [powerpack [{:db/ident :blog-post/author
+                                                 :db/valueType :db.type/ref
+                                                 :db/cardinality :db.cardinality/one}
+                                                {:db/ident :person/id
+                                                 :db/valueType :db.type/string
+                                                 :db/cardinality :db.cardinality/one
+                                                 :db/unique :db.unique/identity}
+                                                {:db/ident :person/fullname
+                                                 :db/valueType :db.type/string
+                                                 :db/cardinality :db.cardinality/one}]]
+                 ;; Create blog post
+                 (->> [{:page/uri "/some-file/"
+                        :page/title "Hello"
+                        :blog-post/author {:person/id "christian"}}]
+                      (sut/ingest-data powerpack "blog-post.md"))
+                 ;; Add some details about the person
+                 (->> [{:person/id "christian"
+                        :person/fullname "Christian Johansen"}]
+                      (sut/ingest-data powerpack "christian.md"))
+                 ;; Update the blog post - do not retract the author entity
+                 (->> [{:page/uri "/some-file/"
+                        :page/title "Hello!"
+                        :blog-post/author {:person/id "christian"}}]
+                      (sut/ingest-data powerpack "blog-post.md")))
+               :db-after
+               (d/entity [:person/id "christian"])
+               mapify)
+           {:person/id "christian"
+            :person/fullname "Christian Johansen"}))))

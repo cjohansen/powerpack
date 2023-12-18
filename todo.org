@@ -1,4 +1,4 @@
-* Todo [15/18]
+* Todo [16/19]
 ** DONE Link to Prone when rendering exceptions occur
 ** DONE Set proper content-type header when using :content-type
 ** DONE Run alert from the 404 response for JS requests
@@ -17,6 +17,7 @@
 ** DONE Why did parenteser restart with an old db? (Delete it on stop)
 ** TODO Make it easy to add assets that aren't files (hello, cache-busted API endpoint)
 ** TODO Add a heartbeat to the live reload to avoid accumulating clients when there are no changes
+** DONE A file that asserts `:blog-post/author {:person/id :person/christian}` will end up deleting the original person when it's edited
 * Export [11/11]
 ** DONE Validate existence of :powerpack/build-dir
 ** DONE Fail the export when using assets that can't be found
