@@ -110,36 +110,38 @@
 (def attrs-to-keep #{:db/ident
                      :db/txInstant})
 
-(defn retractable? [db file-name [e a v t]]
-  (when (not= e t)
-    (let [attr (d/attribute db a)
-          other-txes (d/q '[:find ?file-name ?a
-                            :in $ ?e ?fn
-                            :where
-                            [?e ?a _ ?t]
-                            [?t :tx-source/file-name ?file-name]
-                            (not [?t :tx-source/file-name ?fn])]
-                          db e file-name)]
-      (cond
-        ;; Never remove certain named attributes
-        (attrs-to-keep (:ident attr))
-        false
+(defn get-sources [db e]
+  (d/q '[:find ?file-name ?a
+         :in $ ?e
+         :where
+         [?e ?a _ ?t]
+         [?t :tx-source/file-name ?file-name]]
+       db e))
 
-        ;; No other files changing this entity, safe to remove
-        (empty? other-txes)
-        true
+(defn retractable? [db file-name [e a]]
+  (let [attr (d/attribute db a)
+        other-txes (->> (get-sources db e)
+                        (remove (comp #{file-name} first)))]
+    (cond
+      ;; Never remove certain named attributes
+      (attrs-to-keep (:ident attr))
+      false
 
-        ;; Other files change this specific attribute on this entity, keep
-        ((set (map second other-txes)) a)
-        false
+      ;; No other files changing this entity, safe to remove
+      (empty? other-txes)
+      true
 
-        ;; Other files change the entity and the attribute is a unique one, keep
-        (:unique attr)
-        false
+      ;; Other files change this specific attribute on this entity, keep
+      ((set (map second other-txes)) a)
+      false
 
-        ;; No objections, your honor. Remove at will.
-        :else
-        true))))
+      ;; Other files change the entity and the attribute is a unique one, keep
+      (:unique attr)
+      false
+
+      ;; No objections, your honor. Remove at will.
+      :else
+      true)))
 
 (defn get-retract-tx [db file-name]
   (when-let [tx-id (d/q '[:find ?e .
@@ -151,7 +153,13 @@
     (->> (d/datoms db :eavt)
          (filter (fn [[_ _ _ t]] (= tx-id t)))
          (filter #(retractable? db file-name %))
-         (map (fn [[e a v t]]
+         (group-by (fn [[e]] e))
+         (mapcat
+          (fn [[e xs]]
+            (if (and (nil? (:db/txInstant (d/entity db e)))
+                     (= #{file-name} (set (map first (get-sources db e)))))
+              [[:db/retractEntity e]]
+              (for [[e a v t] xs]
                 (let [attr (:ident (d/attribute db a))]
                   ;; Load the entity at the time of the tx to find the value instead
                   ;; of using the raw value from the index. This makes sure that
@@ -159,7 +167,7 @@
                   ;; retracted properly
                   (if (:dte/valueType (d/entity db attr))
                     [:db/retract e attr (attr (d/entity (d/as-of db t) e))]
-                    [:db/retract e attr v])))))))
+                    [:db/retract e attr v])))))))))
 
 (defmulti validate-attribute (fn [_m k _v] k))
 
