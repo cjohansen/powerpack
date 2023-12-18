@@ -1,0 +1,1 @@
+{:lint-as {powerpack.ingest-test/with-schema-db clojure.core/let}}
