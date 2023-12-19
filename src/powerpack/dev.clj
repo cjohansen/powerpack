@@ -221,6 +221,6 @@
 (defn reset []
   (stop)
   (repl/refresh :after 'powerpack.dev/start)
-  (let [msg (str "Powerpack restarted on port " (:powerpack/port get-app))]
+  (let [msg (str "Powerpack restarted on port " (:powerpack/port (get-app)))]
     (log/info msg)
     msg))
