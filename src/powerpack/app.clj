@@ -83,8 +83,6 @@
 
 (s/def :powerpack/powerpack
   (s/keys :req [:datomic/schema-file
-                :optimus/assets
-                :optimus/bundles
                 :site/default-locale
                 :site/title
                 :powerpack/content-dir
@@ -94,6 +92,8 @@
                 :imagine/config
                 :m1p/dictionaries
                 :m1p/dictionary-fns
+                :optimus/assets
+                :optimus/bundles
                 :site/base-url
                 :powerpack/asset-targets
                 :powerpack/content-file-suffixes
@@ -136,11 +136,13 @@
    :datomic/uri "datomic:mem://powerpack"
    :powerpack/asset-targets default-asset-targets
    :powerpack/build-dir "target/powerpack"
+   :powerpack/content-dir "content"
    :powerpack/content-file-suffixes ["md" "edn"]
    :powerpack/live-reload-route "/powerpack/live-reload"
    :powerpack/port 5050
    :powerpack/resource-dirs ["resources"]
-   :powerpack/source-dirs ["src"]})
+   :powerpack/source-dirs ["src"]
+   :site/default-locale :en})
 
 (defn with-defaults [x defaults]
   (merge x (into {} (for [k (keys defaults)]
@@ -152,9 +154,9 @@
          (db/create-database (:datomic/uri config)))))
 
 (defn create-app [powerpack & [opt]]
-  (assert (s/valid? :powerpack/powerpack powerpack)
-          (s/explain-data :powerpack/powerpack powerpack))
   (let [powerpack (with-defaults powerpack defaults)]
+    (assert (s/valid? :powerpack/powerpack powerpack)
+            (s/explain-data :powerpack/powerpack powerpack))
     (cond-> powerpack
       (:m1p/dictionaries powerpack)
       (assoc :i18n/dictionaries (atom (i18n/load-dictionaries powerpack opt)))
