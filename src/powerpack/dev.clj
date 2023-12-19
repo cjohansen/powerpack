@@ -157,6 +157,14 @@
 (defmethod ig/init-key :dev/opts [_ opts]
   opts)
 
+(defmulti configure! (fn [] nil))
+
+(defmethod ig/init-key :powerpack/powerpack [_ _]
+  (configure!))
+
+(defn get-app []
+  (:powerpack/app integrant.repl.state/system))
+
 (defn get-system-map []
   {;; Dev-time resources
    :dev/app-events {}
