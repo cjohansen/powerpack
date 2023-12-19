@@ -210,8 +210,10 @@
 (defn start []
   (integrant.repl/go)
   (app/start (:powerpack/app integrant.repl.state/system))
-  (str "Powerpack started on port "
-       (:powerpack/port (:powerpack/powerpack integrant.repl.state/system))))
+  (let [msg (str "Powerpack started on port "
+                 (:powerpack/port (:powerpack/powerpack integrant.repl.state/system)))]
+    (log/info msg)
+    msg))
 
 (defn stop []
   (integrant.repl/halt)
@@ -220,5 +222,7 @@
 (defn reset []
   (stop)
   (repl/refresh :after 'powerpack.dev/start)
-  (str "Powerpack restarted on port "
-       (:powerpack/port (:powerpack/powerpack integrant.repl.state/system))))
+  (let [msg (str "Powerpack restarted on port "
+                 (:powerpack/port (:powerpack/powerpack integrant.repl.state/system)))]
+    (log/info msg)
+    msg))
