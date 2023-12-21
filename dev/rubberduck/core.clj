@@ -2,13 +2,10 @@
   (:require [datomic-type-extensions.api :as d]
             [powerpack.dev :as dev]
             [powerpack.export :as export]
-            [powerpack.highlight :as highlight])
-  (:import (java.awt Color)
-           (java.awt.image BufferedImage)
-           (java.io ByteArrayOutputStream)
-           (java.text NumberFormat)
-           (java.util Locale)
-           (javax.imageio ImageIO)))
+            [powerpack.highlight :as highlight]
+            [rubberduck.page :as page])
+  (:import (java.text NumberFormat)
+           (java.util Locale)))
 
 (def locales
   {:nb (Locale/forLanguageTag "nb-NO")
@@ -26,55 +23,25 @@
 (defn create-tx [_file-name data]
   data)
 
-(defn generate-image []
-  (let [width 100
-        height 100
-        image (BufferedImage. width height BufferedImage/TYPE_INT_ARGB)
-        graphics (.getGraphics image)]
-    (.setColor graphics (Color. 255 0 0))
-    (.fillRect graphics 0 0 width height)
-    (.dispose graphics)
-    (with-open [baos (ByteArrayOutputStream.)]
-      (ImageIO/write image "png" baos)
-      (.toByteArray baos))))
+(defn get-context []
+  {:date (str (java.time.LocalDate/now))})
 
-(defn render-png []
-  {:status 200
-   :headers {"Content-Type" "image/png"}
-   :body (generate-image)})
-
-(defn render-page [context page]
-  (cond
-    (= ::build-date (:page/kind page))
-    (do
-      (Thread/sleep 3000)
-      {:status 200
-       :content-type (:page/response-type page)
-       :body {:build-date (:date context)}})
-
-    (= ::redirect (:page/kind page))
-    {:status 302
-     :headers {"Location" (:page/redirect-url page)}}
-
-    (= ::png (:page/kind page))
-    (render-png)
-
-    :else
-    [:html
-     [:body
-      [:h1 (:page/title page)]
-      [:p [:i18n ::greeting]]
-      [:p [:i18n ::num {:n 45.12}]]
-      ;;(throw (ex-info "Oh noes!" {}))
-      [:p [:i18n ::uri page]]
-      (when-let [published (:blog-post/published page)]
-        [:p [:i18n ::published {:published published}]])
-      [:pre [:code {:class "language-clj"}
-             "(prn 'Hello :there 'tihi)"]]
-      [:a {:href "/blog/sample/"} "Broken link"]
-      [:a {:href "https://elsewhere.com/blog/samp/"} "External link"]
-      [:img {:src "/vcard-small/images/ducks.jpg"}]
-      #_[:script {:src "/dev-debug.js"}]]]))
+(defn on-started [powerpack-app]
+  (->> [{:page/uri "/build-date.edn"
+         :page/response-type :edn
+         :page/kind ::build-date
+         :page/etag "0acbd"}
+        {:page/uri "/build-date.json"
+         :page/response-type :json
+         :page/kind ::build-date
+         :page/etag "99f8d3"}
+        {:page/uri "/test.png"
+         :page/kind ::png}
+        {:page/uri "/"
+         :page/kind ::redirect
+         :page/redirect-url "/blog/sample/"}]
+       (d/transact (:datomic/conn powerpack-app))
+       deref))
 
 (def powerpack
   (-> {:site/default-locale :en
@@ -91,7 +58,8 @@
                          :paths [#"/images/*.*"]}]
        :optimus/bundles {"styles.css"
                          {:public-dir "public"
-                          :paths ["/styles/powerpack.css"]}
+                          :paths ["/styles/powerpack.css"
+                                  "/styles.css"]}
 
                          "ducks.js"
                          {:public-dir "public"
@@ -123,25 +91,9 @@
        :site/base-url "https://rubberduck.example"
 
        :powerpack/create-ingest-tx #'create-tx
-       :powerpack/render-page #'render-page
-       :powerpack/get-context (fn [] {:date (str (java.time.LocalDate/now))})
-       :powerpack/on-started
-       (fn [powerpack-app]
-         (->> [{:page/uri "/build-date.edn"
-                :page/response-type :edn
-                :page/kind ::build-date
-                :page/etag "0acbd"}
-               {:page/uri "/build-date.json"
-                :page/response-type :json
-                :page/kind ::build-date
-                :page/etag "99f8d3"}
-               {:page/uri "/test.png"
-                :page/kind ::png}
-               {:page/uri "/"
-                :page/kind ::redirect
-                :page/redirect-url "/blog/sample/"}]
-              (d/transact (:datomic/conn powerpack-app))
-              deref))}
+       :powerpack/render-page #'page/render-page
+       :powerpack/get-context #'get-context
+       :powerpack/on-started #'on-started}
       highlight/install))
 
 (defmethod dev/configure! :default []
