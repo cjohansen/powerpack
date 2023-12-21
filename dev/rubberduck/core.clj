@@ -1,6 +1,5 @@
 (ns rubberduck.core
   (:require [datomic-type-extensions.api :as d]
-            [integrant.core :as ig]
             [powerpack.dev :as dev]
             [powerpack.export :as export]
             [powerpack.highlight :as highlight])
@@ -145,7 +144,7 @@
               deref))}
       highlight/install))
 
-(defmethod ig/init-key :powerpack/powerpack [_ _]
+(defmethod dev/configure! :default []
   powerpack)
 
 (defn export! [& args]

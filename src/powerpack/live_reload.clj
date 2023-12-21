@@ -3,6 +3,8 @@
             [clojure.data.json :as json]
             [clojure.java.io :as io]
             [clojure.string :as str]
+            [integrant.core :as ig]
+            [integrant.repl.state :as irs]
             [org.httpkit.server :as http-kit]
             [powerpack.async :as async]
             [powerpack.errors :as errors]
@@ -139,12 +141,20 @@
 (defmethod process-event :default [e _powerpack _opt]
   (log/debug "No related side-effects to carry out" e))
 
+(defn powerpack-config-changed? []
+  (not= (ig/init-key :powerpack/powerpack nil)
+        (:powerpack/powerpack irs/system)))
+
 (defmethod process-event :powerpack/edited-source [{:keys [path]} _powerpack opt]
   (log/debug "Source edited, reloading namespace")
   (let [source-namespace (get-ns (slurp (io/file path)))]
     (try
       (require source-namespace :reload)
       (errors/resolve-error opt [::reload-namespace source-namespace])
+      (when (powerpack-config-changed?)
+        (put! (:ch (:fs-events opt))
+              {:kind :powerpack/edited-powerpack-config
+               :action "reload"}))
       (catch Exception e
         (log/debug "Failed to reload namespace"
                    {:path path

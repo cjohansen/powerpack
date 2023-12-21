@@ -139,16 +139,21 @@
   (log/with-timing :debug "Stopped HUD"
     (hud/stop-watching! watcher)))
 
-(defmethod ig/init-key :dev/schema-watcher [_ {:keys [fs-events]}]
-  (log/with-timing :debug "Started schema watcher"
+(def reboot-reasons
+  {:powerpack/edited-schema "Rebooting after schema change"
+   :powerpack/edited-powerpack-config "Rebooting after Powerpack config changed"})
+
+(defmethod ig/init-key :dev/reboot-watcher [_ {:keys [fs-events]}]
+  (log/with-timing :debug "Started reboot watcher"
     (create-watcher [message (:mult fs-events)]
-      (when (= :powerpack/edited-schema (:kind message))
-        (log/info "Rebooting after schema change")
+      (when (#{:powerpack/edited-schema
+               :powerpack/edited-powerpack-config} (:kind message))
+        (log/info (reboot-reasons (:kind message)))
         (integrant.repl/halt)
         (integrant.repl/go)))))
 
-(defmethod ig/halt-key! :dev/schema-watcher [_ stop-watcher]
-  (log/with-timing :debug "Stopped schema watcher"
+(defmethod ig/halt-key! :dev/reboot-watcher [_ stop-watcher]
+  (log/with-timing :debug "Stopped reboot watcher"
     (stop-watcher)))
 
 (defmethod ig/init-key :powerpack/app [_ opt]
@@ -190,7 +195,7 @@
    :dev/source-watcher {:powerpack/app (ig/ref :powerpack/app)
                         :powerpack/dev (ig/ref :dev/opts)}
 
-   :dev/schema-watcher (ig/ref :dev/opts)
+   :dev/reboot-watcher (ig/ref :dev/opts)
 
    :dev/ingestion-watcher {:powerpack/app (ig/ref :powerpack/app)
                            :powerpack/dev (ig/ref :dev/opts)}

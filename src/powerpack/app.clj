@@ -1,6 +1,7 @@
 (ns powerpack.app
   (:require [clojure.java.io :as io]
             [clojure.spec.alpha :as s]
+            [clojure.string :as str]
             [datomic-type-extensions.api :as d]
             [powerpack.db :as db]
             [powerpack.i18n :as i18n]
@@ -156,9 +157,26 @@
          (db/create-database (:datomic/uri config)))))
 
 (defn create-app [powerpack & [opt]]
-  (let [powerpack (with-defaults powerpack defaults)]
+  (let [powerpack (with-defaults powerpack defaults)
+        bare-fns (->> powerpack
+                      (filter (comp ifn? second))
+                      (remove (comp var? second))
+                      (remove (comp vector? second))
+                      (remove (comp map? second))
+                      (remove (comp keyword? second))
+                      (remove (comp set? second))
+                      seq)]
     (assert (s/valid? :powerpack/powerpack powerpack)
             (s/explain-data :powerpack/powerpack powerpack))
+    (when bare-fns
+      (let [ex (ffirst bare-fns)]
+        (println (->> ["Some of your Powerpack functions are not var quoted, this will cause Powerpack"
+                       "to restart more frequently than necessary. It is recommended that the functions"
+                       "set for the following keys are defined with `defn` and passed to Powerpack as"
+                       (str "vars, e.g.: `" ex " #'" (name ex) "`:")
+                       ""
+                       (str/join "\n" (map #(str "  - " %) (map first bare-fns)))]
+                      (str/join "\n")))))
     (cond-> powerpack
       (:m1p/dictionaries powerpack)
       (assoc :i18n/dictionaries (atom (i18n/load-dictionaries powerpack opt)))
