@@ -256,7 +256,21 @@ Defaults to `:info`. May be set to `:debug`.
 
 A function that is called after Powerpack updates the database - e.g. once after
 initial bootup, and whenever you edit content files. Receives the Powerpack app
-as its only argument.
+and a list of derefed results from `datomic.api/transact`. You can use this
+information to find what data was added:
+
+```clj
+:powerpack/on-ingested
+(fn [powerpack results]
+  ;; All datoms added to the database
+  (mapcat :tx-data results)
+
+  ;; The database before the ingest
+  (:db-before (first results))
+
+  ;; The database after the ingest
+  (:db-after (last results)))
+```
 
 ### `:powerpack/on-started`
 

@@ -269,11 +269,11 @@
              (errors/report-error opt))))
     (retract-file-data powerpack file-name opt)))
 
-(defn call-ingest-callback [powerpack opt]
+(defn call-ingest-callback [powerpack opt results]
   (try
     (let [on-ingested (:powerpack/on-ingested powerpack)]
       (when (ifn? on-ingested)
-        (on-ingested powerpack)))
+        (on-ingested powerpack results)))
     (catch Exception e
       (->> {:kind ::callback
             :id [::callback]
@@ -296,19 +296,20 @@
          (remove #(= schema-file (.getPath (.toURL (io/file (str dir "/" %)))))))))
 
 (defn ingest-all [powerpack & [opt]]
-  (doseq [file-name (->> (get-files-pattern powerpack)
-                         (files/find-file-names (:powerpack/content-dir powerpack))
-                         (get-content-files powerpack))]
-    (ingest powerpack file-name opt))
-  (call-ingest-callback powerpack opt))
+  (->> (for [file-name (->> (get-files-pattern powerpack)
+                            (files/find-file-names (:powerpack/content-dir powerpack))
+                            (get-content-files powerpack))]
+         (ingest powerpack file-name opt))
+       doall
+       (call-ingest-callback powerpack opt)))
 
 (defn start-watching! [powerpack opt]
   (create-watcher [message (-> opt :fs-events :mult)]
     (when-let [{:keys [kind type path]} message]
       (when (= :powerpack/edited-content kind)
         (log/debug "Content edited" kind type path)
-        (when (ingest powerpack path opt)
-          (call-ingest-callback powerpack opt))))))
+        (when-let [res (ingest powerpack path opt)]
+          (call-ingest-callback powerpack opt [res]))))))
 
 (defn stop-watching! [stop]
   (stop))
