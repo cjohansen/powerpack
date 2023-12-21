@@ -110,9 +110,10 @@
 
 (defn move-previous-export [exporter powerpack]
   (when (powerpack/file-exists? exporter (:powerpack/build-dir powerpack))
-    (let [dir (powerpack/get-tmp-path exporter)]
-      (powerpack/move exporter (:powerpack/build-dir powerpack) dir)
-      dir)))
+    (log/with-monitor :info "Temporarily backing up previous export"
+      (let [dir (powerpack/get-tmp-path exporter)]
+        (powerpack/move exporter (:powerpack/build-dir powerpack) dir)
+        dir))))
 
 (defn format-asset-targets [powerpack indent]
   (->> (for [{:keys [selector attr]} (:powerpack/asset-targets powerpack)]
@@ -138,8 +139,7 @@
        db))
 
 (defn get-export-data [exporter powerpack]
-  (let [previous-export-dir (log/with-monitor :info "Temporarily backing up previous export"
-                              (move-previous-export exporter powerpack))
+  (let [previous-export-dir (move-previous-export exporter powerpack)
         db (d/db (:datomic/conn powerpack))
         pages (get-pages-to-export db)
         assets (optimize (assets/get-assets powerpack) {})
