@@ -85,11 +85,324 @@ processing.
 
 ## Getting started
 
-To build a site with Powerpack, you must provide some configuration and a
-function that renders pages. Eventually you will probably also want to create a
-[Datomic schema](https://docs.datomic.com/pro/schema/schema.html). There is
-a [comprehensive step-by-step getting started in a separate
-repo](https://github.com/cjohansen/powerblog).
+To build a site with Powerpack, you must provide some configuration, a [Datomic
+schema](https://docs.datomic.com/pro/schema/schema.html) and a function that
+renders pages. There is a [comprehensive step-by-step getting started in a
+separate repo](https://github.com/cjohansen/powerblog).
+
+## Configuration reference
+
+### `:site/title` (required)
+
+The site title, a string. Used for the default title tag.
+
+### `:site/default-locale`
+
+Defaults to `:en`.
+
+The default locale for pages, a keyword. When the current page has no
+`:page/locale`, this is used for i18n lookups, and as the `lang` attribute on
+the `html` element.
+
+### `:site/base-url`
+
+Your production URL. This is used to qualify open graph URLs.
+
+### `:datomic/schema-file` (required)
+
+Defaults to `resources/schema.edn`.
+
+The file that contains the [Datomic
+schema](https://docs.datomic.com/pro/schema/schema.html).
+
+### `:powerpack/content-dir`
+
+Defaults to `content`.
+
+The directory from which to read content files.
+
+### `:powerpack/build-dir`
+
+Defaults to `target/powerpack`.
+
+The directory to export the site to.
+
+### `:powerpack/render-page`
+
+A function that is called to render a page. See [rendering pages](#pages).
+
+### `:datomic/uri`
+
+Defaults to `"datomic:mem://powerpack"`.
+
+The Datomic database URI.
+
+### `:imagine/config`
+
+Image transformation configuration, refer to [the Imagine
+Readme](https://github.com/cjohansen/imagine).
+
+### `:m1p/dictionaries`
+
+A map of `{locale dictionary-files}` for i18n dictionaries. The map should be
+keyed by keyword locales, e.g. `:en`, and the value should be a vector of paths
+to EDN files with dictionaries, e.g.:
+
+```clj
+:m1p/dictionaries {:en ["src/powerblog/pages/en.edn"
+                        "src/powerblog/sections/en.edn"]}
+```
+
+Refer to the [m1p Readme](https://github.com/cjohansen/m1p) for information
+about dictionaries.
+
+### `:m1p/dictionary-fns`
+
+Additional m1p [dictionary
+functions](https://github.com/cjohansen/m1p#dictionary-functions).
+
+### `:optimus/assets`
+
+A vector of [Optimus](https://github.com/magnars/optimus/) asset configurations.
+The vector should contain one or more maps with the same options you would pass
+to Optimus' `load-assets`, e.g.:
+
+```clj
+:optimus/assets [{:public-dir "public"
+                  :paths ["/images/logo.png"
+                          "/images/photo.jpg"]]
+```
+
+### `:optimus/bundles`
+
+A map of [Optimus](https://github.com/magnars/optimus/) bundle configurations.
+During [HTML post processing](#post-processing), CSS bundles will be added to
+the `head` and JavaScript bundles will be added to the end of `body`.
+
+Example:
+
+```clj
+:optimus/bundles {"app.css"
+                  {:public-dir "public"
+                   :paths ["/styles.css"]}}
+```
+
+### `:powerpack/asset-targets`
+
+A list of selectors for where Powerpack should look for asset URLs in your
+rendered HTML pages. Powerpack uses this information to replace asset paths like
+`/preview-small/images/climbing.jpg` with a cache-busted version such as
+`/image-assets/preview-small/fb6a746aee13f753872432da49c32a1cd019a334/images/climbing.jpg`.
+
+The list contains maps of `{:selector :attr}` where `:selector` is a CSS
+selector to find relevant nodes, and `:attr` is the string name of the attribute
+that may contain asset URLs.
+
+Example:
+
+```clj
+[{:selector ["img[src]"]
+  :attr "src"}
+ ,,,
+ ]
+```
+
+During [HTML post processing](#post-processing), this is used to find all `img`
+elements that has a `src` attribute, and optimize the path in that attribute if
+applicable.
+
+The default asset targets are in `powerpack.app/default-asset-targets`.
+
+### `:powerpack/content-file-suffixes`
+
+Defaults to `["md" "edn"]`.
+
+What file suffixes to grep for in `:powerpack/content-dir`. If you add more
+suffixes here, you must also implement `powerpack.ingest/parse-file` for them,
+see [parsing content files](#parse-file).
+
+### `:powerpack/create-ingest-tx`
+
+A function that receives a string file name and the parsed contents, and returns
+transaction data to be transacted into Datomic. See the [step by step
+tutorial](https://github.com/cjohansen/powerblog#ingesting-content) for an
+example.
+
+### `:powerpack/dev-assets-root-path`
+
+Additional asset path to include only during development. This can be used to
+serve dev resources such as an unoptimized ClojureScript build during
+development. This path is ignored during export.
+
+### `:powerpack/get-context`
+
+A function that receives no arguments, and returns a map of data to add to the
+`context` argument that is passed to `:powerpack/render-page`. This can be used
+to add external dependencies such as another database connection, the current
+time (e.g. a fresh `(Instant/now)` for every request), etc.
+
+### `:powerpack/live-reload-route`
+
+Defaults to `"/powerpack/live-reload"`.
+
+The route that Powerpack uses for the live reload route. Can be changed if it
+interferes with your own URLs.
+
+### `:powerpack/log-level`
+
+Defaults to `:info`. May be set to `:debug`.
+
+### `:powerpack/on-started`
+
+A function that is called after Powerpack boots up. Receives the Powerpack app
+as its only argument.
+
+### `:powerpack/on-stopped`
+
+A function that is called after Powerpack shuts down. Receives the Powerpack app
+as its only argument.
+
+### `:powerpack/page-post-process-fns`
+
+Additional post processor functions. A function that receives the `context` and
+should return a map of `selector` to `fn`. See the [syntax
+highlighter](https://github.com/cjohansen/powerpack/blob/main/src/powerpack/highlight.clj#L46)
+for an example.
+
+### `:powerpack/port`
+
+Defaults to `5050`.
+
+What port to run the Powerpack app on.
+
+### `:powerpack/resource-dirs`
+
+Defaults to `["resources"]`.
+
+Directories where you have resources. Powerpack will watch these directories for
+changes to live reload your app. Should correspond to the resource dirs you have
+in `:paths` and `extra-paths` in your `deps.edn`.
+
+### `:powerpack/source-dirs`
+
+Defaults to `["src"]`.
+
+Directories where you have source code. Powerpack will watch these directories
+for changes to live reload your app. Should correspond to all the source dirs
+you have in `:paths` and `extra-paths` in your `deps.edn`.
+
+<a id="pages"></a>
+## Rendering pages
+
+`:powerpack/render-page` is a function that receives two arguments: `context`
+and `page`. It should return one of the following:
+
+- A full ring response
+- A string, which will be treated as an HTML response
+- Hiccup, which will result in an HTML response
+- Any Clojure data, which will result in an EDN response
+
+`context` is a map with at least the following keys:
+
+- `:uri` the request URI
+- `:app/db` a Datomic database value
+- `:i18n/dictionaries` prepared m1p dictionary maps
+- `:powerpack/app` the full Powerpack app map
+- `:optimus-assets` the resolved Optimus assets
+
+`page` is a Datomic entity map that contains `:page/uri`, and any other keys you
+added to the page in question.
+
+NB! When you return a full Ring response, beware that your exported static site
+will not be able to specify content-type at will - those will be inferred from
+the file extension in most static web servers. So if you intend to return JSON,
+include `.json` in the `:page/uri`.
+
+Ring responses that specify a content-type of either `application/json` or
+`application/edn` can return arbitrary Clojure data as its `:body`, and
+Powerpack will automatically stringify it.
+
+Any HTML response that is a full document (e.g. includes the `html` element)
+will be [post processed](#post-processing).
+
+<a id="post-processing"></a>
+## HTML post processing
+
+Powerpack performs post processing on all HTML responses. The post processing is
+designed to be helpful, unobtrusive and only make relatively objective
+improvements. For each of the improvements Powerpack tries to make, it will only
+do so if you have not done anything similar yourself - e.g. Powerpack will add a
+meta tag to set the default viewport, but only if you haven't done so yourself.
+
+### Set HTML lang
+
+sets the `lang` attribute on the HTML element from the `:page/locale` (with a
+fallback to `:site/default-locale`).
+
+### Add open graph prefix
+
+Sets the `prefix` attribute on the HTML element with the `og:` short hand for
+open graph.
+
+### Add a title
+
+Adds a title element if missing, and if your page has a `:page/title`. Adds
+`:site/title` behind a pipe after the page title.
+
+### Ensure utf-8
+
+Adds a meta tag with the charset attribute.
+
+### Ensure viewport
+
+Adds a meta tag with `name="viewport"` and content set to `width=device-width,
+initial-scale=1.0`.
+
+### Adds open graph metas
+
+Adds open graph meta tags, if your page has one or more of the following
+attributes:
+
+- `:open-graph/description`
+- `:open-graph/title` or `:page/title`
+- `:open-graph/image`
+
+### Adds favicon link tags
+
+If your Optimus assets includes any of the following paths:
+
+- `/favicon.ico`
+- `/favicon-16x16.png`
+- `/favicon-32x32.png`
+- `/apple-touch-icon.png`
+
+Powerpack will insert the corresponding `link` elements linking to them.
+
+### Adds Optimus bundles
+
+Optimus CSS bundles are added to the head of the document. JavaScript bundles
+are asdded at the end of the body element.
+
+<a id="parse-file"></a>
+## Parsing content files
+
+Powerpack parses EDN and markdown (which optionally includes
+[mapdown](https://github.com/magnars/mapdown)) out of the box. You can add
+support for other content file types by implementing the multi-method
+`powerpack.ingest/parse-file`. It dispatches on the suffix as a keyword, e.g.
+`:edn`, and should return something that can be passed directly to
+`datomic.api/transact`, e.g. a vector of transactions (typically maps).
+
+Let's say you want to keep some content in HTML files. Here's one possible way
+to parse them:
+
+```clj
+(require '[powerpack.ingest :as ingest])
+
+(defmethod ingest/parse-file :html [db file-name file]
+  [{:page/uri (ingest/suggest-url file-name)
+    :page/body (slurp file)}])
+```
 
 ## Rationale
 
