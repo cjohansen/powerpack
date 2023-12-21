@@ -46,7 +46,8 @@
        #(assets/get-assets powerpack)
        assets/optimizations
        strategies/serve-live-assets
-       {:assets-dirs (:powerpack/resource-dirs powerpack)})
+       {:assets-dirs (:powerpack/resource-dirs powerpack)
+        :cache-live-assets 250})
       wrap-content-type
       web/wrap-utf-8
       (live-reload/wrap-live-reload powerpack opt)
