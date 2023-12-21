@@ -10,13 +10,13 @@ the way you want.
 With tools.deps:
 
 ```clj
-no.cjohansen/powerpack {:mvn/version "2023.12.20"}
+no.cjohansen/powerpack {:mvn/version "2023.12.21"}
 ```
 
 With Leiningen:
 
 ```clj
-[no.cjohansen/powerpack "2023.12.20"]
+[no.cjohansen/powerpack "2023.12.21"]
 ```
 
 ## Status
@@ -453,6 +453,12 @@ a bottle neck or unnecessary layer of confusion. Obviously, it is a middleman,
 but the individual tools are used as transparently as possible.
 
 ## Changelog
+
+### 2023.12.21
+
+Automatically reboot Powerpack when the main config is updated.
+
+Add `:powerpack/on-ingested` to the public API.
 
 ### 2023.12.20
 
