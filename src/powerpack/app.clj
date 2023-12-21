@@ -64,6 +64,7 @@
 (s/def :powerpack/get-context ifn?)
 (s/def :powerpack/live-reload-route string?)
 (s/def :powerpack/log-level #{:info :debug})
+(s/def :powerpack/on-ingested ifn?)
 (s/def :powerpack/on-started ifn?)
 (s/def :powerpack/on-stopped ifn?)
 (s/def :powerpack/page-post-process-fns (s/coll-of ifn?))
@@ -102,6 +103,7 @@
                 :powerpack/get-context
                 :powerpack/live-reload-route
                 :powerpack/log-level
+                :powerpack/on-ingested
                 :powerpack/on-started
                 :powerpack/on-stopped
                 :powerpack/page-post-process-fns

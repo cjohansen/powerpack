@@ -252,6 +252,12 @@ interferes with your own URLs.
 
 Defaults to `:info`. May be set to `:debug`.
 
+### `:powerpack/on-ingested`
+
+A function that is called after Powerpack updates the database - e.g. once after
+initial bootup, and whenever you edit content files. Receives the Powerpack app
+as its only argument.
+
 ### `:powerpack/on-started`
 
 A function that is called after Powerpack boots up. Receives the Powerpack app
