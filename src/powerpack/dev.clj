@@ -215,7 +215,8 @@
 
 (defn start []
   (integrant.repl/go)
-  (app/start (:powerpack/app integrant.repl.state/system))
+  (app/start (:powerpack/app integrant.repl.state/system)
+             (:dev/opts integrant.repl.state/system))
   (let [msg (str "Powerpack started on port " (:powerpack/port (get-app)))]
     (log/info msg)
     msg))
