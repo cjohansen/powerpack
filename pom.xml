@@ -43,11 +43,6 @@
       <version>0.3.3</version>
     </dependency>
     <dependency>
-      <groupId>clygments</groupId>
-      <artifactId>clygments</artifactId>
-      <version>2.0.2</version>
-    </dependency>
-    <dependency>
       <groupId>no.cjohansen</groupId>
       <artifactId>m1p</artifactId>
       <version>2023.11.07</version>

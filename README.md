@@ -10,13 +10,13 @@ the way you want.
 With tools.deps:
 
 ```clj
-no.cjohansen/powerpack {:mvn/version "2023.12.21"}
+no.cjohansen/powerpack {:mvn/version "2024.01.05"}
 ```
 
 With Leiningen:
 
 ```clj
-[no.cjohansen/powerpack "2023.12.21"]
+[no.cjohansen/powerpack "2024.01.05"]
 ```
 
 ## Status
@@ -55,9 +55,6 @@ Stasis Powerpack combines the following libraries:
 - [Mapdown](https://github.com/magnars/mapdown) - key/value markdown files
 - [Beholder](https://github.com/nextjournal/beholder) - file watching (live
   reload)
-- [Clygments](https://github.com/bfontaine/clygments) - Clojure wrapper for
-  Pygments (syntax highlighting) (This might be peeled out as an optional add-on
-  library)
 
 ## Powerpack data flow overview
 
@@ -453,6 +450,11 @@ a bottle neck or unnecessary layer of confusion. Obviously, it is a middleman,
 but the individual tools are used as transparently as possible.
 
 ## Changelog
+
+### 2024.01.05
+
+Removed the `clygments` dependency - it was only used for an undocumented
+feature which is not ready for public consumption.
 
 ### 2023.12.21
 

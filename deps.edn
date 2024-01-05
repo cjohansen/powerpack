@@ -5,7 +5,6 @@
         cjohansen/dumdom {:mvn/version "2023.04.26"}
         cjohansen/imagine {:mvn/version "2023.10.11"}
         no.cjohansen/m1p {:mvn/version "2023.11.07"}
-        clygments/clygments {:mvn/version "2.0.2"}
         com.datomic/peer {:mvn/version "1.0.6726"}
         com.nextjournal/beholder {:mvn/version "1.0.2"}
         com.vladsch.flexmark/flexmark-all {:mvn/version "0.64.8"}
@@ -24,7 +23,8 @@
         stasis/stasis {:mvn/version "2023.11.21"}}
  :aliases
  {:dev {:extra-paths ["dev" "dev-resources" "test"]
-        :extra-deps {lambdaisland/kaocha {:mvn/version "1.87.1366"}
+        :extra-deps {clygments/clygments {:mvn/version "2.0.2"}
+                     lambdaisland/kaocha {:mvn/version "1.87.1366"}
                      kaocha-noyoda/kaocha-noyoda {:mvn/version "2019-06-03"}}}
   :build {:extra-paths ["dev" "dev-resources"]
           :exec-fn rubberduck.core/export!}
