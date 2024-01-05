@@ -10,13 +10,13 @@ the way you want.
 With tools.deps:
 
 ```clj
-no.cjohansen/powerpack {:mvn/version "2024.01.05"}
+no.cjohansen/powerpack {:mvn/version "2024.01.06"}
 ```
 
 With Leiningen:
 
 ```clj
-[no.cjohansen/powerpack "2024.01.05"]
+[no.cjohansen/powerpack "2024.01.06"]
 ```
 
 ## Status
@@ -451,7 +451,7 @@ but the individual tools are used as transparently as possible.
 
 ## Changelog
 
-### 2024.01.05
+### 2024.01.06
 
 Removed the `clygments` dependency - it was only used for an undocumented
 feature which is not ready for public consumption.
