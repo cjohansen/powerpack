@@ -99,6 +99,7 @@
        (-> (slurp (io/resource "powerpack/live-reload.js"))
            (str/replace #"\{\{route\}\}" (get-route powerpack))
            (str/replace #"\{\{hash\}\}" (get-page-hash res)))
+       (slurp (io/resource "powerpack/prism.js"))
        "</script>"))
 
 (defn inject-script [res powerpack]

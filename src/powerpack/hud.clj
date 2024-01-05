@@ -1,12 +1,9 @@
 (ns powerpack.hud
   (:require [clojure.core.async :refer [<! chan close! go put! tap]]
             [clojure.pprint :as pprint]
-            [clojure.string :as str]
             [dumdom.string :as dumdom]
-            [html5-walker.walker :as html5-walker]
             [powerpack.async :as async]
-            [powerpack.error-logger :as error-logger]
-            [powerpack.highlight :as highlight]))
+            [powerpack.error-logger :as error-logger]))
 
 (def stasis-logo
   [:svg {:xmlns "http://www.w3.org/2000/svg"
@@ -52,20 +49,17 @@
         (when (= :powerpack.web/render-page kind)
           [:p [:a {:href "" :onclick "location.reload()"} "Inspect error"]])
         (when-let [data (ex-data exception)]
-          (accordion "Exception data" [:pre [:code.language-clojure (pp data)]] (meta data)))
+          (accordion "Exception data" [:pre [:code.code.language-clojure (pp data)]] (meta data)))
         (when-let [stack (error-logger/get-stack-trace exception)]
-          (accordion "Stack trace" [:pre [:code stack]]))])
+          (accordion "Stack trace" [:pre [:code.code stack]]))])
      (when tx
-       (accordion "Transaction data" [:pre [:code.language-clojure (pp tx)]]))
+       (accordion "Transaction data" [:pre [:code.code.language-clojure (pp tx)]]))
      (when data
-       (accordion "Data" [:pre [:code.language-clojure (pp data)]] (meta data)))]]])
+       (accordion "Data" [:pre [:code.code.language-clojure (pp data)]] (meta data)))]]])
 
 (defn render-hud-str [error]
   (-> (render-error-hud error)
-      dumdom/render
-      (html5-walker/replace-in-document (highlight/get-code-block-highlighters))
-      (str/split #"</?body>")
-      second))
+      dumdom/render))
 
 (defn connect-client [hud]
   (let [client-ch (chan)

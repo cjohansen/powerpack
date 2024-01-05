@@ -4,6 +4,9 @@
 
   function renderHud({markup}) {
     powerpack.innerHTML = markup;
+    if (typeof powerpackPrism != "undefined") {
+      powerpackPrism.highlightAllUnder(powerpack);
+    }
   }
 
   function reloadCSS(oldPath, newPath) {
