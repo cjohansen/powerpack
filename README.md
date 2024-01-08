@@ -10,13 +10,13 @@ the way you want.
 With tools.deps:
 
 ```clj
-no.cjohansen/powerpack {:mvn/version "2024.01.06"}
+no.cjohansen/powerpack {:mvn/version "2024.01.08"}
 ```
 
 With Leiningen:
 
 ```clj
-[no.cjohansen/powerpack "2024.01.06"]
+[no.cjohansen/powerpack "2024.01.08"]
 ```
 
 ## Status
@@ -450,6 +450,11 @@ a bottle neck or unnecessary layer of confusion. Obviously, it is a middleman,
 but the individual tools are used as transparently as possible.
 
 ## Changelog
+
+### 2024.01.08
+
+Fix a bug where Powerpack's internal use of Prism during development would
+interfere with your version of Prism.
 
 ### 2024.01.06
 
