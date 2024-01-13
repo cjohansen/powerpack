@@ -118,13 +118,26 @@
          [?t :tx-source/file-name ?file-name]]
        db e))
 
+(defn get-file-references [db e]
+  (set (d/q '[:find [?file-name ...]
+              :in $ ?e
+              :where
+              [_ _ ?e ?t]
+              [?t :tx-source/file-name ?file-name]]
+            db e)))
+
 (defn retractable? [db file-name [e a]]
   (let [attr (d/attribute db a)
         other-txes (->> (get-sources db e)
-                        (remove (comp #{file-name} first)))]
+                        (remove (comp #{file-name} first)))
+        external-refs (seq (remove #{file-name} (get-file-references db e)))]
     (cond
       ;; Never remove certain named attributes
       (attrs-to-keep (:ident attr))
+      false
+
+      ;; Other files reference this entity
+      external-refs
       false
 
       ;; No other files changing this entity, safe to remove
