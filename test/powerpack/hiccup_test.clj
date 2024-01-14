@@ -164,6 +164,17 @@
             [:meta {:property "og:image:width", :content "640"}]
             [:meta {:property "og:image:height", :content "427"}]])))
 
+  (testing "Renders external open graph image"
+    (is (= (->> (sut/build-doc
+                 {:powerpack/app {:site/base-url "https://greetings.world"}}
+                 {:open-graph/title "Hello world"
+                  :open-graph/image "https://service/images/ducks.jpg"
+                  :page/uri "/hello-world/"}
+                 [:h1 "Hello world"])
+                get-open-graph-metas
+                (drop 2))
+           [[:meta {:property "og:image", :content "https://service/images/ducks.jpg"}]])))
+
   (testing "Renders open graph image with imagine filter"
     (is (= (->> (sut/build-doc
                  {:powerpack/app

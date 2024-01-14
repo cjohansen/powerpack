@@ -39,6 +39,15 @@
               (io/resource (str "public/" image-url)))
           util/load-image))
 
+(defn get-open-graph-image [config page]
+  (when-let [image (:open-graph/image page)]
+    (if (re-find #"^(https?)?://" image)
+      {:image image}
+      (let [buffered-image (load-image (:imagine/config config) image)]
+        {:image image
+         :width (str (.getWidth buffered-image))
+         :height (str (.getHeight buffered-image))}))))
+
 (defn get-open-graph-metas [page config]
   (->> (concat
         [(when-let [description (:open-graph/description page)]
@@ -55,14 +64,11 @@
          (when-let [base-url (:site/base-url config)]
            {:property "og:url"
             :content (str base-url (:page/uri page))})]
-        (when-let [image (:open-graph/image page)]
-          (let [buffered-image (load-image (:imagine/config config) image)]
-            [{:property "og:image"
-              :content image}
-             {:property "og:image:width"
-              :content (str (.getWidth buffered-image))}
-             {:property "og:image:height"
-              :content (str (.getHeight buffered-image))}])))
+        (when-let [{:keys [image width height]} (get-open-graph-image config page)]
+          (cond-> [{:property "og:image"
+                    :content image}]
+            width (conj {:property "og:image:width" :content width})
+            height (conj {:property "og:image:height" :content height}))))
        (remove nil?)
        (map render-meta)))
 
