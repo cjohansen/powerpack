@@ -10,13 +10,13 @@ the way you want.
 With tools.deps:
 
 ```clj
-no.cjohansen/powerpack {:mvn/version "2024.01.08"}
+no.cjohansen/powerpack {:mvn/version "2024.01.14"}
 ```
 
 With Leiningen:
 
 ```clj
-[no.cjohansen/powerpack "2024.01.08"]
+[no.cjohansen/powerpack "2024.01.14"]
 ```
 
 ## Status
@@ -450,6 +450,13 @@ a bottle neck or unnecessary layer of confusion. Obviously, it is a middleman,
 but the individual tools are used as transparently as possible.
 
 ## Changelog
+
+### 2024.01.14
+
+Bug fix: Don't try to read external open graph image URLs from disk
+Bug fix: Fix a case where cross-referencing the same entity in multiple files
+would sometimes cause the entity to "split".
+Bug fix: Set Optimus' asset cache to 150ms (down from 250ms)
 
 ### 2024.01.08
 
