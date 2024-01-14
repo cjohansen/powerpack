@@ -480,7 +480,7 @@ Initial release
 
 ## License
 
-Copyright © 2023 Christian Johansen and Magnar Sveen
+Copyright © 2023-2024 Christian Johansen and Magnar Sveen
 
 Distributed under the Eclipse Public License either version 1.0 or (at your
 option) any later version.
