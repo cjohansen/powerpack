@@ -1,40 +1,4 @@
-* Todo [16/19]
-** DONE Link to Prone when rendering exceptions occur
-** DONE Set proper content-type header when using :content-type
-** DONE Run alert from the 404 response for JS requests
-** DONE Evaluate a source namespace when it changes (require namespace with force)
-** DONE asset-dirs i Optimus
-** DONE Separate hiccup->string from the HTML namespace, do it in a separate middleware
-** DONE Add a m1p middleware
+* Todo [0/3]
 ** TODO Add live-reload to the Prone page
-** DONE Add a link checker
-** DONE Validate non-string headers: {:headers {:content-type "application/edn"} :body (index/build-index db (:page/locale page))}
-** DONE Catch exceptions in i18n interpolation
-** DONE Catch errors when loading i18n
-** DONE Can't find head if it has classes like so :html.mmm
-** DONE Binary pages?
-** DONE Rename files: doesn't delete the old one
-** DONE Why did parenteser restart with an old db? (Delete it on stop)
 ** TODO Make it easy to add assets that aren't files (hello, cache-busted API endpoint)
 ** TODO Add a heartbeat to the live reload to avoid accumulating clients when there are no changes
-** DONE A file that asserts `:blog-post/author {:person/id :person/christian}` will end up deleting the original person when it's edited
-* Export [11/11]
-** DONE Validate existence of :powerpack/build-dir
-** DONE Fail the export when using assets that can't be found
-** DONE ...use a specific error for dev assets
-** DONE DON'T send the integrant system to on-started
-** DONE Streamline naming of keys in integrant components and "context"
-** DONE Export og:image images that use imagine
-** DONE Run i18n parity-tests
-** DONE Run link check on generated pages, do not re-slurp them (should save a lot of time)
-** DONE Configure the loggers to avoid the warnings printing
-** DONE Don't print thousands of files in the diff
-** DONE BREAK THE BUILD when there are invalid links
-* Documentation [0/2]
-** TODO dev vs build (different configs, where to put it, etc)
-** TODO The hiccup tools place CSS bundles in head and JS bundles at the end of body (no assets)
-* Bugs [3/4]
-** DONE Does Powerpack not destroy the database on shutdown?
-** DONE What happens before "Started logger"
-** TODO Log a message when starting to ingest a file
-** DONE Don't print 1000s og transaction data
