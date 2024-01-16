@@ -173,9 +173,9 @@
 
 (defn get-system-map []
   {;; Dev-time resources
-   :dev/app-events {}
-   :dev/error-events {}
-   :dev/fs-events {}
+   :dev/app-events {:logger (ig/ref :dev/logger)}
+   :dev/error-events {:logger (ig/ref :dev/logger)}
+   :dev/fs-events {:logger (ig/ref :dev/logger)}
    :dev/hud {:error-events (ig/ref :dev/error-events)}
 
    ;; Dev tooling dependency map
@@ -202,7 +202,7 @@
                            :powerpack/dev (ig/ref :dev/opts)}
 
    ;; Console logging
-   :dev/logger (ig/ref :powerpack/app)
+   :dev/logger (ig/ref :powerpack/powerpack)
    :dev/error-logger (ig/ref :dev/opts)   
 
    ;; Web app
