@@ -193,6 +193,9 @@
 
 (defn stop [app]
   (d/release (:datomic/conn app))
+  (let [uri (:datomic/uri app)]
+    (log/with-timing :info (str "Deleted database " uri)
+      (d/delete-database uri)))
   (when-let [on-stopped (:powerpack/on-stopped app)]
     (log/with-timing :info "Ran on-stopped hook"
       (on-stopped app))))

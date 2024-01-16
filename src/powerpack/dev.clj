@@ -222,6 +222,7 @@
     msg))
 
 (defn stop []
+  (app/stop (:powerpack/app integrant.repl.state/system))
   (integrant.repl/halt)
   :powerpack/stopped)
 

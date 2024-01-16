@@ -33,7 +33,8 @@
 * Documentation [0/2]
 ** TODO dev vs build (different configs, where to put it, etc)
 ** TODO The hiccup tools place CSS bundles in head and JS bundles at the end of body (no assets)
-* Bugs [1/3]
-** TODO Does Powerpack not destroy the database on shutdown?
-** TODO What happens before "Started logger"
+* Bugs [3/4]
+** DONE Does Powerpack not destroy the database on shutdown?
+** DONE What happens before "Started logger"
+** TODO Log a message when starting to ingest a file
 ** DONE Don't print 1000s og transaction data
