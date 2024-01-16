@@ -251,7 +251,9 @@
           (throw (ex-info "Unable to assert"
                           {:kind ::transact
                            :id [::transact file-name]
-                           :tx tx
+                           :tx (let [txes (take 11 tx)]
+                                 (cond-> (vec (take 10 txes))
+                                   (< 10 (count txes)) (conj ["There were more than 10 txes, not shown here"])))
                            :description (if (= (-> e ex-data :db/error) :db.error/not-an-entity)
                                           (str "Can't transact attribute " (-> e ex-data :entity) ", check spelling or make sure the schema is up to date.")
                                           "This is most likely due to a schema violation.")
