@@ -10,13 +10,13 @@ the way you want.
 With tools.deps:
 
 ```clj
-no.cjohansen/powerpack {:mvn/version "2024.01.14"}
+no.cjohansen/powerpack {:mvn/version "2024.01.16"}
 ```
 
 With Leiningen:
 
 ```clj
-[no.cjohansen/powerpack "2024.01.14"]
+[no.cjohansen/powerpack "2024.01.16"]
 ```
 
 ## Status
@@ -450,6 +450,15 @@ a bottle neck or unnecessary layer of confusion. Obviously, it is a middleman,
 but the individual tools are used as transparently as possible.
 
 ## Changelog
+
+### 2024.01.16
+
+Dev-mode improvements:
+
+- A little more chatty log (see when starting to process large files, etc)
+- Avoid printing huge transactions when they fail (only show the first 10
+  entries)
+- Disconnect from and delete in-memory database on stop/restart
 
 ### 2024.01.14
 
