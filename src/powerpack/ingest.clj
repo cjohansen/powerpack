@@ -244,6 +244,7 @@
                      (ifn? create-ingest-tx) (create-ingest-tx file-name))
                    (conj [:db/add (d/tempid :db.part/tx) :tx-source/file-name file-name]))]
     (when tx
+      (log/debug "Validating tx data from" file-name)
       (validate-transaction! tx)
       (try
         (d/with (d/db (:datomic/conn powerpack)) tx)
@@ -259,7 +260,9 @@
                                           "This is most likely due to a schema violation.")
                            :file-name file-name
                            :exception e} e)))))
+    (log/debug "Retracting existing data from" file-name)
     (retract-file-data powerpack file-name opt)
+    (log/info (str "Ingesting " (count tx) " txes from " file-name))
     (let [res (when tx
                 @(d/transact (:datomic/conn powerpack) tx))]
       (when res (log/info "Ingested" file-name))
