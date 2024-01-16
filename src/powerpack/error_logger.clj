@@ -108,7 +108,7 @@
 
 (defn start-watching! [{:keys [error-events]}]
   (create-watcher [event (:mult error-events)]
-    (when-not (:resolved? event)
+    (when (and event (not (:resolved? event)))
       (log/error (format-error event)))))
 
 (defn stop-watching! [stop]
