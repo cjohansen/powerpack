@@ -208,7 +208,7 @@
 (deftest parse-file-test
   (testing "Reads edn with java.time literals"
     (is (= (sut/parse-file nil "sample.edn" (io/resource "sample.edn"))
-           [{:time #time/md "--10-01"}]))))
+           [{:blog-post/time #time/md "--10-01"}]))))
 
 (defn mapify [e]
   (into {} e))

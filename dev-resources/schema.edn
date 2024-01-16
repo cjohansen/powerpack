@@ -24,4 +24,8 @@
 
  {:db/ident :blog-post/tags
   :db/valueType :db.type/keyword
-  :db/cardinality :db.cardinality/many}]
+  :db/cardinality :db.cardinality/many}
+
+ {:db/ident :blog-post/time
+  :dte/valueType :java.time/month-day
+  :db/cardinality :db.cardinality/one}]
