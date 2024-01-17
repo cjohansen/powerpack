@@ -394,11 +394,27 @@
         {:powerpack/problem ::unservable-urls
          :urls unservable})))
 
+(defn pluralize [n s]
+  (str n " " s (when (not= 1 n) "s")))
+
+(defn log-etags [{:keys [previous-etags etags]}]
+  (let [old-n (count previous-etags)
+        n (count etags)]
+    (when (< 0 old-n)
+      (log/info (str "Comparing " (pluralize old-n "etag")
+                     " from previous export to " (pluralize n "new one") ":\n"
+                     (->> (for [[url etag] (take 10 previous-etags)]
+                            (str "  - " url ": " etag " vs " (get etags url)))
+                          (str/join "\n"))
+                     (when (< 10 old-n)
+                       "  ..."))))))
+
 (defn export* [exporter app-options opt]
   (log/with-timing :info "Ran Powerpack export"
     (let [powerpack (log/with-monitor :info "Creating app" (app/create-app app-options))
           _ (app/start powerpack)
           export-data (get-export-data exporter powerpack)
+          _ (log-etags export-data)
           result (or (validate-app powerpack export-data)
                      (->> (export-site exporter powerpack export-data)
                           (validate-export powerpack export-data opt)))]
