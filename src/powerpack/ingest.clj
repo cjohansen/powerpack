@@ -119,12 +119,14 @@
        db e))
 
 (defn get-file-references [db e]
-  (set (d/q '[:find [?file-name ...]
+  (->> (d/q '[:find [?t ...]
               :in $ ?e
               :where
-              [_ _ ?e ?t]
-              [?t :tx-source/file-name ?file-name]]
-            db e)))
+              [_ _ ?e ?t]]
+            db e)
+       (map #(d/entity db %))
+       (map :tx-source/file-name)
+       set))
 
 (defn retractable? [db file-name [e a]]
   (let [attr (d/attribute db a)

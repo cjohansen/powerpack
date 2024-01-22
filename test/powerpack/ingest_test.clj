@@ -361,4 +361,36 @@
                :blog-post/author
                mapify)
            {:person/id "christian"
+            :person/fullname "Christian"})))
+
+  (testing "Does not retract entities referenced transactions outside files (e.g. on-ingested/on-started)"
+    (is (= (-> (with-test-powerpack [powerpack [{:db/ident :blog-post/author
+                                                 :db/valueType :db.type/ref
+                                                 :db/cardinality :db.cardinality/one}
+                                                {:db/ident :person/id
+                                                 :db/valueType :db.type/string
+                                                 :db/cardinality :db.cardinality/one
+                                                 :db/unique :db.unique/identity}
+                                                {:db/ident :person/fullname
+                                                 :db/valueType :db.type/string
+                                                 :db/cardinality :db.cardinality/one}]]
+                 ;; Add some details about the person
+                 (->> [{:person/id "christian"
+                        :person/fullname "Christian Johansen"}]
+                      (sut/ingest-data powerpack "christian.md"))
+                 ;; Create blog post
+                 (->> [{:page/uri "/some-file/"
+                        :page/title "Hello"
+                        :blog-post/author {:person/id "christian"}}]
+                      (d/transact (:datomic/conn powerpack)))
+                 ;; Change some details - do not recreate the entity, it will
+                 ;; break the blog post ref
+                 (->> [{:person/id "christian"
+                        :person/fullname "Christian"}]
+                      (sut/ingest-data powerpack "christian.md")))
+               :db-after
+               (d/entity [:page/uri "/some-file/"])
+               :blog-post/author
+               mapify)
+           {:person/id "christian"
             :person/fullname "Christian"}))))
