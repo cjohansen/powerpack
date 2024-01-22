@@ -192,7 +192,11 @@
       (on-started app))))
 
 (defn stop [app]
-  (d/release (:datomic/conn app))
+  (try
+    (d/release (:datomic/conn app))
+    (catch Exception _
+      ;; The connection may have already been severed, no biggie
+      ))
   (let [uri (:datomic/uri app)]
     (log/with-timing :info (str "Deleted database " uri)
       (d/delete-database uri)))
