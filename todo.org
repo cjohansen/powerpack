@@ -1,4 +1,5 @@
-* Todo [0/3]
+* Todo [0/4]
 ** TODO Add live-reload to the Prone page
 ** TODO Make it easy to add assets that aren't files (hello, cache-busted API endpoint)
 ** TODO Add a heartbeat to the live reload to avoid accumulating clients when there are no changes
+** TODO Rename file from *.clj to *.cljc produces an exception

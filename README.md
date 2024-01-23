@@ -10,13 +10,13 @@ the way you want.
 With tools.deps:
 
 ```clj
-no.cjohansen/powerpack {:mvn/version "2024.01.16"}
+no.cjohansen/powerpack {:mvn/version "2024.01.23"}
 ```
 
 With Leiningen:
 
 ```clj
-[no.cjohansen/powerpack "2024.01.16"]
+[no.cjohansen/powerpack "2024.01.23"]
 ```
 
 ## Status
