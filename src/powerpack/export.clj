@@ -231,7 +231,7 @@
 (defn strip-link-ids [page-data]
   (update page-data :links (fn [links] (map #(dissoc % :id) links))))
 
-(defn validate-export [powerpack export-data {:keys [skip-link-hash-verification?]} result]
+(defn validate-export [powerpack export-data {:keys [skip-link-hash-verification? link-ok?]} result]
   (let [page-data (cond->> (keep :page-data (:exported-pages result))
                     skip-link-hash-verification?
                     (map strip-link-ids))
@@ -243,7 +243,8 @@
                                (remove :outdated)
                                (map :path)
                                set)}]
-    (if-let [links (seq (mapcat #(page/find-broken-links powerpack ctx %) page-data))]
+    (if-let [links (seq (cond->> (mapcat #(page/find-broken-links powerpack ctx %) page-data)
+                          (ifn? link-ok?) (remove #(link-ok? powerpack ctx %))))]
       {:powerpack/problem :powerpack/broken-links
        :links links}
       result)))

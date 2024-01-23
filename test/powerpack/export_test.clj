@@ -154,6 +154,19 @@
                      :href "/blog/sampl/"
                      :text "Broken link"}]})))
 
+  (testing "Manually OKs links unknown to Powerpack"
+    (is (let [exporter (create-test-exporter)
+              app (assoc test-app/app
+                         :powerpack/on-started (fn [& _args])
+                         :powerpack/render-page
+                         (fn [_context _page]
+                           [:html
+                            [:a {:href "/nginx-rewrite/lol/"} "Ok link"]]))]
+          (->> {:link-ok? (fn [powerpack ctx link]
+                            (re-find #"/nginx-rewrite" (:href link)))}
+               (sut/export* exporter app)
+               :success?))))
+
   (testing "Detects bad hash links"
     (is (= (let [exporter (create-test-exporter)
                  app (assoc test-app/app

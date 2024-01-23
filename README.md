@@ -451,6 +451,11 @@ but the individual tools are used as transparently as possible.
 
 ## Changelog
 
+### 2024.01.23
+
+- Check for bad links in `<link rel="canonical">`
+- Allow for a custom link validator
+
 ### 2024.01.16
 
 Dev-mode improvements:
