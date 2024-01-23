@@ -192,6 +192,22 @@
                 "Page: /blog/eksempel/\n"
                 "<a href=\"#elsewhere\">Broken link</a>"))))
 
+  (testing "Can format bad canonical link"
+    (is (= (let [exporter (create-test-exporter)
+                 app (assoc test-app/app
+                            :powerpack/on-started (fn [& _args])
+                            :powerpack/render-page
+                            (fn [_context _page]
+                              [:html
+                               [:head [:link {:href "/bad" :rel "canonical"}]]]))
+                 result (sut/export* exporter app {})]
+             (sut/format-report app result))
+           (str "Found broken links\n\n"
+                "Page: /blog/sample/\n"
+                "<link rel=\"canonical\" href=\"/bad\">\n\n"
+                "Page: /blog/eksempel/\n"
+                "<link rel=\"canonical\" href=\"/bad\">"))))
+
   (testing "Accepts good hash link"
     (is (true? (-> (let [exporter (create-test-exporter)
                          app (assoc test-app/app

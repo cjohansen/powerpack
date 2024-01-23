@@ -7,7 +7,9 @@
     (is (= (sut/extract-page-data
             {}
             "/test/"
-            "<!DOCTYPE html><html><body>
+            "<!DOCTYPE html><html>
+             <head><link rel=\"canonical\" href=\"/my/real/url/\"></head>
+             <body>
              <a href=\"/page/\">Link 1</a>
              <ul>
              <li><a href=\"https://external.com/page/\">li link 1</a></li>
@@ -19,7 +21,8 @@
             :links #{{:href "/page/" :url "/page/", :text "Link 1"}
                      {:href "https://external.com/page/" :url "https://external.com/page/", :text "li link 1"}
                      {:href "/page/#some-id" :url "/page/", :id "some-id", :text "li link 2"}
-                     {:href "#some-id" :url "/test/", :id "some-id", :text "li link 3"}}})))
+                     {:href "#some-id" :url "/test/", :id "some-id", :text "li link 3"}
+                     {:href "/my/real/url/" :url "/my/real/url/" :kind "canonical"}}})))
 
   (testing "Extracts page ids"
     (is (= (sut/extract-page-data

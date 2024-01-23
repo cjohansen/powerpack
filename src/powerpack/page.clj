@@ -17,6 +17,16 @@
                   id (assoc :id id)))))
        set))
 
+(defn find-canonical [doc]
+  (->> (walker/create-matcher ["link[rel=canonical]"])
+       (.getAllNodesMatching doc)
+       (map (fn [node]
+              (let [href (.getAttribute node "href")]
+                {:href href
+                 :url href
+                 :kind "canonical"})))
+       set))
+
 (defn find-ids [doc]
   (->> (walker/create-matcher ["[id]"])
        (.getAllNodesMatching doc)
@@ -26,7 +36,7 @@
 (defn extract-page-data [ctx uri html]
   (let [doc (.parse (Parser.) html)
         assets (assets/extract-document-asset-urls ctx doc)
-        links (find-links uri doc)
+        links (into (find-links uri doc) (find-canonical doc))
         ids (find-ids doc)]
     (cond-> {:uri (str/replace uri #"index\.html$" "")}
       (seq assets) (assoc :assets assets)
@@ -57,8 +67,10 @@
        (group-by :page/uri)
        (map (fn [[uri links]]
               (str "Page: " uri "\n"
-                   (->> (for [{:keys [href text]} links]
-                          (str "<a href=\"" href "\">" text "</a>"))
+                   (->> (for [{:keys [href text kind]} links]
+                          (if (= "canonical" kind)
+                            (str "<link rel=\"canonical\" href=\"" href "\">")
+                            (str "<a href=\"" href "\">" text "</a>")))
                         (str/join "\n")))))
        (str/join "\n\n")
        (str "Found broken links\n\n")))
