@@ -10,13 +10,13 @@ the way you want.
 With tools.deps:
 
 ```clj
-no.cjohansen/powerpack {:mvn/version "2024.01.23"}
+no.cjohansen/powerpack {:mvn/version "2024.01.31"}
 ```
 
 With Leiningen:
 
 ```clj
-[no.cjohansen/powerpack "2024.01.23"]
+[no.cjohansen/powerpack "2024.01.31"]
 ```
 
 ## Status
@@ -450,6 +450,12 @@ a bottle neck or unnecessary layer of confusion. Obviously, it is a middleman,
 but the individual tools are used as transparently as possible.
 
 ## Changelog
+
+### 2024.01.31
+
+- Do not auto-generate `og:image:width` and `og:image:height` from the file
+  image dimensions. Instead, control these using the `:open-graph/image-width`
+  and `:open-graph/image-height` attributes on the page entity.
 
 ### 2024.01.23
 
