@@ -160,6 +160,19 @@
                  [:h1 "Hello world"])
                 get-open-graph-metas
                 (drop 2))
+           [[:meta {:property "og:image", :content "/images/ducks.jpg"}]])))
+
+  (testing "Renders open graph image with suggested dimensions"
+    (is (= (->> (sut/build-doc
+                 {:powerpack/app {:site/base-url "https://greetings.world"}}
+                 {:open-graph/title "Hello world"
+                  :open-graph/image "/images/ducks.jpg"
+                  :open-graph/image-width 640
+                  :open-graph/image-height 427
+                  :page/uri "/hello-world/"}
+                 [:h1 "Hello world"])
+                get-open-graph-metas
+                (drop 2))
            [[:meta {:property "og:image", :content "/images/ducks.jpg"}]
             [:meta {:property "og:image:width", :content "640"}]
             [:meta {:property "og:image:height", :content "427"}]])))
@@ -196,9 +209,7 @@
                  [:h1 "Hello world"])
                 get-open-graph-metas
                 (drop 2))
-           [[:meta {:property "og:image", :content "/vcard-small/images/ducks.jpg"}]
-            [:meta {:property "og:image:width", :content "184"}]
-            [:meta {:property "og:image:height", :content "184"}]]))))
+           [[:meta {:property "og:image", :content "/vcard-small/images/ducks.jpg"}]]))))
 
 (deftest hiccup?-test
   (testing "Recognizes hiccup"

@@ -56,6 +56,14 @@
     :db/valueType :db.type/string
     :db/cardinality :db.cardinality/one}
 
+   {:db/ident :open-graph/image-width
+    :db/valueType :db.type/long
+    :db/cardinality :db.cardinality/one}
+
+   {:db/ident :open-graph/image-height
+    :db/valueType :db.type/long
+    :db/cardinality :db.cardinality/one}
+
    ])
 
 (defn create-database [uri schema]
