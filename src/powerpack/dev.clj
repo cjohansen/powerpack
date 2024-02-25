@@ -1,8 +1,8 @@
 (ns powerpack.dev
-  (:require [clojure.core.async :refer [chan close! mult]]
+  (:require [clj-reload.core :as reload]
+            [clojure.core.async :refer [chan close! mult]]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [clojure.tools.namespace.repl :as repl]
             [imagine.core :as imagine]
             [integrant.core :as ig]
             [integrant.repl.state]
@@ -215,8 +215,9 @@
 
 (defn start []
   (integrant.repl/go)
-  (app/start (:powerpack/app integrant.repl.state/system)
-             (:dev/opts integrant.repl.state/system))
+  (let [powerpack (:powerpack/app integrant.repl.state/system)]
+    (app/start powerpack (:dev/opts integrant.repl.state/system))
+    (reload/init {:dirs (:powerpack/source-dirs powerpack)}))
   (let [msg (str "Powerpack started on port " (:powerpack/port (get-app)))]
     (log/info msg)
     msg))
@@ -228,7 +229,8 @@
 
 (defn reset []
   (stop)
-  (repl/refresh :after 'powerpack.dev/start)
+  (reload/reload)
+  (start)
   (let [msg (str "Powerpack restarted on port " (:powerpack/port (get-app)))]
     (log/info msg)
     msg))
