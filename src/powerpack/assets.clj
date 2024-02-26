@@ -8,14 +8,18 @@
             [powerpack.errors :as errors])
   (:import (ch.digitalfondue.jfiveparse Parser)))
 
+(defn load-assets [powerpack]
+  (mapcat (fn [{:keys [public-dir paths]}]
+            (assets/load-assets (or public-dir "public") paths))
+          (:optimus/assets powerpack)))
+
+(defn load-bundles [powerpack]
+  (mapcat (fn [[bundle {:keys [public-dir paths]}]]
+            (assets/load-bundle (or public-dir "public") bundle paths))
+          (:optimus/bundles powerpack)))
+
 (defn get-assets [powerpack]
-  (concat
-   (mapcat (fn [{:keys [public-dir paths]}]
-             (assets/load-assets (or public-dir "public") paths))
-           (:optimus/assets powerpack))
-   (mapcat (fn [[bundle {:keys [public-dir paths]}]]
-             (assets/load-bundle (or public-dir "public") bundle paths))
-           (:optimus/bundles powerpack))))
+  (concat (load-assets powerpack) (load-bundles powerpack)))
 
 (defn optimizations [assets & [_options]]
   (-> assets
