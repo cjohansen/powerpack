@@ -1,7 +1,8 @@
 (ns powerpack.hiccup-test
   (:require [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
-            [powerpack.hiccup :as sut]))
+            [powerpack.hiccup :as sut]
+            [powerpack.markdown :as md]))
 
 (defn get-open-graph-metas [html]
   (->> (tree-seq coll? identity html)
@@ -244,4 +245,10 @@
 
   (testing "Adds a DOCTYPE even when the HTML tag has a class"
     (is (= (sut/render-html [:html.mmm [:h1 "Hello!"]])
-           "<!DOCTYPE html><html class=\"mmm\"><h1>Hello!</h1></html>"))))
+           "<!DOCTYPE html><html class=\"mmm\"><h1>Hello!</h1></html>")))
+
+  (testing "Renders markdown in hiccup"
+    (is (= (sut/render-html
+            [:html.mmm
+             (md/render-html "# Hello there")])
+           "<!DOCTYPE html><html class=\"mmm\"><h1>Hello there</h1>\n</html>"))))
