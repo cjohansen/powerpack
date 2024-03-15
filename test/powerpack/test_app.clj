@@ -66,6 +66,26 @@
       [:a {:href "https://elsewhere.com/blog/samp/"} "External link"]
       [:img {:src "/vcard-small/images/ducks.jpg"}]]]))
 
+(defn get-context []
+  {:date (str (java.time.LocalDate/now))})
+
+(defn on-started [powerpack-app]
+  (->> [{:page/uri "/build-date.edn"
+         :page/response-type :edn
+         :page/kind ::build-date
+         :page/etag "0acbd"}
+        {:page/uri "/build-date.json"
+         :page/response-type :json
+         :page/kind ::build-date
+         :page/etag "99f8d3"}
+        {:page/uri "/test.png"
+         :page/kind ::png}
+        {:page/uri "/"
+         :page/kind ::redirect
+         :page/redirect-url "/blog/sample/"}]
+       (d/transact (:datomic/conn powerpack-app))
+       deref))
+
 (def app
   {:site/default-locale :en
    :site/title "Rubberduck"
@@ -108,21 +128,5 @@
    :site/base-url "https://rubberduck.example"
 
    :powerpack/render-page #'render-page
-   :powerpack/get-context (fn [] {:date (str (java.time.LocalDate/now))})
-   :powerpack/on-started
-   (fn [powerpack-app]
-     (->> [{:page/uri "/build-date.edn"
-            :page/response-type :edn
-            :page/kind ::build-date
-            :page/etag "0acbd"}
-           {:page/uri "/build-date.json"
-            :page/response-type :json
-            :page/kind ::build-date
-            :page/etag "99f8d3"}
-           {:page/uri "/test.png"
-            :page/kind ::png}
-           {:page/uri "/"
-            :page/kind ::redirect
-            :page/redirect-url "/blog/sample/"}]
-          (d/transact (:datomic/conn powerpack-app))
-          deref))})
+   :powerpack/get-context #'get-context
+   :powerpack/on-started #'on-started})
