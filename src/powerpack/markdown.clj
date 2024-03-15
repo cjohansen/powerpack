@@ -1,5 +1,6 @@
 (ns powerpack.markdown
-  (:require [clojure.string :as str])
+  (:require [clojure.string :as str]
+            [dev.onionpancakes.chassis.core :as chassis])
   (:import [com.vladsch.flexmark.ext.autolink AutolinkExtension]
            [com.vladsch.flexmark.ext.gfm.strikethrough StrikethroughExtension]
            [com.vladsch.flexmark.ext.tables TablesExtension]
@@ -55,8 +56,10 @@
 
 (defn ^:export render-html [s]
   (if (string? s)
-    (md-to-html (->> s
-                     str/split-lines
-                     unindent-but-first
-                     (str/join "\n")))
+    (->> s
+         str/split-lines
+         unindent-but-first
+         (str/join "\n")
+         md-to-html
+         chassis/raw)
     s))
