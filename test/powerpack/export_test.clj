@@ -162,7 +162,7 @@
                          (fn [_context _page]
                            [:html
                             [:a {:href "/nginx-rewrite/lol/"} "Ok link"]]))]
-          (->> {:link-ok? (fn [powerpack ctx link]
+          (->> {:link-ok? (fn [_powerpack _ctx link]
                             (re-find #"/nginx-rewrite" (:href link)))}
                (sut/export* exporter app)
                :success?))))
