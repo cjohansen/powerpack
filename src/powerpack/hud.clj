@@ -1,7 +1,7 @@
 (ns powerpack.hud
   (:require [clojure.core.async :refer [<! chan close! go put! tap]]
             [clojure.pprint :as pprint]
-            [dumdom.string :as dumdom]
+            [dev.onionpancakes.chassis.core :as chassis]
             [powerpack.async :as async]
             [powerpack.error-logger :as error-logger]))
 
@@ -59,7 +59,7 @@
 
 (defn render-hud-str [error]
   (-> (render-error-hud error)
-      dumdom/render))
+      chassis/html))
 
 (defn connect-client [hud]
   (let [client-ch (chan)

@@ -2,7 +2,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.walk :as walk]
-            [dumdom.string :as dumdom]
+            [dev.onionpancakes.chassis.core :as chassis]
             [fivetonine.collage.util :as util]
             [imagine.core :as imagine]
             [m1p.core :as m1p]
@@ -236,7 +236,7 @@
 (defn ^:export render-html [hiccup]
   (str (when (= "html" (get-tag-name hiccup))
          "<!DOCTYPE html>")
-       (dumdom/render hiccup)))
+       (chassis/html hiccup)))
 
 (defn hiccup? [data]
   (or (and (vector? data)
