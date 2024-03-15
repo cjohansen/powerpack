@@ -202,6 +202,8 @@
         (:db/id x) (into {})))
     hiccup)
    {:locale locale
+    :on-missing-dictionary-key (fn [_opt _params k]
+                                 [:pre (str "Unknown i18n key " k)])
     :dictionaries
     {:i18n (get (:i18n/dictionaries context) locale)}}))
 
