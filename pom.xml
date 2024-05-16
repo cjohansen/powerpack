@@ -4,7 +4,7 @@
   <packaging>jar</packaging>
   <groupId>no.cjohansen</groupId>
   <artifactId>powerpack</artifactId>
-  <version>2024.01.31</version>
+  <version>2024.05.16</version>
   <name>powerpack</name>
   <dependencies>
     <dependency>
@@ -138,7 +138,7 @@
   <scm>
     <connection>scm:git:git://github.com/cjohansen/powerpack.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/cjohansen/powerpack.git</developerConnection>
-    <tag>v2024.01.31</tag>
+    <tag>v2024.05.16</tag>
     <url>https://github.com/cjohansen/powerpack</url>
   </scm>
 </project>
