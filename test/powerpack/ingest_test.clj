@@ -30,6 +30,20 @@
              (d/delete-database uri#)))))))
 
 (deftest align-with-schema
+  (testing "Parses strings"
+    (is (= (with-schema-db [db [{:db/ident :person/name
+                                 :db/valueType :db.type/string
+                                 :db/cardinality :db.cardinality/one}]]
+             (sut/align-with-schema {:person/name "Christian"} db))
+           {:person/name "Christian"})))
+
+  (testing "Parses quoted strings"
+    (is (= (with-schema-db [db [{:db/ident :person/name
+                                 :db/valueType :db.type/string
+                                 :db/cardinality :db.cardinality/one}]]
+             (sut/align-with-schema {:person/name "\"Christian\""} db))
+           {:person/name "Christian"})))
+
   (testing "Parses numbers from strings"
     (is (= (with-schema-db [db [{:db/ident :person/age
                                  :db/valueType :db.type/bigdec
