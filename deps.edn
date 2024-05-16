@@ -13,7 +13,7 @@
         http-kit/http-kit {:mvn/version "2.7.0"}
         integrant/integrant {:mvn/version "0.9.0-alpha2"}
         integrant/repl {:mvn/version "0.3.3"}
-        io.github.tonsky/clj-reload {:mvn/version "0.2.0"}
+        io.github.tonsky/clj-reload {:mvn/version "0.7.0"}
         java-time-dte/java-time-dte {:mvn/version "2018-04-18"}
         java-time-literals/java-time-literals {:mvn/version "2018-04-06"}
         mapdown/mapdown {:mvn/version "0.2.1"}

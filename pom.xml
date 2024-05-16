@@ -4,7 +4,7 @@
   <packaging>jar</packaging>
   <groupId>no.cjohansen</groupId>
   <artifactId>powerpack</artifactId>
-  <version>2024.05.16</version>
+  <version>2024.05.17</version>
   <name>powerpack</name>
   <dependencies>
     <dependency>
@@ -30,7 +30,7 @@
     <dependency>
       <groupId>datomic-type-extensions</groupId>
       <artifactId>datomic-type-extensions</artifactId>
-      <version>2023.09.26</version>
+      <version>2024.01.17</version>
     </dependency>
     <dependency>
       <groupId>java-time-dte</groupId>
@@ -51,6 +51,11 @@
       <groupId>html5-walker</groupId>
       <artifactId>html5-walker</artifactId>
       <version>2023.11.21</version>
+    </dependency>
+    <dependency>
+      <groupId>io.github.tonsky</groupId>
+      <artifactId>clj-reload</artifactId>
+      <version>0.7.0</version>
     </dependency>
     <dependency>
       <groupId>stasis</groupId>
@@ -138,7 +143,7 @@
   <scm>
     <connection>scm:git:git://github.com/cjohansen/powerpack.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/cjohansen/powerpack.git</developerConnection>
-    <tag>v2024.05.16</tag>
+    <tag>v2024.05.17</tag>
     <url>https://github.com/cjohansen/powerpack</url>
   </scm>
 </project>
