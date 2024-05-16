@@ -10,13 +10,13 @@ the way you want.
 With tools.deps:
 
 ```clj
-no.cjohansen/powerpack {:mvn/version "2024.05.17"}
+no.cjohansen/powerpack {:mvn/version "2024.05.18"}
 ```
 
 With Leiningen:
 
 ```clj
-[no.cjohansen/powerpack "2024.05.17"]
+[no.cjohansen/powerpack "2024.05.18"]
 ```
 
 ## Status
@@ -451,7 +451,7 @@ but the individual tools are used as transparently as possible.
 
 ## Changelog
 
-### 2024.05.17
+### 2024.05.18
 
 - Allow mapdown strings to be explicitly quoted
 
