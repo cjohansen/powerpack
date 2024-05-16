@@ -18,6 +18,11 @@
         (map f res)
         (f res)))))
 
+(defn maybe-read-string [v]
+  (cond-> v
+    (str/starts-with? v "\"")
+    read-string))
+
 (def conversions
   {:db.type/bigdec read-string
    :db.type/bigint read-string
@@ -56,7 +61,7 @@
        (map (fn [[k v]]
               (let [attr (db/get-attr db k)
                     f (get-conversion attr)]
-                [k (cond-> v
+                [k (cond-> (maybe-read-string v)
                      f f)])))
        (into {})))
 
