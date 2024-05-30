@@ -202,16 +202,23 @@
         (:db/id x) (into {})))
     hiccup)
    {:locale locale
-    :on-missing-dictionary-key (fn [_opt _params k]
-                                 [:pre (if locale
-                                         (str "Unknown i18n key " k " for locale " locale)
-                                         (str "Can't look up i18n key " k " without a locale"))])
+    :on-missing-dictionary-key
+    (fn [_opt _params k]
+      [:pre (cond
+              (nil? locale)
+              (str "Can't look up i18n key " k " without a locale")
+
+              (not (contains? (:i18n/dictionaries context) locale))
+              (str "Can't look up i18n key " k ", no " locale " dictionary")
+
+              :else
+              (str "Unknown i18n key " k " for locale " locale))])
     :dictionaries
     {:i18n (get (:i18n/dictionaries context) locale)}}))
 
 (defn interpolate-i18n [context page hiccup]
   (let [locale (or (:page/locale page)
-                   (-> context :config :i18n/default-locale))]
+                   (-> context :powerpack/app :site/default-locale))]
     (cond-> hiccup
       (:i18n/dictionaries context)
       (translate context locale))))

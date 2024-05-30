@@ -276,7 +276,30 @@
                 {:page/locale :nb}
                 [:html [:body [:h1 [:i18n ::greeting]]]])
                last)
-           [:body [:h1 "Hei, verden"]]))))
+           [:body [:h1 "Hei, verden"]])))
+
+  (testing "Reports missing i18n keys"
+    (is (= (-> (sut/embellish-hiccup
+                {:uri "/"
+                 :i18n/dictionaries {:nb {}
+                                     :en {}}}
+                {:page/locale :nb}
+                [:html [:body [:h1 [:i18n ::greeting]]]])
+               last)
+           [:body
+            [:h1
+             [:pre "Unknown i18n key :powerpack.web-test/greeting for locale :nb"]]])))
+
+  (testing "Reports missing dictionary for locale"
+    (is (= (-> (sut/embellish-hiccup
+                {:uri "/"
+                 :i18n/dictionaries {:nb {}}}
+                {:page/locale :en}
+                [:html [:body [:h1 [:i18n ::greeting]]]])
+               last)
+           [:body
+            [:h1
+             [:pre "Can't look up i18n key :powerpack.web-test/greeting, no :en dictionary"]]]))))
 
 (deftest prepare-response-test
   (testing "Renders an HTML body for redirects"
