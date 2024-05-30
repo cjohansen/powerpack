@@ -203,7 +203,9 @@
     hiccup)
    {:locale locale
     :on-missing-dictionary-key (fn [_opt _params k]
-                                 [:pre (str "Unknown i18n key " k)])
+                                 [:pre (if locale
+                                         (str "Unknown i18n key " k " for locale " locale)
+                                         (str "Can't look up i18n key " k " without a locale"))])
     :dictionaries
     {:i18n (get (:i18n/dictionaries context) locale)}}))
 
