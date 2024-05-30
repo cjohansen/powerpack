@@ -37,8 +37,6 @@
     (= ::png (:page/kind page))
     (render-png)
 
-
-
     :else
     [:html
      [:body.bg-stone-100.text-zinc-900
