@@ -41,10 +41,10 @@
     [:html
      [:body.bg-stone-100.text-zinc-900
       [:h1 (:page/title page)]
-      [:p [:i18n ::greeting]]
-      [:p [:i18n ::num {:n 45.12}]]
+      [:p [:i18n :rubberduck.core/greeting]]
+      [:p [:i18n :rubberduck.core/num {:n 45.12}]]
       ;;(throw (ex-info "Oh noes!" {}))
-      [:p [:i18n ::uri page]]
+      [:p [:i18n :rubberduck.core/uri page]]
       (when-let [published (:blog-post/published page)]
         [:p [:i18n ::published {:published published}]])
       [:pre [:code {:class "language-clj"}
