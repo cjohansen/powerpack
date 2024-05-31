@@ -111,9 +111,13 @@
 (defn move-previous-export [exporter powerpack]
   (when (powerpack/file-exists? exporter (:powerpack/build-dir powerpack))
     (log/with-monitor :info "Temporarily backing up previous export"
-      (let [dir (powerpack/get-tmp-path exporter)]
-        (powerpack/move exporter (:powerpack/build-dir powerpack) dir)
-        dir))))
+      (try
+        (let [dir (powerpack/get-tmp-path exporter)]
+          (powerpack/move exporter (:powerpack/build-dir powerpack) dir)
+          dir)
+        (catch Exception e
+          (log/error "Failed to back up previous export:" (.getMessage e))
+          nil)))))
 
 (defn format-asset-targets [powerpack indent]
   (->> (for [{:keys [selector attr]} (:powerpack/asset-targets powerpack)]
