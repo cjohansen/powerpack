@@ -10,13 +10,13 @@ the way you want.
 With tools.deps:
 
 ```clj
-no.cjohansen/powerpack {:mvn/version "2024.05.18"}
+no.cjohansen/powerpack {:mvn/version "2024.05.31"}
 ```
 
 With Leiningen:
 
 ```clj
-[no.cjohansen/powerpack "2024.05.18"]
+[no.cjohansen/powerpack "2024.05.31"]
 ```
 
 ## Status
@@ -450,6 +450,11 @@ a bottle neck or unnecessary layer of confusion. Obviously, it is a middleman,
 but the individual tools are used as transparently as possible.
 
 ## Changelog
+
+### 2023.05.31
+
+- Gracefully skip backing up the previous export if it fails for some reason
+  (can happen when exporting inside Docker images)
 
 ### 2024.05.18
 
