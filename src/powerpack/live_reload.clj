@@ -3,6 +3,7 @@
             [clojure.data.json :as json]
             [clojure.java.io :as io]
             [clojure.string :as str]
+            [clojure.walk :as walk]
             [integrant.core :as ig]
             [integrant.repl.state :as irs]
             [org.httpkit.server :as http-kit]
@@ -142,9 +143,18 @@
 (defmethod process-event :default [e _powerpack _opt]
   (log/debug "No related side-effects to carry out" e))
 
+(defn ->comparable [data]
+  (walk/postwalk
+   #(cond-> %
+      (instance? java.util.regex.Pattern %)
+      str)
+   data))
+
+(defn config-changed? [a b]
+  (not= (->comparable a) (->comparable b)))
+
 (defn powerpack-config-changed? []
-  (not= (ig/init-key :powerpack/powerpack nil)
-        (:powerpack/powerpack irs/system)))
+  (config-changed? (ig/init-key :powerpack/powerpack nil) (:powerpack/powerpack irs/system)))
 
 (defmethod process-event :powerpack/edited-source [{:keys [path]} _powerpack opt]
   (log/debug "Source edited, reloading namespace")

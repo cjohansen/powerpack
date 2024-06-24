@@ -12,3 +12,8 @@
   (:require [clojure.data.json :as json]
             [clojure.java.io :as io]))")
            'powerpack.live-reload))))
+
+(deftest compares-config-regexes-as-strings
+  (is (false? (sut/config-changed?
+               {:optimus/assets [{:public-dir "public" :paths [#".*\.png"]}]}
+               {:optimus/assets [{:public-dir "public" :paths [#".*\.png"]}]}))))
