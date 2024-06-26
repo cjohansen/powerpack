@@ -44,6 +44,20 @@
              (sut/align-with-schema {:person/name "\"Christian\""} db))
            {:person/name "Christian"})))
 
+  (testing "Does not treat quotes inside strings as quoted strings"
+    (is (= (with-schema-db [db [{:db/ident :person/name
+                                 :db/valueType :db.type/string
+                                 :db/cardinality :db.cardinality/one}]]
+             (sut/align-with-schema {:person/name "\"Christian\" is a dude"} db))
+           {:person/name "\"Christian\" is a dude"})))
+
+  (testing "Allows multiple quoted sub-strings in strings"
+    (is (= (with-schema-db [db [{:db/ident :person/name
+                                 :db/valueType :db.type/string
+                                 :db/cardinality :db.cardinality/one}]]
+             (sut/align-with-schema {:person/name "\"Christian\" is a \"dude\""} db))
+           {:person/name "\"Christian\" is a \"dude\""})))
+
   (testing "Parses numbers from strings"
     (is (= (with-schema-db [db [{:db/ident :person/age
                                  :db/valueType :db.type/bigdec

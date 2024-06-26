@@ -20,7 +20,9 @@
 
 (defn maybe-read-string [v]
   (cond-> v
-    (str/starts-with? v "\"")
+    (and (str/starts-with? v "\"")
+         (str/ends-with? v "\"")
+         (= 2 (count (re-seq #"\"" v))))
     read-string))
 
 (def conversions
