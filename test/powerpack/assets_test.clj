@@ -4,6 +4,47 @@
             [powerpack.app :as app]
             [powerpack.assets :as sut]))
 
+(deftest validate-asset-paths-test
+  (testing "oks bundle of existing resources"
+    (is (true? (-> (sut/validate-asset-paths
+                    {:public-dir "public"
+                     :paths ["/styles/powerpack.css"]})
+                   :valid?))))
+
+  (testing "fails bundle with missing resources"
+    (is (= (sut/validate-asset-paths
+            {:public-dir "public"
+             :paths ["/styles/powerpack.css"
+                     "/styles/missing.css"]})
+           {:valid? false
+            :public-dir "public"
+            :paths #{{:valid? true
+                      :path "/styles/powerpack.css"}
+                     {:valid? false
+                      :path "/styles/missing.css"
+                      :error-message "Unable to find resource public/styles/missing.css, make sure the path is spelled correctly and that public is on your classpath"}}})))
+
+  (testing "fails bundle when regex matches no files"
+    (is (= (-> (sut/validate-asset-paths
+                {:public-dir "public"
+                 :paths [#"/styles/.*\.xcss"]})
+               (update :paths vec)
+               (update-in [:paths 0 :path] str))
+           {:valid? false
+            :public-dir "public"
+            :paths [{:valid? false
+                     :path "/styles/.*\\.xcss"
+                     :error-message "No files matched regex /styles/.*\\.xcss"}]})))
+
+  (testing "includes attempted default public dir"
+    (is (= (sut/validate-asset-paths
+            {:paths ["/styles/nope.css"]})
+           {:valid? false
+            :public-dir "public"
+            :paths #{{:valid? false
+                      :path "/styles/nope.css"
+                      :error-message "Unable to find resource public/styles/nope.css, make sure the path is spelled correctly and that public is on your classpath"}}}))))
+
 (deftest markup-url-optimizers-test
   (testing "optimizes img src optimus asset"
     (is (= (->> (sut/get-markup-url-optimizers

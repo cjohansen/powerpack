@@ -6,7 +6,34 @@
             [optimus.link :as link]
             [optimus.optimizations :as optimizations]
             [powerpack.errors :as errors])
-  (:import (ch.digitalfondue.jfiveparse Parser)))
+  (:import (ch.digitalfondue.jfiveparse Parser)
+           (java.io FileNotFoundException)))
+
+(defn validate-asset-path [public-dir path]
+  (into
+   {:path path}
+   (try
+     (assets/load-assets public-dir #{path})
+     {:valid? true}
+     (catch FileNotFoundException _e
+       {:valid? false
+        :error-message (str "Unable to find resource " public-dir path ", make sure the path is spelled correctly and that " public-dir " is on your classpath")})
+     (catch Exception e
+       {:valid? false
+        :error-message (.getMessage e)}))))
+
+(defn validate-asset-paths [{:keys [public-dir paths]}]
+  (let [public-dir (or public-dir "public")
+        results (loop [paths (seq paths)
+                       results #{}]
+                  (if (nil? paths)
+                    results
+                    (recur
+                     (next paths)
+                     (conj results (validate-asset-path public-dir (first paths))))))]
+    {:valid? (empty? (remove :valid? results))
+     :public-dir public-dir
+     :paths results}))
 
 (defn load-assets [powerpack]
   (mapcat (fn [{:keys [public-dir paths]}]
