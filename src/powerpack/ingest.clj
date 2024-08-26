@@ -42,7 +42,8 @@
 
 (defn get-conversion [attr]
   (when-let [f (or (conversions (:db/valueType attr))
-                   (when (:dte/valueType attr)
+                   (when (or (:dte/valueType attr)
+                             (= :db.cardinality/many (:db/cardinality attr)))
                      read-string))]
     (fn [v]
       (let [val (f v)]

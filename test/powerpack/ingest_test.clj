@@ -88,6 +88,13 @@
            [java.lang.Double
             java.lang.Double]))
 
+    (is (= (->> (with-schema-db [db [{:db/ident :thing/strs
+                                      :db/valueType :db.type/string
+                                      :db/cardinality :db.cardinality/many}]]
+                  (sut/align-with-schema {:thing/strs "[\"something\"]"} db))
+                :thing/strs)
+           ["something"]))
+
     (is (= (-> (with-schema-db [db [{:db/ident :person/age
                                      :db/valueType :db.type/float
                                      :db/cardinality :db.cardinality/one}]]
