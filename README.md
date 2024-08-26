@@ -398,7 +398,36 @@ Powerpack will insert the corresponding `link` elements linking to them.
 ### Adds Optimus bundles
 
 Optimus CSS bundles are added to the head of the document. JavaScript bundles
-are asdded at the end of the body element.
+are added at the end of the body element.
+
+<a id="redirects"></a>
+## HTTP Redirects
+
+Being a static site generator, Powerpack can't really give you server-side HTTP
+redirects. But it does what it can when you give it a redirecting ring response,
+and that is to generate an HTML page with a meta tag using
+`http-equiv="refresh"`, which causes a redirect in browsers.
+
+To create a redirect, return a Ring response like so:
+
+```clj
+{:status 301
+ :headers {"location" "/elsewhere/"}}
+```
+
+And Powerpack will build an HTML page like so:
+
+```clj
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="refresh" content="0; url=/elsewhere/">
+  </head>
+  <body>
+    <a href="/elsewhere/">Redirect</a>
+  </body>
+</html>
+```
 
 <a id="parse-file"></a>
 ## Parsing content files
