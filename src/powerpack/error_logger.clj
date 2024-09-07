@@ -1,6 +1,5 @@
 (ns powerpack.error-logger
-  (:require [clojure.core.async :refer [<!]]
-            [clojure.pprint :as pprint]
+  (:require [clojure.pprint :as pprint]
             [clojure.string :as str]
             [powerpack.async :refer [create-watcher]]
             [powerpack.logger :as log]))
