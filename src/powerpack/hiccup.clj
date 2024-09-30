@@ -214,7 +214,8 @@
               :else
               (str "Unknown i18n key " k " for locale " locale))])
     :dictionaries
-    {:i18n (get (:i18n/dictionaries context) locale)}}))
+    {(:m1p/k (:powerpack/app context))
+     (get (:i18n/dictionaries context) locale)}}))
 
 (defn interpolate-i18n [context page hiccup]
   (let [locale (or (:page/locale page)

@@ -45,6 +45,7 @@
                                    (s/coll-of (s/or :file :file/file
                                                     :directory :file/directory))))
 (s/def :m1p/dictionary-fns (s/map-of keyword? ifn?))
+(s/def :m1p/k keyword?)
 
 (s/def :optimus/public-dir string?)
 (s/def :optimus/paths (s/coll-of any?))
@@ -94,6 +95,7 @@
                 :imagine/config
                 :m1p/dictionaries
                 :m1p/dictionary-fns
+                :m1p/k
                 :optimus/assets
                 :optimus/bundles
                 :site/base-url
@@ -137,6 +139,7 @@
 (def defaults
   {:datomic/schema-file "resources/schema.edn"
    :datomic/uri "datomic:mem://powerpack"
+   :m1p/k :i18n
    :powerpack/asset-targets default-asset-targets
    :powerpack/build-dir "target/powerpack"
    :powerpack/content-dir "content"

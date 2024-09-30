@@ -158,6 +158,14 @@ about dictionaries.
 Additional m1p [dictionary
 functions](https://github.com/cjohansen/m1p#dictionary-functions).
 
+### `:m1p/k`
+
+The keyword used for i18n interpolation. Defaults to `:i18n`, as in
+
+```
+[:h1 [:i18n ::greeting]]
+```
+
 ### `:optimus/assets`
 
 A vector of [Optimus](https://github.com/magnars/optimus/) asset configurations.
