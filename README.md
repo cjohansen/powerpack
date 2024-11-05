@@ -10,13 +10,13 @@ the way you want.
 With tools.deps:
 
 ```clj
-no.cjohansen/powerpack {:mvn/version "2024.09.30"}
+no.cjohansen/powerpack {:mvn/version "2024.11.05"}
 ```
 
 With Leiningen:
 
 ```clj
-[no.cjohansen/powerpack "2024.09.30"]
+[no.cjohansen/powerpack "2024.11.05"]
 ```
 
 ## Status
@@ -487,6 +487,18 @@ a bottle neck or unnecessary layer of confusion. Obviously, it is a middleman,
 but the individual tools are used as transparently as possible.
 
 ## Changelog
+
+### 2024.11.05
+
+Change hiccup rendering to [chassis](https://github.com/onionpancakes/chassis).
+
+**NB! Potentially breaking change.** It breaks my heart, but this change may
+cause breakage for existing sites. In particular, this change makes Powerpack
+HTML escape content by default. In prior versions, Powerpack would write any
+text content verbatim to the generated HTML. This is an unsafe default, which is
+why this version changes it to be escaped by default.
+
+To render strings unescaped, use `powerpack.hiccup/unescape`.
 
 ### 2024.09.30
 
