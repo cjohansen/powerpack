@@ -272,7 +272,8 @@
     (is (= (-> (sut/embellish-hiccup
                 {:uri "/"
                  :i18n/dictionaries {:nb {::greeting "Hei, verden"}
-                                     :en {::greeting "Hello world"}}}
+                                     :en {::greeting "Hello world"}}
+                 :powerpack/app {:m1p/k :i18n}}
                 {:page/locale :nb}
                 [:html [:body [:h1 [:i18n ::greeting]]]])
                last)
@@ -282,7 +283,8 @@
     (is (= (-> (sut/embellish-hiccup
                 {:uri "/"
                  :i18n/dictionaries {:nb {}
-                                     :en {}}}
+                                     :en {}}
+                 :powerpack/app {:m1p/k :i18n}}
                 {:page/locale :nb}
                 [:html [:body [:h1 [:i18n ::greeting]]]])
                last)
@@ -293,7 +295,8 @@
   (testing "Reports missing dictionary for locale"
     (is (= (-> (sut/embellish-hiccup
                 {:uri "/"
-                 :i18n/dictionaries {:nb {}}}
+                 :i18n/dictionaries {:nb {}}
+                 :powerpack/app {:m1p/k :i18n}}
                 {:page/locale :en}
                 [:html [:body [:h1 [:i18n ::greeting]]]])
                last)
