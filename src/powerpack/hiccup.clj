@@ -243,6 +243,12 @@
 (defn get-tag-name [hiccup]
   (some->> (first hiccup) name (re-find #"^[a-z0-9]+")))
 
+(defn ^:export unescape
+  "Do not HTML escape the contents of this string when rendering it as part of a
+  hiccup document."
+  [s]
+  (chassis/raw s))
+
 (defn ^:export render-html [hiccup]
   (str (when (= "html" (get-tag-name hiccup))
          "<!DOCTYPE html>")
