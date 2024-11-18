@@ -10,13 +10,13 @@ the way you want.
 With tools.deps:
 
 ```clj
-no.cjohansen/powerpack {:mvn/version "2024.11.05"}
+no.cjohansen/powerpack {:mvn/version "2024.11.18"}
 ```
 
 With Leiningen:
 
 ```clj
-[no.cjohansen/powerpack "2024.11.05"]
+[no.cjohansen/powerpack "2024.11.18"]
 ```
 
 ## Status
@@ -191,6 +191,14 @@ Example:
                   {:public-dir "public"
                    :paths ["/styles.css"]}}
 ```
+
+### `:optimus/options`
+
+Options passed to Optimus optimizations. Can aditionally contain the following
+keys to control which optimizations are used:
+
+- `:minify-css-assets?` defaults to `true`
+- `:minify-js-assets?` defaults to `true`
 
 ### `:powerpack/asset-targets`
 
@@ -487,6 +495,10 @@ a bottle neck or unnecessary layer of confusion. Obviously, it is a middleman,
 but the individual tools are used as transparently as possible.
 
 ## Changelog
+
+### 2024.11.18
+
+Add `:optimus/options`
 
 ### 2024.11.05
 
