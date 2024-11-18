@@ -80,7 +80,14 @@
 (def optimize
   (-> (fn [assets options]
         (-> assets
-            (optimizations/all options)
+            (cond-> (:minify-js-assets? options true)
+              (optimizations/minify-js-assets options))
+            (cond-> (:minify-css-assets? options true)
+             (optimizations/minify-css-assets options))
+            (optimizations/inline-css-imports)
+            (optimizations/concatenate-bundles options)
+            (optimizations/add-cache-busted-expires-headers)
+            (optimizations/add-last-modified-headers)
             (->> (remove :bundled)
                  (remove :outdated))))
       (memoize/lru {} :lru/threshold 3)))
@@ -146,7 +153,7 @@
   (let [previous-export-dir (move-previous-export exporter powerpack)
         db (d/db (:datomic/conn powerpack))
         pages (get-pages-to-export db)
-        assets (optimize (assets/get-assets powerpack) {})
+        assets (optimize (assets/get-assets powerpack) (:optimus/options powerpack))
         ctx {:optimus-assets assets}]
     {:pages pages
      :urls (set (map :page/uri pages))

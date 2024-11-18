@@ -53,6 +53,7 @@
                                      :opt-un [:optimus/public-dir]))
 (s/def :optimus/assets (s/coll-of :optimus/asset-config))
 (s/def :optimus/bundles (s/map-of string? :optimus/asset-config))
+(s/def :optimus/options map?)
 
 (s/def :site/default-locale keyword?)
 (s/def :site/title string?)
@@ -98,6 +99,7 @@
                 :m1p/k
                 :optimus/assets
                 :optimus/bundles
+                :optimus/options
                 :site/base-url
                 :powerpack/asset-targets
                 :powerpack/content-file-suffixes
