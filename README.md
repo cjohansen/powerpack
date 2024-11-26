@@ -10,13 +10,13 @@ the way you want.
 With tools.deps:
 
 ```clj
-no.cjohansen/powerpack {:mvn/version "2024.11.18"}
+no.cjohansen/powerpack {:mvn/version "2024.11.26"}
 ```
 
 With Leiningen:
 
 ```clj
-[no.cjohansen/powerpack "2024.11.18"]
+[no.cjohansen/powerpack "2024.11.26"]
 ```
 
 ## Status
@@ -495,6 +495,11 @@ a bottle neck or unnecessary layer of confusion. Obviously, it is a middleman,
 but the individual tools are used as transparently as possible.
 
 ## Changelog
+
+### 2024.11.26
+
+Fix bug where using `(powerpack.markdown/render-html md)` as the body of a page
+would cause the page to be rendered as EDN.
 
 ### 2024.11.18
 
