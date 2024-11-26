@@ -1,5 +1,6 @@
 (ns powerpack.web-test
   (:require [clojure.test :refer [deftest is testing]]
+            [dev.onionpancakes.chassis.core :as chassis]
             [powerpack.app :as app]
             [powerpack.assets :as assets]
             [powerpack.hiccup :as hiccup]
@@ -312,7 +313,12 @@
            {:status 302
             :headers {"Location" "/elsewhere/"
                       "Content-Type" "text/html"}
-            :body "<!DOCTYPE html><html><head><meta http-equiv=\"refresh\" content=\"0; url=/elsewhere/\"></head><body><a href=\"/elsewhere/\">Redirect</a></body></html>"}))))
+            :body "<!DOCTYPE html><html><head><meta http-equiv=\"refresh\" content=\"0; url=/elsewhere/\"></head><body><a href=\"/elsewhere/\">Redirect</a></body></html>"})))
+
+  (testing "Understands raw chassis body"
+    (is (= (->> {:body (chassis/raw "<h1>Hello!</h1>")}
+                (sut/prepare-response {} {}))
+           {:body "<h1>Hello!</h1>"}))))
 
 (deftest post-process-test
   (testing "Optimizes anchor href"

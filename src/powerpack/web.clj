@@ -3,6 +3,7 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [datomic-type-extensions.api :as d]
+            [dev.onionpancakes.chassis.core :as chassis]
             [html5-walker.walker :as html5-walker]
             [powerpack.assets :as assets]
             [powerpack.errors :as errors]
@@ -99,6 +100,9 @@
     (cond
       (string? (:body response))
       response
+
+      (instance? dev.onionpancakes.chassis.core.RawString (:body response))
+      (update response :body str)
 
       (and (nil? content-type)
            (get-redirect-location response))
