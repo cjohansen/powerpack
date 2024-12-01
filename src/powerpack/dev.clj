@@ -158,7 +158,10 @@
     (stop-watcher)))
 
 (defmethod ig/init-key :powerpack/app [_ opt]
-  (app/create-app (:powerpack/powerpack opt) (:dev/opts opt)))
+  (-> (:powerpack/powerpack opt)
+      (update :optimus/assets assets/remove-invalid-assets (:dev/opts opt))
+      (update :optimus/bundles assets/remove-invalid-bundles (:dev/opts opt))
+      (app/create-app (:dev/opts opt))))
 
 (defmethod ig/init-key :dev/opts [_ opts]
   opts)

@@ -17,7 +17,7 @@
      {:valid? true}
      (catch FileNotFoundException _e
        {:valid? false
-        :error-message (str "Unable to find resource " public-dir path ", make sure the path is spelled correctly and that " public-dir " is on your classpath")})
+        :error-message (str "Unable to find resource `" public-dir path "`, make sure the path is spelled correctly and that `" public-dir "` is on your classpath")})
      (catch Exception e
        {:valid? false
         :error-message (.getMessage e)}))))
@@ -34,6 +34,27 @@
     {:valid? (empty? (remove :valid? results))
      :public-dir public-dir
      :paths results}))
+
+(defn prune-and-validate-assets [k assets opt]
+  (doall
+   (for [asset-config assets]
+     (let [results (-> (validate-asset-paths asset-config)
+                       (select-keys [:public-dir :paths]))]
+       (when-let [problems (seq (remove :valid? (:paths results)))]
+         (->> {:id [::validate-assets k]
+               :kind ::validate-assets
+               :message (str "Unable to load all assets in " (str/join " " (map pr-str k)))
+               :errors (for [{:keys [path error-message]} problems]
+                         {:v path
+                          :message error-message})}
+              (errors/report-error opt)))
+       (update results :paths #(->> % (filter :valid?) (map :path)))))))
+
+(defn remove-invalid-assets [assets opt]
+  (prune-and-validate-assets [:optimus/assets] assets opt))
+
+(defn remove-invalid-bundles [bundles opts]
+  (update-vals bundles #(first (remove-invalid-assets [%] opts))))
 
 (defn load-assets [powerpack]
   (mapcat (fn [{:keys [public-dir paths]}]

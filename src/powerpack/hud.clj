@@ -61,18 +61,17 @@
   (-> (render-error-hud error)
       chassis/html))
 
+(defn render-msg [client-ch markup]
+  (->> {:kind :powerpack/error
+        :action "render-hud"
+        :markup (or markup "")}
+       (put! client-ch)))
+
 (defn connect-client [hud]
   (let [client-ch (chan)
         k (random-uuid)
         emit-error (fn [errors]
-                     (->> (if-let [error (first errors)]
-                            {:kind :powerpack/error
-                             :action "render-hud"
-                             :markup (render-hud-str error)}
-                            {:kind :powerpack/error
-                             :action "render-hud"
-                             :markup ""})
-                          (put! client-ch)))]
+                     (render-msg client-ch (some-> errors first render-hud-str)))]
     (when (seq @(:errors hud))
       (emit-error @(:errors hud)))
     (add-watch (:errors hud) k
@@ -81,6 +80,7 @@
                    (emit-error errors))))
     {:stop (fn []
              (remove-watch (:errors hud) k)
+             (render-msg client-ch nil)
              (close! client-ch))
      :ch client-ch}))
 
