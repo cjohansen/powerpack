@@ -9,15 +9,29 @@
            [com.vladsch.flexmark.parser Parser]
            [com.vladsch.flexmark.util.data MutableDataSet]))
 
-(def flexmark-opts (-> (MutableDataSet.)
-                       (.set Parser/EXTENSIONS [(AutolinkExtension/create)
-                                                (StrikethroughExtension/create)
-                                                (TablesExtension/create)
-                                                (TypographicExtension/create)])))
+(def flexmark-opts
+  (-> (MutableDataSet.)
+      (.set Parser/EXTENSIONS
+            [(AutolinkExtension/create)
+             (StrikethroughExtension/create)
+             (TablesExtension/create)
+             (TypographicExtension/create)])))
 
-(defn md-to-html [s]
-  (->> (.parse (.build (Parser/builder flexmark-opts)) s)
-       (.render (.build (HtmlRenderer/builder flexmark-opts)))))
+(defn make-flexmark-opts [{:keys [auto-link? strike-through? tables? typograhy?]}]
+  (-> (MutableDataSet.)
+      (.set Parser/EXTENSIONS
+            (cond-> []
+              (not= auto-link? false) (conj (AutolinkExtension/create))
+              (not= strike-through? false) (conj (StrikethroughExtension/create))
+              (not= tables? false) (conj (TablesExtension/create))
+              (not= typograhy? false) (conj (TypographicExtension/create))))))
+
+(defn md-to-html
+  ([s] (md-to-html nil s))
+  ([options s]
+   (let [flexmark-opts (or (some-> options make-flexmark-opts) flexmark-opts)]
+     (->> (.parse (.build (Parser/builder flexmark-opts)) s)
+          (.render (.build (HtmlRenderer/builder flexmark-opts)))))))
 
 (defn min*
   "Like min, but takes a list - and 0 elements is okay."
@@ -54,12 +68,16 @@
     (concat (take 1 lines)
             (map #(subs* % superflous-spaces) (drop 1 lines)))))
 
-(defn ^:export render-html [s]
+(defn ^:export render-html
+  "Render markdown to an HTML string. Optionally pass a map of what Flexmark
+  extensions to enable: `{:auto-link? :strike-through? :tables? :typograhy?}`.
+  Extensions not explicit disabled with `false` will be enabled."
+  [s & [options]]
   (if (string? s)
     (->> s
          str/split-lines
          unindent-but-first
          (str/join "\n")
-         md-to-html
+         (md-to-html options)
          chassis/raw)
     s))
