@@ -136,6 +136,9 @@
     :attr "xlink:href"}
    {:selector ["a[href]"]
     :attr "href"
+    :optional? true}
+   {:selector ["link[rel=icon]"]
+    :attr "href"
     :optional? true}])
 
 (def defaults
