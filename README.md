@@ -496,6 +496,10 @@ but the individual tools are used as transparently as possible.
 
 ## Changelog
 
+### 2024.12.29
+
+Optimize asset paths referred by `<link rel="icon">`
+
 ### 2024.12.01
 
 Give better errors when Optimus assets are missing.
