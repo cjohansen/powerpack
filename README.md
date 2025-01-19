@@ -10,13 +10,13 @@ the way you want.
 With tools.deps:
 
 ```clj
-no.cjohansen/powerpack {:mvn/version "2024.12.29"}
+no.cjohansen/powerpack {:mvn/version "2025.01.19"}
 ```
 
 With Leiningen:
 
 ```clj
-[no.cjohansen/powerpack "2024.12.29"]
+[no.cjohansen/powerpack "2025.01.19"]
 ```
 
 ## Status
@@ -495,6 +495,10 @@ a bottle neck or unnecessary layer of confusion. Obviously, it is a middleman,
 but the individual tools are used as transparently as possible.
 
 ## Changelog
+
+### 2025.01.19
+
+Updated Optimus dependency
 
 ### 2024.12.29
 
