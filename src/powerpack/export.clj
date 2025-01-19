@@ -320,7 +320,7 @@
 
     ::exception
     (str (:message result) "\n"
-         (format-exception powerpack (:exception result)))
+         (format-exception powerpack result))
 
     :m1p/discrepancies
     (str "i18n dictionaries are not in good shape\n"
