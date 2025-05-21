@@ -332,6 +332,15 @@
                :body)
            "<!DOCTYPE html><html><head></head><body><a href=\"/sproing/xyz.jpg\">Ducks</a></body></html>")))
 
+  (testing "Does not attempt to optimize protocol-relative URLs"
+    (is (= (-> (sut/post-process-page
+                {:headers {"content-type" "text/html"}
+                 :body "<!DOCTYPE html><html><body><script src=\"//example.com/script.js\"></script></body></html>"}
+                {:powerpack/app {:powerpack/asset-targets app/default-asset-targets}}
+                [assets/get-markup-url-optimizers])
+               :body)
+           "<!DOCTYPE html><html><body><script src=\"//example.com/script.js\"></script></body></html>")))
+
   (testing "Accepts pre-optimized script sources"
     (is (= (-> (sut/post-process-page
                 {:headers {"content-type" "text/html"}

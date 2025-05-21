@@ -108,7 +108,7 @@
   (str/replace url (re-pattern (str "^" (-> ctx :powerpack/app :site/base-url))) ""))
 
 (defn external-url? [powerpack url]
-  (when (re-find #"^https?://" url)
+  (when (re-find #"^(https?:)?//" url)
     (not (some->> (:site/base-url powerpack)
                   (str/starts-with? url)))))
 
