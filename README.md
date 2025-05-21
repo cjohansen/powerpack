@@ -10,13 +10,13 @@ the way you want.
 With tools.deps:
 
 ```clj
-no.cjohansen/powerpack {:mvn/version "2025.01.21"}
+no.cjohansen/powerpack {:mvn/version "2025.05.21"}
 ```
 
 With Leiningen:
 
 ```clj
-[no.cjohansen/powerpack "2025.01.21"]
+[no.cjohansen/powerpack "2025.05.21"]
 ```
 
 ## Status
@@ -495,6 +495,11 @@ a bottle neck or unnecessary layer of confusion. Obviously, it is a middleman,
 but the individual tools are used as transparently as possible.
 
 ## Changelog
+
+### 2025.05.21
+
+Fix bug where Protocol would complain that protocol-relative script URLs didn't
+exist.
 
 ### 2025.01.21
 
