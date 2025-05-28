@@ -4,18 +4,18 @@
   <packaging>jar</packaging>
   <groupId>no.cjohansen</groupId>
   <artifactId>powerpack</artifactId>
-  <version>2025.05.28</version>
+  <version>2025.05.29</version>
   <name>powerpack</name>
   <dependencies>
     <dependency>
       <groupId>org.clojure</groupId>
       <artifactId>data.json</artifactId>
-      <version>2.5.0</version>
+      <version>2.5.1</version>
     </dependency>
     <dependency>
       <groupId>org.clojure</groupId>
       <artifactId>clojure</artifactId>
-      <version>1.11.1</version>
+      <version>1.12.0</version>
     </dependency>
     <dependency>
       <groupId>mapdown</groupId>
@@ -30,7 +30,7 @@
     <dependency>
       <groupId>datomic-type-extensions</groupId>
       <artifactId>datomic-type-extensions</artifactId>
-      <version>2024.02.09</version>
+      <version>2025.01.24</version>
     </dependency>
     <dependency>
       <groupId>java-time-dte</groupId>
@@ -55,7 +55,7 @@
     <dependency>
       <groupId>io.github.tonsky</groupId>
       <artifactId>clj-reload</artifactId>
-      <version>0.7.1</version>
+      <version>0.9.7</version>
     </dependency>
     <dependency>
       <groupId>stasis</groupId>
@@ -65,7 +65,7 @@
     <dependency>
       <groupId>com.datomic</groupId>
       <artifactId>peer</artifactId>
-      <version>1.0.7260</version>
+      <version>1.0.7364</version>
     </dependency>
     <dependency>
       <groupId>com.nextjournal</groupId>
@@ -115,7 +115,7 @@
     <dependency>
       <groupId>org.clojure</groupId>
       <artifactId>core.async</artifactId>
-      <version>1.6.681</version>
+      <version>1.9.808-alpha1</version>
     </dependency>
     <dependency>
       <groupId>http-kit</groupId>
@@ -143,7 +143,7 @@
   <scm>
     <connection>scm:git:git://github.com/cjohansen/powerpack.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/cjohansen/powerpack.git</developerConnection>
-    <tag>v2025.05.28</tag>
+    <tag>v2025.05.29</tag>
     <url>https://github.com/cjohansen/powerpack</url>
   </scm>
 </project>

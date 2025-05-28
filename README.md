@@ -10,7 +10,7 @@ the way you want.
 With tools.deps:
 
 ```clj
-no.cjohansen/powerpack {:mvn/version "2025.05.28"}
+no.cjohansen/powerpack {:mvn/version "2025.05.29"}
 ```
 
 With Leiningen:
@@ -496,7 +496,7 @@ but the individual tools are used as transparently as possible.
 
 ## Changelog
 
-### 2025.05.28
+### 2025.05.29
 
 Bump some dependencies
 

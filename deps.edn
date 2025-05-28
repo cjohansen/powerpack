@@ -23,7 +23,7 @@
         stasis/stasis {:mvn/version "2023.11.21"}}
  :aliases
  {:dev {:extra-paths ["dev" "dev-resources" "test"]
-        :extra-deps {org.clojure/clojure {:mvn/version "1.11.1"}
+        :extra-deps {org.clojure/clojure {:mvn/version "1.12.0"}
                      clygments/clygments {:mvn/version "2.0.2"}
                      lambdaisland/kaocha {:mvn/version "1.87.1366"}
                      kaocha-noyoda/kaocha-noyoda {:mvn/version "2019-06-03"}}}
