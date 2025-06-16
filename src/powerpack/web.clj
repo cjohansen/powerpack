@@ -96,7 +96,9 @@
                              location location)))))
 
 (defn prepare-response [context page response]
-  (let [content-type (get-content-type response)]
+  (let [content-type (get-content-type response)
+        render-html (or (-> context :powerpack/app :powerpack/render-hiccup)
+                        hiccup/render-html)]
     (cond
       (string? (:body response))
       response
@@ -112,7 +114,7 @@
                (hiccup/hiccup? (:body response)))
           (and (string? content-type)
                (re-find #"text/html" content-type)))
-      (update response :body (comp hiccup/render-html #(embellish-hiccup context page %)))
+      (update response :body (comp render-html #(embellish-hiccup context page %)))
 
       (or (= :json (:content-type response))
           (and (string? content-type)
