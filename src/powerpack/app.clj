@@ -73,6 +73,7 @@
 (s/def :powerpack/page-post-process-fns (s/coll-of ifn?))
 (s/def :powerpack/port number?)
 (s/def :powerpack/render-page ifn?)
+(s/def :powerpack/render-hiccup ifn?)
 (s/def :powerpack/resource-dirs (s/coll-of :file/directory))
 (s/def :powerpack/source-dirs (s/coll-of :file/directory))
 (s/def :asset-target/selector (s/coll-of (s/or :string string? :symbol symbol? :keyword keyword?)))
@@ -114,6 +115,7 @@
                 :powerpack/page-post-process-fns
                 :powerpack/port
                 :powerpack/resource-dirs
+                :powerpack/render-hiccup
                 :powerpack/source-dirs]))
 
 (def default-asset-targets

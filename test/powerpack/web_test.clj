@@ -67,6 +67,15 @@
            {:status 200
             :headers {"Content-Type" "text/html"}
             :body "<body><h1>Hello world</h1></body>"})))
+  (testing "Uses custom :powerpack/render-hiccup to render hiccup if it is provided"
+    (is (= (sut/get-response-map
+            {:uri "/"
+             :powerpack/app {:powerpack/render-hiccup str}}
+            {}
+            {:body [:body [:h1 "Custom renderer"]]})
+           {:status 200
+            :body "[:body [:h1 \"Custom renderer\"]]"
+            :headers {"Content-Type" "text/html"}})))
 
   (testing "Returns map with string body as html"
     (is (= (sut/get-response-map
