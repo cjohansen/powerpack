@@ -22,7 +22,7 @@
                       :path "/styles/powerpack.css"}
                      {:valid? false
                       :path "/styles/missing.css"
-                      :error-message "Unable to find resource public/styles/missing.css, make sure the path is spelled correctly and that public is on your classpath"}}})))
+                      :error-message "Unable to find resource `public/styles/missing.css`, make sure the path is spelled correctly and that `public` is on your classpath"}}})))
 
   (testing "fails bundle when regex matches no files"
     (is (= (-> (sut/validate-asset-paths
@@ -43,7 +43,7 @@
             :public-dir "public"
             :paths #{{:valid? false
                       :path "/styles/nope.css"
-                      :error-message "Unable to find resource public/styles/nope.css, make sure the path is spelled correctly and that public is on your classpath"}}}))))
+                      :error-message "Unable to find resource `public/styles/nope.css`, make sure the path is spelled correctly and that `public` is on your classpath"}}}))))
 
 (deftest markup-url-optimizers-test
   (testing "optimizes img src optimus asset"
