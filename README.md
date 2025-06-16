@@ -10,13 +10,13 @@ the way you want.
 With tools.deps:
 
 ```clj
-no.cjohansen/powerpack {:mvn/version "2025.05.29"}
+no.cjohansen/powerpack {:mvn/version "2025.06.16"}
 ```
 
 With Leiningen:
 
 ```clj
-[no.cjohansen/powerpack "2025.05.28"]
+[no.cjohansen/powerpack "2025.06.16"]
 ```
 
 ## Status
@@ -495,6 +495,11 @@ a bottle neck or unnecessary layer of confusion. Obviously, it is a middleman,
 but the individual tools are used as transparently as possible.
 
 ## Changelog
+
+### 2025.06.16
+
+Add support for pluggable hiccup rendering via `:powerpack/render-hiccup`,
+thanks [@ovistoica](https://github.com/ovistoica).
 
 ### 2025.05.29
 
