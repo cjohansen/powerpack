@@ -348,7 +348,7 @@
                 {:powerpack/app {:powerpack/asset-targets app/default-asset-targets}}
                 [assets/get-markup-url-optimizers])
                :body)
-           "<!DOCTYPE html><html><body><script src=\"//example.com/script.js\"></script></body></html>")))
+           "<!DOCTYPE html><html><head></head><body><script src=\"//example.com/script.js\"></script></body></html>")))
 
   (testing "Accepts pre-optimized script sources"
     (is (= (-> (sut/post-process-page
