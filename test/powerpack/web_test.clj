@@ -70,7 +70,7 @@
   (testing "Uses custom :powerpack/render-hiccup to render hiccup if it is provided"
     (is (= (sut/get-response-map
             {:uri "/"
-             :powerpack/app {:powerpack/render-hiccup #(str %)}}
+             :powerpack/app {:powerpack/render-hiccup str}}
             {}
             {:body [:body [:h1 "Custom renderer"]]})
            {:status 200
