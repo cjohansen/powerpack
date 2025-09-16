@@ -10,13 +10,13 @@ the way you want.
 With tools.deps:
 
 ```clj
-no.cjohansen/powerpack {:mvn/version "2025.06.16"}
+no.cjohansen/powerpack {:mvn/version "2025.09.16"}
 ```
 
 With Leiningen:
 
 ```clj
-[no.cjohansen/powerpack "2025.06.16"]
+[no.cjohansen/powerpack "2025.09.16"]
 ```
 
 ## Status
@@ -495,6 +495,10 @@ a bottle neck or unnecessary layer of confusion. Obviously, it is a middleman,
 but the individual tools are used as transparently as possible.
 
 ## Changelog
+
+### 2025.09.16
+
+Fix buggy live reload on Linux ([David Wagner](https://github.com/wagdav)).
 
 ### 2025.06.16
 
