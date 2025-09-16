@@ -158,25 +158,26 @@
 
 (defmethod process-event :powerpack/edited-source [{:keys [path]} _powerpack opt]
   (log/debug "Source edited, reloading namespace")
-  (when-let [source-namespace (get-ns (slurp (io/file path)))]
-    (try
-      (require source-namespace :reload)
-      (errors/resolve-error opt [::reload-namespace source-namespace])
-      (when (powerpack-config-changed?)
-        (put! (:ch (:fs-events opt))
-              {:kind :powerpack/edited-powerpack-config
-               :action "reload"}))
-      (catch Exception e
-        (log/debug "Failed to reload namespace"
-                   {:path path
-                    :ns (get-ns (slurp (io/file path)))})
-        (->> {:exception e
-              :source-namespace source-namespace
-              :file-name path
-              :message (str "Failed to reload namespace " source-namespace)
-              :kind ::reload-namespace
-              :id [::reload-namespace source-namespace]}
-             (errors/report-error opt))))))
+  (let [file (io/file path)]
+    (when-let [source-namespace (and (.exists file) (get-ns (slurp file)))]
+      (try
+        (require source-namespace :reload)
+        (errors/resolve-error opt [::reload-namespace source-namespace])
+        (when (powerpack-config-changed?)
+          (put! (:ch (:fs-events opt))
+                {:kind :powerpack/edited-powerpack-config
+                 :action "reload"}))
+        (catch Exception e
+          (log/debug "Failed to reload namespace"
+                     {:path path
+                      :ns source-namespace})
+          (->> {:exception e
+                :source-namespace source-namespace
+                :file-name path
+                :message (str "Failed to reload namespace " source-namespace)
+                :kind ::reload-namespace
+                :id [::reload-namespace source-namespace]}
+               (errors/report-error opt)))))))
 
 (defmethod process-event :powerpack/edited-dictionary [_e powerpack opt]
   (log/debug "Dictionary edited, reloading dictionaries")

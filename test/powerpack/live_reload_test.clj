@@ -17,3 +17,9 @@
   (is (false? (sut/config-changed?
                {:optimus/assets [{:public-dir "public" :paths [#".*\.png"]}]}
                {:optimus/assets [{:public-dir "public" :paths [#".*\.png"]}]}))))
+
+(deftest no-crash-if-path-absent  ; https://github.com/cjohansen/powerpack/issues/7
+  (is (nil? (sut/process-event {:kind :powerpack/edited-source
+                                :path "does-not-exist"}
+                               nil
+                               nil))))
