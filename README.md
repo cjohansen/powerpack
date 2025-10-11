@@ -10,13 +10,13 @@ the way you want.
 With tools.deps:
 
 ```clj
-no.cjohansen/powerpack {:mvn/version "2025.09.16"}
+no.cjohansen/powerpack {:mvn/version "2025.10.11"}
 ```
 
 With Leiningen:
 
 ```clj
-[no.cjohansen/powerpack "2025.09.16"]
+[no.cjohansen/powerpack "2025.10.11"]
 ```
 
 ## Status
@@ -495,6 +495,11 @@ a bottle neck or unnecessary layer of confusion. Obviously, it is a middleman,
 but the individual tools are used as transparently as possible.
 
 ## Changelog
+
+### 2025.10.11
+
+Improve default file ingester so that file types unknown to Powerpack can be
+transacted without errors.
 
 ### 2025.09.16
 
