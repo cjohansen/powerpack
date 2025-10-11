@@ -96,8 +96,9 @@
       data
       [data])))
 
-(defmethod parse-file :default [_db _file-name file]
-  (slurp file))
+(defmethod parse-file :default [_db file-name file]
+  [{:page/uri (suggest-url nil file-name)
+    :page/body (slurp file)}])
 
 (defn load-data [db powerpack file-name & [opt]]
   (let [file (io/file (str (:powerpack/content-dir powerpack) "/" file-name))]
