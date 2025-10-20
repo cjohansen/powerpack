@@ -52,11 +52,11 @@
      (.getAbsolutePath (as-file f2))))
 
 (defn parent? [dir f]
-  (let [dir-path (str (.getAbsolutePath (as-file dir)) "/")
+  (let [dir-path (str (.getAbsolutePath (as-file dir)) fsep)
         file-path (.getAbsolutePath (as-file f))]
     (and (str/starts-with? file-path dir-path)
-         (not= (str/replace dir-path #"/$" "")
-               (str/replace file-path #"/$" "")))))
+         (not= (str/replace dir-path (re-pattern (str fsep-regex-str "$")) "")
+               (str/replace file-path (re-pattern (str fsep-regex-str "$")) "")))))
 
 (defn get-relative-path [dir f]
   (let [file-path (.getAbsolutePath (as-file f))
