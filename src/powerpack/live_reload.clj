@@ -69,12 +69,7 @@
 (defn live-reload-handler [opt handler req]
   (log/debug "Accepted connection to live-reload-handler")
   (let [{:strs [uri hash]} (:params req)
-        channel (if (not= hash (or (get-uri-hash handler uri)
-                                   ;; If it crashes, don't reload
-                                   hash))
-                  (go (stream-msg {:type :client-outdated
-                                   :action "reload"}))
-                  (create-watcher opt handler uri hash))]
+        channel (create-watcher opt handler uri hash)]
     (http-kit/as-channel
      req
      {:on-close
