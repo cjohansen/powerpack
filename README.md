@@ -466,6 +466,18 @@ to parse them:
     :page/body (slurp file)}])
 ```
 
+## java.time literals
+
+Powerpack ships with `java.time` literals via
+[java-time-literals](https://github.com/magnars/java-time-literals). If you want
+to use different reader literals for `java.time` classes, exclude this
+dependency:
+
+```clj
+no.cjohansen/powerpack {:mvn/version "2026.01.1"
+                        :exclusions [java-time-literals/java-time-literals]}
+```
+
 ## Rationale
 
 I've built a few Stasis pages in my time, and I keep wiring together the same
@@ -495,6 +507,10 @@ a bottle neck or unnecessary layer of confusion. Obviously, it is a middleman,
 but the individual tools are used as transparently as possible.
 
 ## Changelog
+
+### 2026.01.1
+
+Make java-time-literals an optional dependency.
 
 ### 2025.10.22
 

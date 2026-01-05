@@ -1,11 +1,15 @@
 (ns powerpack.db
   (:require [datomic-type-extensions.api :as d]
             [datomic-type-extensions.types :refer [define-dte]]
-            [java-time-dte.install :as jtl-dte]
-            [java-time-literals.core :as jtl]))
+            [java-time-dte.install :as jt-dte]))
 
-::jtl/keep
-::jtl-dte/keep
+(try
+  (require '[java-time-literals.core])
+  (catch Exception _
+    nil ;; Allow opting out of java.time literals
+    ))
+
+::jt-dte/keep
 
 (define-dte :data/edn :db.type/string
   [this] (pr-str this)
